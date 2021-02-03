@@ -228,6 +228,46 @@ def index(course_id=None, user_id=None, lti=lti):
 
     return render_template('index.htm.j2', msg=msg)
 
+# nbgrader
+@app.route('/nbtocanvas', methods=['GET'])
+def nbtocanvas():
+    import sys
+    import os
+    import canvasapi
+    import pytest
+    # Import the Canvas class
+    from canvasapi import Canvas
+    from canvasapi.submission import GroupedSubmission, Submission
+    from canvasapi.upload import Uploader
+    from canvasapi.assignment import (
+        Assignment,
+        AssignmentGroup,
+        AssignmentOverride,
+        AssignmentExtension,
+    )
+    from canvasapi.group import Group, GroupCategory, GroupMembership
+
+    # canvas API URL
+    #API_URL = "https://canvas.ucsd.edu"
+    # Canvas API key
+    #API_KEY = os.getenv("CANVAS_API_KEY")
+
+    # initialize a new Canvas object
+    # TODO: see https://github.com/ucfopen/canvasapi/issues/238
+    canvas = Canvas(settings.API_URL, settings.CANVAS_API_KEY)
+    # requester = canvas._Canvas__requester
+
+    # use my user id
+    user = canvas.get_user(114262)
+
+    # retrieve list of courses im enrolled in
+    courses = user.get_courses()
+    course_list = [course for course in courses]
+    listToStr = ' '.join(map(str, course_list))
+    return listToStr
+
+
+
 
 # OAuth login
 # Redirect URI
