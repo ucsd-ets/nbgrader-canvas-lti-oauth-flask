@@ -220,17 +220,7 @@ def refresh_access_token(user):
 @app.route('/index', methods=['GET'])
 @lti(error=error, request='session', role='staff', app=app)
 def index(course_id=None, user_id=None, lti=lti):
-    # Cool, we got through
-    args = request.args.to_dict()
-    session['course_id'] = args['course_id']
-    session['user_id'] = args['user_id']
-    msg = "hi! Course ID is {}, User ID is {}.".format(session['course_id'], session['user_id'])
 
-    return render_template('index.htm.j2', msg=msg)
-
-# nbgrader
-@app.route('/nbtocanvas', methods=['GET'])
-def nbtocanvas():
     import sys
     import os
     import canvasapi
@@ -247,24 +237,33 @@ def nbtocanvas():
     )
     from canvasapi.group import Group, GroupCategory, GroupMembership
 
-    # canvas API URL
-    #API_URL = "https://canvas.ucsd.edu"
-    # Canvas API key
-    #API_KEY = os.getenv("CANVAS_API_KEY")
+    # Cool, we got through
+    args = request.args.to_dict()
+    session['course_id'] = args['course_id']
+    session['user_id'] = args['user_id']
+    msg = "hi! Course ID is {}, User ID is {}.".format(session['course_id'], session['user_id'])
+
+    #
+    # nbgrader to canvas code
+    #
 
     # initialize a new Canvas object
-    # TODO: see https://github.com/ucfopen/canvasapi/issues/238
-    canvas = Canvas(settings.API_URL, settings.CANVAS_API_KEY)
+    # /oauthlogin sets session["api_key"] then redirects to /index
+    canvas = Canvas(settings.API_URL, session["api_key"])
     # requester = canvas._Canvas__requester
 
-    # use my user id
+    # SR user id
     user = canvas.get_user(114262)
 
     # retrieve list of courses im enrolled in
     courses = user.get_courses()
     course_list = [course for course in courses]
-    listToStr = ' '.join(map(str, course_list))
-    return listToStr
+    listToHtmlStr = '<br>'.join(map(str, course_list))
+
+    msg += listToHtmlStr
+
+    return render_template('index.htm.j2', msg=msg)
+
 
 
 
