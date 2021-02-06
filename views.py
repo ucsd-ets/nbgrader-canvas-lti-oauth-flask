@@ -7,6 +7,8 @@ import time
 import requests
 import settings
 import logging
+    
+from canvasapi import Canvas
 from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
@@ -216,6 +218,13 @@ def refresh_access_token(user):
     }
 
 
+# initialize a new Canvas object
+# see https://github.com/ucfopen/canvasapi/issues/238
+# /oauthlogin sets session["api_key"] then redirects to /index
+def get_canvas():
+    canvas = Canvas(settings.API_URL, session['api_key'])
+    return canvas
+
 # Web Views / Routes
 @app.route('/index', methods=['GET'])
 @lti(error=error, request='session', role='staff', app=app)
@@ -226,7 +235,6 @@ def index(course_id=None, user_id=None, lti=lti):
     import canvasapi
     import pytest
     # Import the Canvas class
-    from canvasapi import Canvas
     from canvasapi.submission import GroupedSubmission, Submission
     from canvasapi.upload import Uploader
     from canvasapi.assignment import (
@@ -247,25 +255,11 @@ def index(course_id=None, user_id=None, lti=lti):
     # nbgrader to canvas code
     #
 
-    # initialize a new Canvas object
-    # /oauthlogin sets session["api_key"] then redirects to /index
-    canvas = Canvas(settings.API_URL, session["api_key"])
+    # initialize a new canvasapi Canvas object
+    canvas = get_canvas()
     # requester = canvas._Canvas__requester
-
-    # SR user id
-    user = canvas.get_user(114262)
-
-    # retrieve list of courses im enrolled in
-    courses = user.get_courses()
-    course_list = [course for course in courses]
-    listToHtmlStr = '<br>'.join(map(str, course_list))
-
-    msg += listToHtmlStr
-
-    return render_template('index.htm.j2', msg=msg)
-
-
-
+    
+    return render_template('index.htm.j2', msg=msg, courses=canvas.get_courses(), BASE_URL=settings.BASE_URL)
 
 
 # OAuth login
@@ -407,6 +401,8 @@ def oauth_login(lti=lti):
     return return_error(msg)
 
 
+# only clicked the first time we go to LTI from canvas
+# key could expire on later visits
 @app.route('/launch', methods=['POST', 'GET'])
 @lti(error=error, request='initial', role='staff', app=app)
 @check_valid_user
@@ -426,7 +422,9 @@ def launch(lti=lti):
     expiration_date = user.expires_in
 
     # If expired or no api_key
-    if int(time.time()) > expiration_date or 'api_key' not in session:
+    # mf: refresh the key if it will expire within the next minute, just to make sure the key doesn't expire while responding to a request.
+    #if int(time.time()) > expiration_date or 'api_key' not in session:
+    if int(time.time()) - 60 > expiration_date or 'api_key' not in session:
         readable_time = time.strftime('%a, %d %b %Y %H:%M:%S', time.localtime(user.expires_in))
 
         app.logger.info((
@@ -455,7 +453,9 @@ def launch(lti=lti):
         # Have an API key that shouldn't be expired. Test it to be sure.
         auth_header = {'Authorization': 'Bearer ' + session['api_key']}
         r = requests.get(
-            '{}users/{}/profile'.format(settings.API_URL, session['canvas_user_id']),
+            # matthew noted this is broken
+#           '{}users/{}/profile'.format(settings.API_URL, session['canvas_user_id']),
+            '{}users/{}'.format(settings.API_URL, session['canvas_user_id']),
             headers=auth_header
         )
 
