@@ -6,4 +6,13 @@
     <p><img src={{ url_for('static', filename='img/example.jpg') }} alt="Example image" />
 </div>
 
+{% if courses != None %}
+<h2>Courses:</h2>
+<ul>
+    {% for course in courses %}
+    <li><a href="{{BASE_URL}}courses/{{course.id}}" target="_blank">{{ course.name }}</a></li>
+    {% endfor %}
+</ul>
+{% endif %}
+
 {% endblock content %}
