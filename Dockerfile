@@ -1,7 +1,7 @@
 # from https://github.com/ucfopen/lti-template-flask
 # default flask port is 5000, or set in SERVER_NAME config variable
 FROM python:3.8.7
-COPY ./app /app
+COPY . /app
 WORKDIR /app
 
 # Make /app/* available to be imported by Python globally to better support several use cases like Alembic migrations.
