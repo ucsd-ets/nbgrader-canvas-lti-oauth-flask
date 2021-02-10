@@ -403,7 +403,7 @@ def oauth_login(lti=lti):
 
 # only clicked the first time we go to LTI from canvas
 # key could expire on later visits
-@app.route('/launch', methods=['POST', 'GET'])
+@app.route('/launch', methods=['POST', 'GET'], strict_slashes=False)
 @lti(error=error, request='initial', role='staff', app=app)
 @check_valid_user
 def launch(lti=lti):
