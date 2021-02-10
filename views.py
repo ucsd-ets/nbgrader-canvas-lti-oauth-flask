@@ -485,7 +485,7 @@ def launch(lti=lti):
 
 
 # XML
-@app.route("/xml/", methods=['GET'])
+@app.route("/xml", methods=['GET'], strict_slashes=False)
 def xml():
     """
     Returns the lti.xml file for the app.
