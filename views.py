@@ -1,8 +1,9 @@
-from flask import Flask, render_template, session, request, Response, redirect, url_for
+from flask import Flask, render_template, session, request, Response, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from datetime import timedelta
 from pylti.flask import lti
+from prometheus_flask_exporter import PrometheusMetrics
 import time
 import requests
 import settings
@@ -16,6 +17,12 @@ app.secret_key = settings.secret_key
 app.config.from_object(settings.configClass)
 db = SQLAlchemy(app)
 
+VERSION = '0.0.1'
+
+# start prometheus metrics server
+metrics = PrometheusMetrics(app)
+# static information as metric
+metrics.info('nbgrader-to-canvas', 'Upload grades from nbgrader to canvas', version=VERSION)
 
 # Logging
 formatter = logging.Formatter(settings.LOG_FORMAT)
@@ -503,3 +510,13 @@ def xml():
             'If this error persists, please contact support.'
         )
         return return_error(msg)
+
+
+START_TIME = time.time()
+@app.route("/healthz")
+def health():
+    uptime_seconds = time.time() - START_TIME
+    return jsonify({
+        'uptime': uptime_seconds,
+        'message': 'ok'
+    })
