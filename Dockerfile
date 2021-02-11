@@ -10,4 +10,4 @@ ENV PYTHONPATH=/app
 RUN pip3 install -r requirements.txt
 
 ENV FLASK_APP=views.py
-CMD flask run --host 0.0.0.0
+CMD while true; do flask run --host 0.0.0.0; sleep 5; done
