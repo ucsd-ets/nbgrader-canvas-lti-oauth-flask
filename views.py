@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session, request, Response, url_for, redirect
+from flask import Flask, render_template, session, request, Response, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from datetime import timedelta
@@ -21,6 +21,12 @@ db = SQLAlchemy(app)
 
 # https://werkzeug.palletsprojects.com/en/1.0.x/middleware/proxy_fix/
 app.wsgi_app = ProxyFix(app.wsgi_app)
+VERSION = '0.0.1'
+
+# start prometheus metrics server
+metrics = PrometheusMetrics(app)
+# static information as metric
+metrics.info('nbgrader-to-canvas', 'Upload grades from nbgrader to canvas', version=VERSION)
 
 # Logging
 formatter = logging.Formatter(settings.LOG_FORMAT)
@@ -520,3 +526,13 @@ def xml():
             'If this error persists, please contact support.'
         )
         return return_error(msg)
+
+
+START_TIME = time.time()
+@app.route("/healthz")
+def health():
+    uptime_seconds = time.time() - START_TIME
+    return jsonify({
+        'uptime': uptime_seconds,
+        'message': 'ok'
+    })
