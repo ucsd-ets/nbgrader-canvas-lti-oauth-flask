@@ -8,3 +8,4 @@ venv/
 error.log
 *.DS_STORE
 test.db
+src/
