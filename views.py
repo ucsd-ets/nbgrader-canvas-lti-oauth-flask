@@ -478,7 +478,6 @@ def launch(lti=lti):
         # check for WWW-Authenticate
         # https://canvas.instructure.com/doc/api/file.oauth.html
         if 'WWW-Authenticate' not in r.headers and r.status_code == 200:
-            app.logger.error('at at authenticate')
             
             return redirect(url_for(
                 'index',
