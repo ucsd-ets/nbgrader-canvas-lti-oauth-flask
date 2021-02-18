@@ -26,7 +26,7 @@ VERSION = '0.0.1'
 # start prometheus metrics server
 metrics = PrometheusMetrics(app)
 # static information as metric
-metrics.info('nbgrader-to-canvas', 'Upload grades from nbgrader to canvas', version=VERSION)
+metrics.info('nbgrader_to_canvas', 'Upload grades from nbgrader to canvas', version=VERSION)
 
 # Logging
 formatter = logging.Formatter(settings.LOG_FORMAT)
