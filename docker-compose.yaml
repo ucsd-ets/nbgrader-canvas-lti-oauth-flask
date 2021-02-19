@@ -8,7 +8,7 @@ services:
     - postgres
     volumes:
     - ./:/app
-    command: sleep inf
+    command: flask run --host 0.0.0.0
   postgres:
     image: postgres
     ports:
