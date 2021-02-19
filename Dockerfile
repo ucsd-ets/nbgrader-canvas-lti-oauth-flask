@@ -13,4 +13,4 @@ RUN pip3 install -r requirements.txt && \
 ENV FLASK_APP=nbgrader_to_canvas
 
 RUN pip install -e .
-CMD flask run --host --ip 0.0.0.0
+CMD while true; do flask run --host 0.0.0.0; sleep 5; done
