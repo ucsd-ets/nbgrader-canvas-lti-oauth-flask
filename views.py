@@ -1,26 +1,28 @@
-from flask import Flask, render_template, session, request, Response, url_for, redirect
+from flask import Flask, render_template, session, request, Response, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from datetime import timedelta
 from pylti.flask import lti
-from werkzeug.middleware.proxy_fix import ProxyFix
-
+from prometheus_flask_exporter import PrometheusMetrics
 import time
 import requests
 import settings
 import logging
-
+    
 from canvasapi import Canvas
 from logging.handlers import RotatingFileHandler
-
 
 app = Flask(__name__)
 app.secret_key = settings.secret_key
 app.config.from_object(settings.configClass)
 db = SQLAlchemy(app)
 
-# https://werkzeug.palletsprojects.com/en/1.0.x/middleware/proxy_fix/
-app.wsgi_app = ProxyFix(app.wsgi_app)
+VERSION = '0.0.1'
+
+# start prometheus metrics server
+metrics = PrometheusMetrics(app)
+# static information as metric
+metrics.info('nbgrader-to-canvas', 'Upload grades from nbgrader to canvas', version=VERSION)
 
 # Logging
 formatter = logging.Formatter(settings.LOG_FORMAT)
@@ -32,6 +34,7 @@ handler = RotatingFileHandler(
 handler.setLevel(logging.getLevelName(settings.LOG_LEVEL))
 handler.setFormatter(formatter)
 app.logger.addHandler(handler)
+
 
 # DB Model
 class Users(db.Model):
@@ -222,16 +225,12 @@ def refresh_access_token(user):
     }
 
 
-
 # initialize a new Canvas object
 # see https://github.com/ucfopen/canvasapi/issues/238
 # /oauthlogin sets session["api_key"] then redirects to /index
 def get_canvas():
-    try:
-        canvas = Canvas(settings.API_URL, session['api_key'])
-        return canvas
-    except:
-        return None
+    canvas = Canvas(settings.API_URL, session['api_key'])
+    return canvas
 
 # Web Views / Routes
 @app.route('/index', methods=['GET'])
@@ -255,7 +254,6 @@ def index(course_id=None, user_id=None, lti=lti):
 
     # Cool, we got through
     args = request.args.to_dict()
-
     session['course_id'] = args['course_id']
     session['user_id'] = args['user_id']
     msg = "hi! Course ID is {}, User ID is {}.".format(session['course_id'], session['user_id'])
@@ -266,13 +264,9 @@ def index(course_id=None, user_id=None, lti=lti):
 
     # initialize a new canvasapi Canvas object
     canvas = get_canvas()
-
-    if canvas is None:
-        courses = None
-    else:
-        courses = canvas.get_courses()
+    # requester = canvas._Canvas__requester
     
-    return render_template('index.htm.j2', msg=msg, courses=courses, BASE_URL=settings.BASE_URL)
+    return render_template('index.htm.j2', msg=msg, courses=canvas.get_courses(), BASE_URL=settings.BASE_URL)
 
 
 # OAuth login
@@ -359,7 +353,7 @@ def oauth_login(lti=lti):
                 if check_expiration.expires_in == long(session['expires_in']):
                     course_id = session['course_id']
                     user_id = session['canvas_user_id']
-                    return redirect(url_for('index', course_id=course_id, user_id=user_id))
+                    return redirect(url_for('index.index', course_id=course_id, user_id=user_id))
                 else:
                     app.logger.error(
                         '''Error in updating user's expiration time
@@ -391,7 +385,7 @@ def oauth_login(lti=lti):
                 else:
                     course_id = session['course_id']
                     user_id = session['canvas_user_id']
-                    return redirect(url_for('index', course_id=course_id, user_id=user_id))
+                    return redirect(url_for('index.index', course_id=course_id, user_id=user_id))
 
             # got beyond if/else
             # error in adding or updating db
@@ -420,7 +414,6 @@ def oauth_login(lti=lti):
 @lti(error=error, request='initial', role='staff', app=app)
 @check_valid_user
 def launch(lti=lti):
-
     # Try to grab the user
     user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
 
@@ -434,7 +427,7 @@ def launch(lti=lti):
 
     # Get the expiration date
     expiration_date = user.expires_in
-    
+
     # If expired or no api_key
     # mf: refresh the key if it will expire within the next minute, just to make sure the key doesn't expire while responding to a request.
     #if int(time.time()) > expiration_date or 'api_key' not in session:
@@ -454,9 +447,8 @@ def launch(lti=lti):
             # Success! Set the API Key and Expiration Date
             session['api_key'] = refresh['access_token']
             session['expires_in'] = refresh['expiration_date']
-            
             return redirect(url_for(
-                'index',
+                'index.index',
                 course_id=session['course_id'],
                 user_id=session['canvas_user_id']
             ))
@@ -465,7 +457,6 @@ def launch(lti=lti):
             app.logger.info('Reauthenticating:\nSession: {}'.format(session))
             return redirect_to_auth()
     else:
-        
         # Have an API key that shouldn't be expired. Test it to be sure.
         auth_header = {'Authorization': 'Bearer ' + session['api_key']}
         r = requests.get(
@@ -478,9 +469,8 @@ def launch(lti=lti):
         # check for WWW-Authenticate
         # https://canvas.instructure.com/doc/api/file.oauth.html
         if 'WWW-Authenticate' not in r.headers and r.status_code == 200:
-            
             return redirect(url_for(
-                'index',
+                'index.index',
                 course_id=session['course_id'],
                 user_id=session['canvas_user_id']
             ))
@@ -491,7 +481,7 @@ def launch(lti=lti):
             if new_token:
                 session['api_key'] = new_token
                 return redirect(url_for(
-                    'index',
+                    'index.index',
                     course_id=session['course_id'],
                     user_id=session['canvas_user_id']
                 ))
@@ -520,3 +510,13 @@ def xml():
             'If this error persists, please contact support.'
         )
         return return_error(msg)
+
+
+START_TIME = time.time()
+@app.route("/healthz")
+def health():
+    uptime_seconds = time.time() - START_TIME
+    return jsonify({
+        'uptime': uptime_seconds,
+        'message': 'ok'
+    })
