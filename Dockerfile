@@ -7,7 +7,10 @@ WORKDIR /app
 # Make /app/* available to be imported by Python globally to better support several use cases like Alembic migrations.
 ENV PYTHONPATH=/app
 
-RUN pip3 install -r requirements.txt
+RUN pip3 install -r requirements.txt && \
+    pip3 install git+https://github.com/ucfcdl/pylti.git@roles#egg=PyLTI
 
-ENV FLASK_APP=views.py
+ENV FLASK_APP=nbgrader_to_canvas
+
+RUN pip install -e .
 CMD while true; do flask run --host 0.0.0.0; sleep 5; done

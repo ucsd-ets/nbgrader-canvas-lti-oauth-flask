@@ -1,0 +1,18 @@
+version: "2"
+services:
+  web:
+    build: .
+    ports:
+    - "5000:5000"
+    depends_on:
+    - postgres
+    volumes:
+    - ./:/app
+    command: flask run --host 0.0.0.0
+  postgres:
+    image: postgres
+    ports:
+    - "5432:5432"
+    environment:
+    - POSTGRES_USER=dev
+    - POSTGRES_PASSWORD=mypassword
