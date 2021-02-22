@@ -3,6 +3,7 @@ from pylti.flask import lti
 
 from .utils import get_canvas, error
 from . import app
+from . import settings
 
 
 index_blueprint = Blueprint('index', __name__)
