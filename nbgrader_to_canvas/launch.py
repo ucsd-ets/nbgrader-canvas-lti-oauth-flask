@@ -53,7 +53,7 @@ def launch(lti=lti):
             session['expires_in'] = refresh['expiration_date']
             
             return redirect(url_for(
-                'index',
+                'index.index',
                 course_id=session['course_id'],
                 user_id=session['canvas_user_id']
             ))
@@ -77,7 +77,7 @@ def launch(lti=lti):
         if 'WWW-Authenticate' not in r.headers and r.status_code == 200:
             
             return redirect(url_for(
-                'index',
+                'index.index',
                 course_id=session['course_id'],
                 user_id=session['canvas_user_id']
             ))
@@ -88,7 +88,7 @@ def launch(lti=lti):
             if new_token:
                 session['api_key'] = new_token
                 return redirect(url_for(
-                    'index',
+                    'index.index',
                     course_id=session['course_id'],
                     user_id=session['canvas_user_id']
                 ))
