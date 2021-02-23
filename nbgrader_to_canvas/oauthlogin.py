@@ -93,7 +93,9 @@ def oauth_login(lti=lti):
                 if check_expiration.expires_in == long(session['expires_in']):
                     course_id = session['course_id']
                     user_id = session['canvas_user_id']
-                    return redirect(url_for('index', course_id=course_id, user_id=user_id))
+                    print (course_id)
+                    print (user_id)
+                    return redirect(url_for('index.index', course_id=course_id, user_id=user_id))
                 else:
                     app.logger.error(
                         '''Error in updating user's expiration time
@@ -125,7 +127,7 @@ def oauth_login(lti=lti):
                 else:
                     course_id = session['course_id']
                     user_id = session['canvas_user_id']
-                    return redirect(url_for('index', course_id=course_id, user_id=user_id))
+                    return redirect(url_for('index.index', course_id=course_id, user_id=user_id))
 
             # got beyond if/else
             # error in adding or updating db

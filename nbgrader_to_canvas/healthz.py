@@ -5,7 +5,7 @@ healthz_blueprint = Blueprint('healthz', __name__)
 
 START_TIME = time.time()
 
-@healthz_blueprint.route('/healthz')
+@healthz_blueprint.route('/healthz', strict_slashes=False)
 def health():
     """Check the health of the app by outputting the uptime
 
