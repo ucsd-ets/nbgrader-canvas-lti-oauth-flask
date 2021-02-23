@@ -2,10 +2,14 @@ from flask import redirect, render_template, request, session
 from functools import wraps
 
 import requests
+import time
+
 from datetime import timedelta
 from canvasapi import Canvas
 
 from . import settings
+from . import db
+from .models import Users
 
 
 # Utility Functions
