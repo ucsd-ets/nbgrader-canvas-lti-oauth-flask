@@ -1,13 +1,13 @@
 #vscode
 nb-can-flask-oauth.code-workspace
 # Flask
-settings.py
 *.pyc
 env/
 venv/
-error.log
 *.DS_STORE
 test.db
 src/
 *.log
-tests/
+environment
+.pytest_cache/
+*.png
