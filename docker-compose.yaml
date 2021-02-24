@@ -24,6 +24,7 @@ services:
     - SELENIUM_OAUTH2_ID=${SELENIUM_OAUTH2_ID}
     - SELENIUM_OAUTH2_KEY=${SELENIUM_OAUTH2_KEY}
     - SELENIUM_OAUTH2_URI=${SELENIUM_OAUTH2_URI}
+    - SECRET_KEY=${SECRET_KEY}
   postgres:
     image: postgres
     ports:
