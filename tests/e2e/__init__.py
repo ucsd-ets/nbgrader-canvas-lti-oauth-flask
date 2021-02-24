@@ -45,7 +45,7 @@ def driver():
     command_executor='http://selenium:4444/wd/hub',
     desired_capabilities=DesiredCapabilities.CHROME)
 
-    base_url = 'https://' + os.getenv('CANVAS_BASE_URL')
+    base_url = os.getenv('CANVAS_BASE_URL')
     canvas_sso_username = os.getenv('CANVAS_SSO_USERNAME')
     canvas_sso_pw = os.getenv('CANVAS_SSO_PASSWORD')
 

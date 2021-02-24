@@ -1,13 +1,13 @@
 import os
 
 # API url and LTI key/secret
-BASE_URL = 'https://ucsd.test.instructure.com/'
-API_URL = 'https://ucsd.test.instructure.com/'
+BASE_URL = os.getenv('CANVAS_BASE_URL') + '/'
+API_URL = os.getenv('CANVAS_BASE_URL') + '/'
 LTI_CONSUMER_KEY = os.getenv('LTI_CONSUMER_KEY')
 LTI_SHARED_SECRET = os.getenv('LTI_SHARED_SECRET')
 
 # generate a secret key with os.urandom(24)
-secret_key = 'SfHNb6S3uwUmg68VrZF67dZErsR/WGNg'
+secret_key = os.getenv('SECRET_KEY')
 
 # logs
 LOG_FILE = 'error.log'
