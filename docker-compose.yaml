@@ -8,10 +8,23 @@ services:
     - postgres
     volumes:
     - ./:/app
-    command: flask run --host 0.0.0.0
+    command: ["/bin/bash", "-c", "while true; do flask run --host 0.0.0.0; done"]
     environment:
     - FLASK_DEBUG=1
     - FLASK_ENV=development
+    - DEBUG_METRICS=1 # https://github.com/rycus86/prometheus_flask_exporter/blob/master/README.md#debug-mode
+    - CANVAS_SSO_USERNAME=${CANVAS_SSO_USERNAME}
+    - CANVAS_SSO_PASSWORD=${CANVAS_SSO_PASSWORD}
+    - CANVAS_BASE_URL=${CANVAS_BASE_URL}
+    - LTI_CONSUMER_KEY=${LTI_CONSUMER_KEY}
+    - LTI_SHARED_SECRET=${LTI_SHARED_SECRET}
+    - OAUTH2_ID=${OAUTH2_ID}
+    - OAUTH2_KEY=${OAUTH2_KEY}
+    - OAUTH2_URI=${OAUTH2_URI}
+    - SELENIUM_OAUTH2_ID=${SELENIUM_OAUTH2_ID}
+    - SELENIUM_OAUTH2_KEY=${SELENIUM_OAUTH2_KEY}
+    - SELENIUM_OAUTH2_URI=${SELENIUM_OAUTH2_URI}
+    - SECRET_KEY=${SECRET_KEY}
   postgres:
     image: postgres
     ports:
@@ -21,3 +34,8 @@ services:
     - POSTGRES_PASSWORD=mypassword
     volumes:
     - ./start-db.sql:/docker-entrypoint-initdb.d/start-db.sql
+  selenium:
+    image: selenium/standalone-chrome
+    ports:
+    - "4444:4444"
+    shm_size: '2gb'

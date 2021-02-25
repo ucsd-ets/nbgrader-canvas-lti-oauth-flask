@@ -1,0 +1,1 @@
+Directory used to manage selenium testing state

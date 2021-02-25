@@ -9,7 +9,9 @@ ENV PYTHONPATH=/app
 
 RUN pip3 install -r requirements.txt && \
     pip3 install git+https://github.com/ucfcdl/pylti.git@roles#egg=PyLTI \
-                 pytest
+                 pytest \
+                 selenium \
+                 psutil
 
 ENV FLASK_APP=nbgrader_to_canvas
 

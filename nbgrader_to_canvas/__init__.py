@@ -16,6 +16,7 @@ app.config.from_object(settings.configClass)
 # add middleware
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
+
 #
 # intialize all other modules here due to circ. import errors
 #
@@ -39,5 +40,5 @@ app.register_blueprint(index_blueprint)
 app.register_blueprint(launch_blueprint)
 
 # setup Prometheus route at /metrics
-metrics = PrometheusMetrics(app)
-metrics.info('nbgrader_to_canvas_info', 'nbgrader_to_canvas info', version=__version__)
+metrics = PrometheusMetrics(app, path='/metrics')
+metrics.info('nbgrader_to_canvas_info', 'app info', version=__version__)
