@@ -1,4 +1,5 @@
 #vscode
+workspace.code-workspace
 nb-can-flask-oauth.code-workspace
 # Flask
 *.pyc
