@@ -1,4 +1,4 @@
-version: "2"
+version: "3.2"
 services:
   web:
     build: .
@@ -8,7 +8,7 @@ services:
     - postgres
     volumes:
     - ./:/app
-    command: ["/bin/bash", "-c", "while true; do flask run --host 0.0.0.0; done"]
+    - ./mocks:/tmp/nbgrader
     environment:
     - FLASK_DEBUG=1
     - FLASK_ENV=development
@@ -25,6 +25,7 @@ services:
     - SELENIUM_OAUTH2_KEY=${SELENIUM_OAUTH2_KEY}
     - SELENIUM_OAUTH2_URI=${SELENIUM_OAUTH2_URI}
     - SECRET_KEY=${SECRET_KEY}
+    - DATABASE_URI=${DATABASE_URI}
   postgres:
     image: postgres
     ports:
@@ -33,7 +34,7 @@ services:
     - POSTGRES_USER=dev
     - POSTGRES_PASSWORD=mypassword
     volumes:
-    - ./start-db.sql:/docker-entrypoint-initdb.d/start-db.sql
+    - ./scripts/start-db.sql:/docker-entrypoint-initdb.d/start-db.sql
   selenium:
     image: selenium/standalone-chrome
     ports:
