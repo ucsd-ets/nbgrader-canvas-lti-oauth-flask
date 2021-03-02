@@ -26,6 +26,9 @@ def upload_grades(lti=lti):
     from canvasapi.progress import Progress
     from canvasapi.course import Course
 
+    # TODO: modify below to redirect to status page after POST, see
+    # https://stackoverflow.com/questions/31542243/redirect-to-other-view-after-submitting-form
+
     # Cool, we got through
     args = request.args.to_dict()
 
