@@ -40,10 +40,10 @@ oauth2_scopes = " ".join([
 configClass = 'nbgrader_to_canvas.config.DevelopmentConfig'
 
 DATABASE_URIS = {
-    'DevelopmentConfig': 'postgresql://dev:mypassword@postgres/test',
-    'Config': 'postgresql://dev:mypassword@postgres/test',
-    'BaseConfig': 'postgresql://dev:mypassword@postgres/test',
-    'TestingConfig': 'postgresql://dev:mypassword@postgres/test'
+    'DevelopmentConfig': os.getenv('DATABASE_URI'),
+    'Config': os.getenv('DATABASE_URI'),
+    'BaseConfig': os.getenv('DATABASE_URI'),
+    'TestingConfig': os.getenv('DATABASE_URI')
 }
 
 PYLTI_CONFIG = {
