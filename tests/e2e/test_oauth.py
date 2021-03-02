@@ -45,7 +45,7 @@ def test_oauth_workflow(driver):
             ).click()
 
         except selenium.common.exceptions.TimeoutException:
-            """May not have the authorize screen if already clicked"""
+            """May not have the authorize screen if already clicked from previous test"""
             pass
 
         finally:
