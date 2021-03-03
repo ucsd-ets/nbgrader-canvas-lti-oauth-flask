@@ -1,8 +1,10 @@
 #!/bin/bash
 
+
+
 until pg_isready -h postgres -p 5432
 do
-  echo "Waiting for postgres at: $pg_uri"
+  echo "Waiting for postgres at: $DATABASE_URI"
   sleep 2;
 done
 
