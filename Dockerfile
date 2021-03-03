@@ -12,19 +12,20 @@ ENV PYTHONPATH=/app
 ENV FLASK_APP=nbgrader_to_canvas
 
 
-RUN apt-get update -y && \
+RUN apt-get update && \
     apt-get install -y lsb-release \
                        sqlite3
 
 # https://www.postgresql.org/download/linux/debian/
 RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
     wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-    apt-get update -y && apt-get install -y postgresql
+    apt-get update && apt-get install -y postgresql
 
 RUN pip install -r requirements.txt && \
     pip install -e .
 
 # used for creating development environment. /mnt/nbgrader will need to be overridden at runtime for production
+# TODO find cleaner solution
 COPY scripts/init-flask.sh /
 COPY scripts/start-flask.sh /
 COPY mocks /tmp/nbgrader

@@ -3,7 +3,7 @@
 mkdir -p /mnt/nbgrader
 cp -r /tmp/nbgrader/* /mnt/nbgrader
 
-nbgrader_dirs=($(ls /mnt/nbgrader))
+nbgrader_dirs=($(ls /mnt/nbgrader/*.db))
 for dirname in "${nbgrader_dirs[@]}"; do
     username=$(tr -dc a-z </dev/urandom | head -c 13)
     useradd -m $username
