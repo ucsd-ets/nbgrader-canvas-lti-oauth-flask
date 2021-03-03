@@ -32,7 +32,6 @@ def upload_grades(lti=lti):
     # Cool, we got through
     args = request.args.to_dict()
 
-    #session['course_id'] = args['course_id']
     course_id = session['course_id']
 
     # initialize a new canvasapi Canvas object
