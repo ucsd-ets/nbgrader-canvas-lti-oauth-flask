@@ -12,3 +12,4 @@ src/
 environment
 .pytest_cache/
 *.png
+mocks/
