@@ -33,11 +33,18 @@ from .oauthlogin import oauth_login_blueprint
 from .xml import xml_blueprint
 from .index import index_blueprint
 
+from .grade_overview import grade_overview_blueprint
+from .grade_assignments import grade_assignments_blueprint
+from .grade_students import grade_students_blueprint
+
 app.register_blueprint(healthz_blueprint)
 app.register_blueprint(oauth_login_blueprint)
 app.register_blueprint(xml_blueprint)
 app.register_blueprint(index_blueprint)
 app.register_blueprint(launch_blueprint)
+app.register_blueprint(grade_overview_blueprint)
+app.register_blueprint(grade_assignments_blueprint)
+app.register_blueprint(grade_students_blueprint)
 
 # setup Prometheus route at /metrics
 metrics = PrometheusMetrics(app, path='/metrics')
