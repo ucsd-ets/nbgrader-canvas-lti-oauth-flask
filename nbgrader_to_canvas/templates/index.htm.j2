@@ -17,23 +17,4 @@
 {% endif %}
 
 
-{% if nbgrader %}
-<h2>nbgrader:</h2>
-<ul>
-    {% for assignment in nbgraderdata %}
-    <li>{{assignment}}</a></li>
-    <ul>
-        {% for grade_data in assignment %}
-        <li>{{grade_data}}</a></li>
-        <ul>
-            {% for studentid in grade_data %}
-            <li>{{studentid}} {{studentid.posted_grade}}</a></li>
-            {% endfor %}
-        </ul>
-        {% endfor %}
-    </ul>
-    {% endfor %}
-</ul>
-{% endif %}
-
 {% endblock content %}
