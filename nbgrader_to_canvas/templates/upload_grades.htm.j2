@@ -1,10 +1,12 @@
 {% extends 'base.htm.j2' %}
 {% block content %}
 
+<!--
 <h2>Upload datahub nbgrader grades to Canvas</h2>
 <div>
 <button type="button">Click to upload grades</button>
 </div>
+-->
 
 <!-- add js to reload page every 5 seconds with progress update
 note progress.results omitted when job stil pending -->
@@ -18,6 +20,27 @@ note progress.results omitted when job stil pending -->
     <li>Percent completed: {{ progress.completion }}</a></li>
     <li>Workflow state: {{ progress.workflow_state }}</a></li>
     <li>Progress update url: {{ progress.url }}</a></li>
+</ul>
+{% endif %}
+
+
+
+{% if nbgrader %}
+<h2>nbgrader:</h2>
+<ul>
+    {% for assignment in nbgraderdata %}
+    <li>{{assignment}}</a></li>
+    <ul>
+        {% for grade_data in assignment %}
+        <li>{{grade_data}}</a></li>
+        <ul>
+            {% for studentid in grade_data %}
+            <li>{{studentid}} {{studentid.posted_grade}}</a></li>
+            {% endfor %}
+        </ul>
+        {% endfor %}
+    </ul>
+    {% endfor %}
 </ul>
 {% endif %}
 
