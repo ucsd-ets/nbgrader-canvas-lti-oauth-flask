@@ -149,13 +149,13 @@ def upload_grades(lti=lti):
                     app.logger.info(canvas_assignment.name)
                     app.logger.info("upload submissions for existing canvas assignment")
 
-                    json_obj = json.dumps(nbgraderdata[nb_assignment])
+                    json_str = json.dumps(nbgraderdata[nb_assignment])
                     app.logger.info("json:")
-                    app.logger.info(json_obj)
+                    app.logger.info(json_str)
 
                     
                     #assignment_to_upload = course.get_assignment(canvas_assignment.id)
-                    #progress = assignment_to_upload.submissions_bulk_update(grade_data=json_obj)
+                    #progress = assignment_to_upload.submissions_bulk_update(grade_data=json_str)
                     #progress = progress.query()
 
                     # note we found a match, exit loop
@@ -167,11 +167,11 @@ def upload_grades(lti=lti):
                 app.logger.info("upload submissions for non-existing canvas assignment; will be named:")
                 app.logger.info(nb_assignment.name)                
 
-                json_obj = json.dumps(nbgraderdata[nb_assignment])
+                json_str = json.dumps(nbgraderdata[nb_assignment])
                 app.logger.info("json:")
-                app.logger.info(json_obj)
+                app.logger.info(json_str)
                 assignment_to_upload = course.get_assignment(canvas_assignment.id)
-                progress = assignment_to_upload.submissions_bulk_update(grade_data=json_obj)
+                progress = assignment_to_upload.submissions_bulk_update(grade_data=json_str)
                 progress = progress.query()
     
     return render_template('upload_grades.htm.j2', progress=progress, BASE_URL=settings.BASE_URL)
