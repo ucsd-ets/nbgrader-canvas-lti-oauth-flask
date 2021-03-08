@@ -57,9 +57,9 @@ def upload_grades(lti=lti):
     #    courses = canvas.get_courses()
 
     course = canvas.get_course(course_id)
-    NBGRADER_ASSIGN1_ID = 277845 # canvas "nbgrader assign 1"
-    TESTACCT3_USER_ID = 115753    
-    assignment = course.get_assignment(NBGRADER_ASSIGN1_ID)
+    #NBGRADER_ASSIGN1_ID = 277845 # canvas "nbgrader assign 1"
+    #TESTACCT3_USER_ID = 115753    
+    #assignment = course.get_assignment(NBGRADER_ASSIGN1_ID)
     # ASK about assignment submission type (external tool)
     # TODO get assignments from canvas first
     # if there is an nbgrader assignment id that is not in canvas,
@@ -79,6 +79,7 @@ def upload_grades(lti=lti):
     canvas_users = course.get_users()
     
     canvas_students = {}
+    # TODO: modify to only get active users
     for canvas_user in canvas_users:
         if hasattr(canvas_user, "login_id") and canvas_user.login_id is not None:
             canvas_students[canvas_user.login_id]=canvas_user.id
@@ -174,7 +175,9 @@ def upload_grades(lti=lti):
                     app.logger.info(nbgraderdata[nb_assignment])
 
                     
-                    assignment_to_upload = course.get_assignment(canvas_assignment.id)
+                    assignment_to_upload = course.get_assignment(canvas_assignment.id)                
+
+                    # check if published, if not, publish?
                     progress = assignment_to_upload.submissions_bulk_update(grade_data=nbgraderdata[nb_assignment])
                     progress = progress.query()
 
@@ -191,7 +194,9 @@ def upload_grades(lti=lti):
                 #json_str = json.dumps(nbgraderdata[nb_assignment])
                 #app.logger.info("json:")
                 #app.logger.info(json_str)
-                new_assignment_to_upload = course.create_assignment({'name':nb_assignment.name})
+
+                # create new assignments as published
+                new_assignment_to_upload = course.create_assignment({'name':nb_assignment.name, 'published':'true'})
                 progress = new_assignment_to_upload.submissions_bulk_update(grade_data=nbgraderdata[nb_assignment])
                 progress = progress.query()
     
