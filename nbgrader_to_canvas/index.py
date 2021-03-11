@@ -46,5 +46,8 @@ def index(course_id=None, user_id=None, lti=lti):
         courses = None
     else:
         courses = canvas.get_courses()
+
+    course_id = session['course_id']
+    course = canvas.get_course(course_id)
     
-    return render_template('index.htm.j2', msg=msg, courses=courses, BASE_URL=settings.BASE_URL)
+    return render_template('index.htm.j2', msg=msg, course_id=session['course_id'], all_courses=courses, BASE_URL=settings.BASE_URL)
