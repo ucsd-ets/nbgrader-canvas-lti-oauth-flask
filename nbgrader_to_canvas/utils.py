@@ -7,6 +7,7 @@ import time
 from datetime import timedelta
 from canvasapi import Canvas
 
+from . import app
 from . import settings
 from . import db
 from .models import Users
@@ -18,7 +19,6 @@ def return_error(msg):
 
 
 def error(exception=None):
-    from . import app
     app.logger.error("PyLTI error: {}".format(exception))
     return return_error('''Authentication error,
         please refresh and try again. If this error persists,
@@ -47,7 +47,6 @@ def check_valid_user(f):
         If user is allowed, return the decorated function.
         Otherwise, return an error page with corresponding message.
         """
-        from . import app
         
         if request.form:
             session.permanent = True
@@ -96,6 +95,59 @@ def check_valid_user(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def check_token_freshness(user):
+    # Get the expiration date
+    expiration_date = user.expires_in
+    token_refresh_threshold = 60
+    token_ttl = expiration_date - int(time.time())
+
+    # refresh the key if it will expire within the next minute, just to make sure the key doesn't expire while responding to a request.
+    app.logger.debug("Token expires in {} seconds, refreshing if less than threshold of {}".format(token_ttl, token_refresh_threshold))
+    if token_ttl < token_refresh_threshold or 'api_key' not in session:
+        readable_time = time.strftime('%a, %d %b %Y %H:%M:%S', time.localtime(user.expires_in))
+
+        app.logger.info((
+            'Expired refresh token or api_key not in session\n'
+            'User: {0}\n'
+            'Expiration date in db: {1}\n'
+            'Readable expires_in: {2}'
+        ).format(user.user_id, user.expires_in, readable_time))
+
+        refresh = refresh_access_token(user)
+
+        if refresh['access_token'] and refresh['expiration_date']:
+            # Success! Set the API Key and Expiration Date
+            session['api_key'] = refresh['access_token']
+            session['expires_in'] = refresh['expiration_date']
+            
+            return True
+        else:
+            return False
+    else:
+        
+        # Have an API key that shouldn't be expired. Test it to be sure.
+        auth_header = {'Authorization': 'Bearer ' + session['api_key']}
+        r = requests.get(
+            '{}users/{}'.format(settings.API_URL, session['canvas_user_id']),
+            headers=auth_header
+        )
+
+        # check for WWW-Authenticate
+        # https://canvas.instructure.com/doc/api/file.oauth.html
+        if 'WWW-Authenticate' not in r.headers and r.status_code == 200:
+            
+            return True
+        else:
+            # Key is bad. First try to get a new one using refresh
+            new_token = refresh_access_token(user)['access_token']
+
+            if new_token:
+                session['api_key'] = new_token
+                return True
+            else:
+                # Refresh didn't work. Reauthenticate.
+                app.logger.info('Reauthenticating:\nSession: {}'.format(session))
+                return False
 
 def refresh_access_token(user):
     """
@@ -108,8 +160,6 @@ def refresh_access_token(user):
     :returns: Dictionary with keys 'access_token' and 'expiration_date'.
         Values will be `None` if refresh fails.
     """
-    from . import app
-    
     refresh_token = user.refresh_key
 
     payload = {
@@ -194,7 +244,12 @@ def refresh_access_token(user):
 # /oauthlogin sets session["api_key"] then redirects to /index
 def get_canvas():
     try:
-        canvas = Canvas(settings.API_URL, session['api_key'])
-        return canvas
-    except:
-        return None
+        user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
+
+        if check_token_freshness(user):
+            canvas = Canvas(settings.API_URL, session['api_key'])
+            return canvas
+    except Exception as ex:
+        app.logger.error("An error occurred connecting to Canvas: {}".format(ex))
+
+    return None
