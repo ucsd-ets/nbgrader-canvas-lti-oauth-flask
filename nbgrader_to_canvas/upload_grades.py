@@ -187,7 +187,7 @@ def upload_grades(lti=lti):
             
             # no match found and instructor oks blind submissions - assignment does not exist in canvas, 
             # create it (name it with nb assignment name) and upload submissions
-            if match == False and nb_assignment.name == "Test Assignment 3":
+            if match == False and nb_assignment.name:
                 app.logger.info("upload submissions for non-existing canvas assignment; will be named:")
                 app.logger.info(nb_assignment.name)                
 
