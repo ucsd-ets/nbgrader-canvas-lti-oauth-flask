@@ -3,6 +3,7 @@ from flask import Blueprint, Response, render_template
 from . import app
 from .utils import return_error
 
+from .upload_grades import upload_grades
 
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
 
@@ -14,8 +15,9 @@ def grade_overview():
     grade_overview can be built at https://www.eduappcenter.com/
     """
     try:
+        nbgrader = upload_grades()
         return Response(
-            render_template('overview.htm.j2')
+            render_template('overview.htm.j2', nbgrader=nbgrader)
         )
     except Exception as e:
         app.logger.error(e)
