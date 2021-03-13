@@ -1,47 +1,58 @@
 {% extends 'base.htm.j2' %}
 {% block content %}
 
-<!--
-<h2>Upload datahub nbgrader grades to Canvas</h2>
-<div>
-<button type="button">Click to upload grades</button>
-</div>
--->
-
 <!-- add js to reload page every 5 seconds with progress update
 note progress.results omitted when job stil pending -->
 {% if progress %}
-<h2>Status</h2>
+<h2>Initial status</h2>
 <ul>
-    <li>{{ progress.tag }}</a></li>
-    <li>Created: {{ progress.created_at }}</a></li>
-    <li>Last updated: {{ progress.updated_at }}</a></li>
-    <li>Details: {{ progress.message }}</a></li>
-    <li>Percent completed: {{ progress.completion }}</a></li>
-    <li>Workflow state: {{ progress.workflow_state }}</a></li>
-    <li>Progress update url: {{ progress.url }}</a></li>
+    <li>{{ progress.tag }}</li>
+    <li>Created: {{ progress.created_at }}</li>
+    <li>Last updated: {{ progress.updated_at }}</li>
+    <li>Details: {{ progress.message }}</li>
+    <li>Percent completed: {{ progress.completion }}</li>
+    <li>Workflow state: {{ progress.workflow_state }}</li>
+    <li>Progress update url: <a href="{{ progress.url }}">{{ progress.url }}</a></li>
 </ul>
-{% endif %}
 
-
-
-{% if nbgrader %}
-<h2>nbgrader:</h2>
+<h2>Current status</h2>
 <ul>
-    {% for assignment in nbgraderdata %}
-    <li>{{assignment}}</a></li>
-    <ul>
-        {% for grade_data in assignment %}
-        <li>{{grade_data}}</a></li>
-        <ul>
-            {% for studentid in grade_data %}
-            <li>{{studentid}} {{studentid.posted_grade}}</a></li>
-            {% endfor %}
-        </ul>
-        {% endfor %}
-    </ul>
-    {% endfor %}
+    <li id="progress_url_info"></li>
 </ul>
-{% endif %}
 
+
+{% block script %}
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+  <script>
+    function fetchdata(){
+        $.ajax({
+            url: '{{ progress.url }}',
+            type: 'get',
+            contentType: 'application/json',
+            crossDomain: true,
+            //dataType: 'jsonp',
+            //xhrFields: {
+            // The 'xhrFields' property sets additional fields on the XMLHttpRequest
+            // This can be used to set the 'withCredentials' property
+            // Set the value to 'true' to pass cookies to the server
+            // If this is enabled, your server must respond with the header
+            // 'Access-Control-Allow-Credentials: true'
+            // Remember that IE <= 9 does not support the 'withCredentials' property
+            //withCredentials: false
+            //},
+
+            success: function(response){
+                // Perform operation on the return value
+                console.log(response);
+                $('#progress_url_info').val(response);
+            }
+        });
+    }
+
+    $(document).ready(function(){
+        setInterval(fetchdata,5000);
+    });
+  </script>
+{% endblock %}
+{% endif %}
 {% endblock content %}
