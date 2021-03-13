@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, request
+from flask import Blueprint, render_template, session, request, url_for, redirect
 from pylti.flask import lti
 
 from .utils import get_canvas, error
@@ -9,7 +9,7 @@ from . import settings
 index_blueprint = Blueprint('index', __name__)
 
 # Web Views / Routes
-@index_blueprint.route('/index', methods=['GET'])
+@index_blueprint.route('/index', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
 def index(course_id=None, user_id=None, lti=lti):
 
@@ -46,5 +46,11 @@ def index(course_id=None, user_id=None, lti=lti):
 
     course_id = session['course_id']
     course = canvas.get_course(course_id)
+
+    if request.method == 'POST':
+        # upload grades blueprint is scoped to upload_grades
+        # preserve POST method on redirect with 307
+        return redirect(url_for('upload_grades.upload_grades'),code=307)
+
     
-    return render_template('index.htm.j2', msg=msg, course_id=session['course_id'],all_courses=courses, BASE_URL=settings.BASE_URL)
+    return render_template('index.htm.j2', course_id=session['course_id'], BASE_URL=settings.BASE_URL)

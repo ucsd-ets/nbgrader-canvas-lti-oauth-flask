@@ -1,20 +1,10 @@
 {% extends 'base.htm.j2' %}
 {% block content %}
 
-<div>
-    <p><a href="/upload_grades">upload_grades</a>
-    <p>{{msg}}</p>
-    <p><img src={{ url_for('static', filename='img/example.jpg') }} alt="Example image" />
-</div>
-
-{% if all_courses != None %}
-<h2>Courses:</h2>
-<ul>
-    {% for course in all_courses %}
-    <li><a href="{{BASE_URL}}courses/{{course.id}}" target="_blank">{{ course.name }}</a></li>
-    {% endfor %}
-</ul>
-{% endif %}
+<form method="POST" action="#">
+   Submit grades for course id {{ course_id }}
+   <input type="submit" value="Submit">
+  </form>
 
 
 {% endblock content %}
