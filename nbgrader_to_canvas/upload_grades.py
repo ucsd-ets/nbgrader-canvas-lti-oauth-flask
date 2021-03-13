@@ -1,3 +1,4 @@
+from types import GetSetDescriptorType
 from flask import Blueprint, render_template, session, request
 from pylti.flask import lti
 
@@ -12,7 +13,7 @@ import sys
 upload_grades_blueprint = Blueprint('upload_grades', __name__)
 
 # Web Views / Routes
-@upload_grades_blueprint.route('/upload_grades', methods=['GET'])
+@upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
 def upload_grades(lti=lti):
 
@@ -56,7 +57,7 @@ def upload_grades(lti=lti):
     #else:
     #    courses = canvas.get_courses()
     
-    # POST: submit grade
+    # redirect with preserved POST method: submit grade
     if request.method == 'POST':
 
         course = canvas.get_course(course_id)
@@ -187,8 +188,9 @@ def upload_grades(lti=lti):
                     new_assignment_to_upload = course.create_assignment({'name':nb_assignment.name, 'published':'true'})
                     progress = new_assignment_to_upload.submissions_bulk_update(grade_data=nbgraderdata[nb_assignment])
                     progress = progress.query()
+
+        request.method == 'GET'
+        return render_template('upload_grades.htm.j2', progress=progress, BASE_URL=settings.BASE_URL)
     
-        return render_template('upload_grades.htm.j2', update_status=False, progress=progress, BASE_URL=settings.BASE_URL)
-    
-    # non-POST: dispay status of assignment upload(s)
-    return render_template('upload_grades.htm.j2', update_status=True, progress=session['progress'], BASE_URL=settings.BASE_URL)
+    # non-POST: just dispay status of assignment upload(s)
+    return render_template('upload_grades.htm.j2', progress=session['progress'], BASE_URL=settings.BASE_URL)
