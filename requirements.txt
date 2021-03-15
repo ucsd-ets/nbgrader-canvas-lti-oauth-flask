@@ -12,3 +12,4 @@ git+https://github.com/ucfcdl/pylti.git@roles#egg=PyLTI
 selenium
 psutil
 nbgrader
+jsonpickle

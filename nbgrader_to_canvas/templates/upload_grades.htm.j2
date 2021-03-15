@@ -15,6 +15,7 @@ note progress.results omitted when job stil pending -->
     <li>Details: {{ progress.message }}</li>
     <li>Percent completed: {{ progress.completion }}</li>
     <li>Workflow state: {{ progress.workflow_state }}</li>
+    <li>Results: {{ progress.results }}</li>
     <li>Progress update url: <a href="{{ progress.url }}">{{ progress.url }}</a></li>
 </ul>
 
@@ -22,8 +23,15 @@ note progress.results omitted when job stil pending -->
 {% block script %}
 <script> 
 setTimeout(function(){
-   window.location.reload(1);
-}, 5000);
+   console.log('reload: ' + window.location.href);
+   // this is reloading as a POST, we don't want that
+   //window.location.reload(1);
+   // reload with GET not POST
+   // doesn't work since there's a #
+   window.location.href = window.location.href;
+   return false;
+}, 15000);
+
 </script>
 
 {% endblock %}
