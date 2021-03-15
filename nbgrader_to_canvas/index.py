@@ -47,6 +47,8 @@ def index(course_id=None, user_id=None, lti=lti):
     course_id = session['course_id']
     course = canvas.get_course(course_id)
 
+    session['grades_submitted'] = False
+
     if request.method == 'POST':
         # upload grades blueprint is scoped to upload_grades
         # preserve POST method on redirect with 307

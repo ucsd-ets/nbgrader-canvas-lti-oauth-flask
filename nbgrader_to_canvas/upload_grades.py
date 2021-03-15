@@ -10,6 +10,7 @@ from nbgrader.api import Gradebook, MissingEntry
 import json
 import logging
 import sys
+import jsonpickle
 upload_grades_blueprint = Blueprint('upload_grades', __name__)
 
 # Web Views / Routes
@@ -46,10 +47,10 @@ def upload_grades(lti=lti):
     handler = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    handler.setLevel(logging.DEBUG)
+    handler.setLevel(logging.ERROR)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.ERROR)
 
     # to do error handling
     #if canvas is None:
@@ -57,8 +58,14 @@ def upload_grades(lti=lti):
     #else:
     #    courses = canvas.get_courses()
     
+    app.logger.info("request.method:")
+    app.logger.info(request.method)
+
+    app.logger.error("session grades_submitted:")
+    app.logger.error(session['grades_submitted'])
+
     # redirect with preserved POST method: submit grade
-    if request.method == 'POST':
+    if request.method == 'POST' and session['grades_submitted'] is False:
 
         course = canvas.get_course(course_id)
         canvas_assignments = course.get_assignments()
@@ -68,12 +75,7 @@ def upload_grades(lti=lti):
         # TODO: modify to only get active users
         for canvas_user in canvas_users:
             if hasattr(canvas_user, "login_id") and canvas_user.login_id is not None:
-                canvas_students[canvas_user.login_id]=canvas_user.id
-
-                app.logger.info("canvas user login id:")
-                app.logger.info(canvas_user.login_id)    
-                app.logger.info("canvas user id:")
-                app.logger.info(canvas_user.id)        
+                canvas_students[canvas_user.login_id]=canvas_user.id     
 
         #
         # nbgrader code
@@ -95,8 +97,8 @@ def upload_grades(lti=lti):
             # loop over all nb assignments
             for nb_assignment in nb_assignments:
 
-                app.logger.info("nb assignment name:")
-                app.logger.info(nb_assignment.name)
+                app.logger.debug("nb assignment name:")
+                app.logger.debug(nb_assignment.name)
                 
                 nb_grade_data = {}
 
@@ -107,8 +109,8 @@ def upload_grades(lti=lti):
                 # loop over each nb student
                 for nb_student in nb_students:
 
-                    app.logger.info("student id:")
-                    app.logger.info(nb_student.id)
+                    #app.logger.debug("student id:")
+                    #app.logger.debug(nb_student.id)
 
                     # only continue if student is required (pj: ?)
                     if nb_studentList and nb_student.id not in nb_studentList:
@@ -126,12 +128,12 @@ def upload_grades(lti=lti):
                         nb_student_and_score['posted_grade'] = None
                     else:
                         nb_student_and_score["posted_grade"] = nb_submission.score
-                        app.logger.info("sub name:")
-                        app.logger.info(nb_submission.name)
-                        app.logger.info("sub id:")
-                        app.logger.info(nb_submission.id)
-                        app.logger.info("sub score:")
-                        app.logger.info(nb_submission.score)
+                        #app.logger.debug("sub name:")
+                        #app.logger.debug(nb_submission.name)
+                        #app.logger.debug("sub id:")
+                        #app.logger.debug(nb_submission.id)
+                        #app.logger.debug("sub score:")
+                        #app.logger.debug(nb_submission.score)
 
                     # student.id will give us student's username, ie shrakibullah. we will need to compare this to
                     # canvas's login_id instead of user_id
@@ -148,17 +150,17 @@ def upload_grades(lti=lti):
                 # TODO: check for dup assignment names
                 for canvas_assignment in canvas_assignments:
                     if nb_assignment.name == canvas_assignment.name:
-                        app.logger.info("canvas assignment name match; id:")
-                        app.logger.info(canvas_assignment.id)
-                        app.logger.info("canvas assignment name match; name:")
-                        app.logger.info(canvas_assignment.name)
-                        app.logger.info("upload submissions for existing canvas assignment")
+                        app.logger.debug("canvas assignment name match; id:")
+                        app.logger.debug(canvas_assignment.id)
+                        app.logger.debug("canvas assignment name match; name:")
+                        app.logger.debug(canvas_assignment.name)
+                        app.logger.debug("upload submissions for existing canvas assignment")
 
                         #json_str = json.dumps(nbgraderdata[nb_assignment])
-                        #app.logger.info("json:")
-                        #app.logger.info(json_str)
-                        app.logger.info("grade data to upload:")
-                        app.logger.info(nbgraderdata[nb_assignment])
+                        #app.logger.debug("json:")
+                        #app.logger.debug(json_str)
+                        app.logger.debug("grade data to upload:")
+                        app.logger.debug(nbgraderdata[nb_assignment])
 
                         
                         assignment_to_upload = course.get_assignment(canvas_assignment.id)                
@@ -168,7 +170,7 @@ def upload_grades(lti=lti):
                         progress = progress.query()
                         # TODO: array of progress objects
                         # https://stackoverflow.com/questions/61415988/flask-storing-get-and-update-list-in-session-using-flask-session
-                        session['progress']=progress
+                        session['progress_json']=jsonpickle.encode(progress)
 
                         # note we found a match, exit canvas assignment loop
                         match = True
@@ -177,20 +179,27 @@ def upload_grades(lti=lti):
                 # no match found and instructor oks blind submissions - assignment does not exist in canvas, 
                 # create it (name it with nb assignment name) and upload submissions
                 if match == False and nb_assignment.name:
-                    app.logger.info("upload submissions for non-existing canvas assignment; will be named:")
-                    app.logger.info(nb_assignment.name)                
+                    app.logger.debug("upload submissions for non-existing canvas assignment; will be named:")
+                    app.logger.debug(nb_assignment.name)                
 
                     #json_str = json.dumps(nbgraderdata[nb_assignment])
-                    #app.logger.info("json:")
-                    #app.logger.info(json_str)
+                    #app.logger.debug("json:")
+                    #app.logger.debug(json_str)
 
                     # create new assignments as published
                     new_assignment_to_upload = course.create_assignment({'name':nb_assignment.name, 'published':'true'})
                     progress = new_assignment_to_upload.submissions_bulk_update(grade_data=nbgraderdata[nb_assignment])
                     progress = progress.query()
+                    session['progress_json']=jsonpickle.encode(progress)
 
-        request.method == 'GET'
+        session['grades_submitted'] = True
         return render_template('upload_grades.htm.j2', progress=progress, BASE_URL=settings.BASE_URL)
     
     # non-POST: just dispay status of assignment upload(s)
-    return render_template('upload_grades.htm.j2', progress=session['progress'], BASE_URL=settings.BASE_URL)
+        
+    app.logger.info("convert progress obj")
+
+    progress = jsonpickle.decode(session['progress_json'])
+    progress = progress.query()
+
+    return render_template('upload_grades.htm.j2', progress=progress, BASE_URL=settings.BASE_URL)
