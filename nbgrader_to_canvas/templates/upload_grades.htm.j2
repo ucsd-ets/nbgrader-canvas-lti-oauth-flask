@@ -1,40 +1,9 @@
 {% extends 'base.htm.j2' %}
 {% block content %}
 
-<!-- add js to reload page every 5 seconds with progress update
-note progress.results omitted when job stil pending -->
+<form method="POST" action="#">
+   Upload datahub submission grades
+   <input type="submit" value="Submit">
+</form>
 
-<h1>Upload grades status</h1>
-
-{% if progress %}
-<h2>Status</h2>
-<ul>
-    <li>{{ progress.tag }}</li>
-    <li>Created: {{ progress.created_at }}</li>
-    <li>Last updated: {{ progress.updated_at }}</li>
-    <li>Details: {{ progress.message }}</li>
-    <li>Percent completed: {{ progress.completion }}</li>
-    <li>Workflow state: {{ progress.workflow_state }}</li>
-    <li>Results: {{ progress.results }}</li>
-    <li>Progress update url: <a href="{{ progress.url }}">{{ progress.url }}</a></li>
-</ul>
-
-
-{% block script %}
-<script> 
-setTimeout(function(){
-   console.log('reload: ' + window.location.href);
-   // this is reloading as a POST, we don't want that
-   //window.location.reload(1);
-   // reload with GET not POST
-   // doesn't work since there's a #
-   // consider a unique timestamp
-   window.location.href = window.location.href;
-   return false;
-}, 15000);
-
-</script>
-
-{% endblock %}
-{% endif %}
 {% endblock content %}
