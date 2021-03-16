@@ -114,16 +114,6 @@ def upload_grades(lti=lti):
                     if nb_studentList and nb_student.id not in nb_studentList:
                         continue
 
-                    # pj: temp change user ids to testacct students in course
-                    # TODO: add in prod
-                    if nb_student.id == 'e7li':
-                        nb_student.id = 'testacct222'
-                    if nb_student.id == 'shrakibullah':
-                        nb_student.id = 'testacct333'                    
-
-                    app.logger.debug("student id after:")
-                    app.logger.debug(nb_student.id)
-
                     # ceate dict for grade_data, with nested dict {student id: {score}}
                     nb_student_and_score = {}            
 
@@ -146,9 +136,22 @@ def upload_grades(lti=lti):
                     # student.id will give us student's username, ie shrakibullah. we will need to compare this to
                     # canvas's login_id instead of user_id
 
+                    # TEMP HACK: e7li and shrakibullah are instructors; change their ids (after 
+                    # submission fetch above) here to students in canvas course
+                    # TODO: create submissions for canvas course students
+                    temp_nb_student_id = nb_student.id
+                    if nb_student.id == 'e7li':
+                        temp_nb_student_id = 'testacct222'
+                    if nb_student.id == 'shrakibullah':
+                        temp_nb_student_id = 'testacct333'                    
+ 
+
+                    app.logger.debug("student id after:")
+                    app.logger.debug(nb_student.id)
+
                     # convert nbgrader username to canvas id (integer)
-                    #nb_grade_data[nb_student.id] = nb_student_and_score
-                    canvas_student_id = canvas_students[nb_student.id]
+                    #canvas_student_id = canvas_students[nb_student.id]
+                    canvas_student_id = canvas_students[temp_nb_student_id]
                     nb_grade_data[canvas_student_id] = nb_student_and_score
 
                 nbgraderdata[nb_assignment] = nb_grade_data

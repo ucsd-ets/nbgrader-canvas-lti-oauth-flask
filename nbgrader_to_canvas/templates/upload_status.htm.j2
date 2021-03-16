@@ -20,9 +20,15 @@
 {% block script %}
 <script> 
 setTimeout(function(){
-   console.log('reload: ' + window.location.href);
-   window.location.reload(1);
-}, 15000);
+  // only reload if status is queued or running
+  // TODO: cancel the settimeout loop for other statuses 
+  var status = '{{ progress.workflow_state }}';
+  console.log('status: ' + status);
+  if (status == 'queued' || status == 'running') { 
+     console.log('reload: ' + window.location.href);
+     window.location.reload(1);
+  }
+}, 10000);
 
 </script>
 {% endblock %}
