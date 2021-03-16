@@ -13,7 +13,7 @@ __version__ = '0.0.1'
 # initialize the app
 app = Flask(__name__, template_folder='./templates')
 
-# session interface, see https://github.com/fengsp/flask-session/blob/master/docs/index.rst#built-in-session-interfaces
+# filesystem session interface, see https://github.com/fengsp/flask-session/blob/master/docs/index.rst#built-in-session-interfaces
 
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_TYPE'] = 'filesystem'

@@ -174,8 +174,6 @@ def upload_grades(lti=lti):
                         # check if published, if not, publish?
                         progress = assignment_to_upload.submissions_bulk_update(grade_data=nbgraderdata[nb_assignment])
                         progress = progress.query()
-                        # TODO: array of progress objects
-                        # https://stackoverflow.com/questions/61415988/flask-storing-get-and-update-list-in-session-using-flask-session
                         session['progress_json']=jsonpickle.encode(progress)
                         session.modified=True
 
