@@ -32,27 +32,10 @@ def index(course_id=None, user_id=None, lti=lti):
     args = request.args.to_dict()
 
     session['course_id'] = args['course_id']
-    session['user_id'] = args['user_id']
-    msg = "hi! Course ID is {}, User ID is {}.".format(session['course_id'], session['user_id'])
+    #session['user_id'] = args['user_id']
+    #msg = "hi! Course ID is {}, User ID is {}.".format(session['course_id'], session['user_id'])
 
 
     # get canvas assignments
-    canvas = get_canvas()
-
-    if canvas is None:
-        courses = None
-    else:
-        courses = canvas.get_courses()
-
-    course_id = session['course_id']
-    course = canvas.get_course(course_id)
-
-    session['grades_submitted'] = False
-
-    if request.method == 'POST':
-        # upload grades blueprint is scoped to upload_grades
-        # preserve POST method on redirect with 307
-        return redirect(url_for('upload_grades.upload_grades'),code=307)
-
-    
+    canvas = get_canvas()    
     return render_template('index.htm.j2', course_id=session['course_id'], BASE_URL=settings.BASE_URL)

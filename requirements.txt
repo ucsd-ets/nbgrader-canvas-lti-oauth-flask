@@ -13,3 +13,4 @@ selenium
 psutil
 nbgrader
 jsonpickle
+flask-session
