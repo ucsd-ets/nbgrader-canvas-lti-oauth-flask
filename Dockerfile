@@ -11,10 +11,9 @@ RUN groupadd -g 1018 -r nbgrader2canvas && useradd --no-log-init -u 1018 -m -r -
 ENV PYTHONPATH=/app
 ENV FLASK_APP=nbgrader_to_canvas
 
-
 RUN apt-get update && \
     apt-get install -y lsb-release \
-                       sqlite3
+    sqlite3
 
 # https://www.postgresql.org/download/linux/debian/
 RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \

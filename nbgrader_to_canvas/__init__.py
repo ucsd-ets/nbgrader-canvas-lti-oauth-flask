@@ -18,6 +18,7 @@ app = Flask(__name__, template_folder='./templates')
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=5)
+app.config['SESSION_FILE_DIR'] = '/tmp'
 
 app.secret_key = settings.secret_key
 app.config.from_object(settings.configClass)
