@@ -72,7 +72,12 @@ def upload_grades(lti=lti):
         # TODO: modify to only get active users
         for canvas_user in canvas_users:
             if hasattr(canvas_user, "login_id") and canvas_user.login_id is not None:
-                canvas_students[canvas_user.login_id]=canvas_user.id     
+                canvas_students[canvas_user.login_id]=canvas_user.id  
+                
+                app.logger.debug("canvas user login id:")
+                app.logger.debug(canvas_user.login_id)   
+                app.logger.debug("canvas user id:")
+                app.logger.debug(canvas_user.id)   
 
         #
         # nbgrader code
@@ -93,6 +98,7 @@ def upload_grades(lti=lti):
             nb_studentList = []
 
             # loop over all nb assignments
+            # TODO: modify this to only submit a single assignment at a time
             for nb_assignment in nb_assignments:
 
                 app.logger.debug("nb assignment name:")
@@ -144,10 +150,6 @@ def upload_grades(lti=lti):
                         temp_nb_student_id = 'testacct222'
                     if nb_student.id == 'shrakibullah':
                         temp_nb_student_id = 'testacct333'                    
- 
-
-                    app.logger.debug("student id after:")
-                    app.logger.debug(nb_student.id)
 
                     # convert nbgrader username to canvas id (integer)
                     #canvas_student_id = canvas_students[nb_student.id]
