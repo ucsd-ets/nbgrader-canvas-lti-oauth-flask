@@ -1,9 +1,11 @@
 #!/bin/bash
 
-until pg_isready -h postgres -p 5432
+
+# 
+until pg_isready -h postgres -p 5432 --username $(echo $DATABASE_URI | awk -F '@|://|:' '{print $2}')
 do
-  echo "Waiting for postgres at: $DATABASE_URI"
-  sleep 2;
+ echo "Waiting for postgres at: $DATABASE_URI"
+ sleep 2;
 done
 
 # Now able to connect to postgres
