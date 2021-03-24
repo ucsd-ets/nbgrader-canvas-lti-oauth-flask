@@ -9,5 +9,5 @@ for dirname in "${nbgrader_dirs[@]}"; do
     username=$(tr -dc a-z </dev/urandom | head -c 13)
     useradd -m $username
     chown -R $username:nbgrader2canvas /mnt/nbgrader/$dirname
-    chmod -R 0640 /mnt/nbgrader/$dirname
+    chmod -R 0650 /mnt/nbgrader/$dirname
 done
