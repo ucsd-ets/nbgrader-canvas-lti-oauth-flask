@@ -11,5 +11,4 @@ fi
 for course in "${COURSES[@]}"; do
   mkdir -p mocks/$course/grader
   scp -r $1@its-dsmlp-fs01:/export/nbgrader/dsmlp/$course/grader/gradebook.db ./mocks/$course/grader
-  
 done
