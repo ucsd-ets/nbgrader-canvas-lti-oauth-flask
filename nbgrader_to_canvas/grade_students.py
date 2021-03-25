@@ -23,7 +23,7 @@ def grade_students():
         app.logger.error(os.getcwd())
         app.logger.error("No students file.")
         msg = (
-            'No students file. Please refresh and try again. '
+            'Issue with the students file. Please refresh and try again. '
             'If this error persists, please contact support.'
         )
         return return_error(msg)
