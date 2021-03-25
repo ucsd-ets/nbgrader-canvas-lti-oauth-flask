@@ -1,11 +1,12 @@
 {% extends 'base.htm.j2' %}
 
+<!-- Scripts for overview page -->
 {%- block head -%}
 
-  <script>
-  var base_url = "{{ base_url }}";
-  </script>
+  <!-- set base_url variable -->
+  <script> var base_url = "{{ base_url }}"; </script>
 
+  <!-- align text in tables with columns -->
   <style> 
     select {
         text-align-last:center;
@@ -14,63 +15,73 @@
 
 {%- endblock -%}
 
-
+<!-- Title of page -->
 {%- block title -%}
 Grading Overview
 {%- endblock -%}
 
-
+<!-- Display sidebar with highlighting for current section -->
 {%- block sidebar -%}
 <li role="presentation" class="active"><a href="{{ base_url }}/grade_overview">Grading Overview</a></li>
 <li role="presentation"><a href="{{ base_url }}/grade_assignments">Grade Assignments</a></li>
 <li role="presentation"><a href="{{ base_url }}/grade_students">Grade Students</a></li>
 {%- endblock -%}
 
-
+<!-- Create bar across page -->
 {%- block breadcrumbs -%}
-<ol class="breadcrumbs">
+<ol class="breadcrumb">
   <li class="active">Overview</li>
 </ol>
 {%- endblock -%}
-        {%- block messages -%}
-        {%- endblock -%}
-        <table class="table table-hover">
-          <thead>
-            {%- block table_header -%}
-            <tr>
-              <th class="text-center">Nbgrader Assignment</th>
-              <th class="text-center">Canvas Assignment</th>
-              <th class="text-center">Canvas Status</th>
-            </tr>
-            {%- endblock -%}
-          </thead>
-          <tbody id="main-table">
-            {%- block table_body -%}
-              {% for assignment in nbgrader['assign_list'] %}
-              <tr>
-                <td class="text-center">{{assignment.name}}</td>
-                <td class="text-center">
-                  <select name="canvas_assign"> 
-                  <option value="create">Create Assignment in Canvas </option>
-                  </select>
-                </td>
-                <td class="text-center" style="color:red">Assignment not found in Canvas</td>
 
-              </tr>
-              {% endfor %}
-            {%- endblock -%}
-          </tbody>
-          <tfoot>
-            {%- block table_footer -%}
-              <tr>
-                  <td colspan="3"></td>
-              </tr>
-            {%- endblock -%}
-          </tfoot>
-        </table>
-        {%- endblock -%}
-      </div>
-    </div>
-  </div>
-  {%- block script -%}
-  {%- endblock -%}
+<!-- Block for messages (if needed) -->
+{%- block messages -%}
+
+{%- endblock -%}
+
+<!--
+  Create the header with nbgrader assignments, assignment relation with
+  Canvas, and relation display with Canvas
+-->
+{%- block table_header -%}
+<tr>
+  <th class="text-center">Nbgrader Assignment</th>
+  <th class="text-center">Canvas Assignment</th>
+  <th class="text-center">Canvas Status</th>
+</tr>
+{%- endblock -%}
+
+<!--
+  Create rows in the table.
+  Each row contains the nbgrader assignment name, options for what to do
+  in Canvas, and a status indicator of the assignment within Canvas
+-->
+{%- block table_body -%}
+  {% for assignment in nb_assign %}
+  <tr>
+    <td class="text-center" style="vertical-align: middle">{{assignment.name}}</td>
+    <td class="text-center" style="vertical-align: middle">
+      <select name="canvas_assign"> 
+      <option value="create">Create Canvas Assignment </option>
+      <option value="found">Canvas Assignment Found</option>
+      {% for cv in cv_assign %}
+        <option value="assignment">{{cv.name}}</option>
+      {% endfor %}
+      </select>
+    </td>
+    {% if assignment.name in cv_assign.get_name() %}
+      <td class="text-center" style="color:green">Assignment found in Canvas</td>
+    {% else %}
+      <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button>
+      <p style="color:red">Assignment not found in Canvas<p></td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+{%- endblock -%}
+
+<!-- Final line under all rows -->
+{%- block table_footer -%}
+  <tr>
+      <td colspan="3"></td>
+  </tr>
+{%- endblock -%}
