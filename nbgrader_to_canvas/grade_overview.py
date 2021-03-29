@@ -43,6 +43,7 @@ def get_nbgrader_assignments():
     with Gradebook("sqlite:////mnt/nbgrader/TEST_NBGRADER/grader/gradebook.db") as gb:
         return gb.assignments
 
+
 @lti(request='session', role='staff')
 def get_canvas_assignments(lti=lti):
     """
@@ -56,7 +57,12 @@ def get_canvas_assignments(lti=lti):
 
     # get canvas assignments from course
     course = canvas.get_course(course_id)
-    canvas_assignments = course.get_assignments()
+    assignments = course.get_assignments()
+
+    # split the name and id for each course assignment
+    canvas_assignments = {}
+    canvas_assignments['name'] = [a.name for a in assignments]
+    canvas_assignments['id'] = [a.id for a in assignments]
 
     return canvas_assignments
 
