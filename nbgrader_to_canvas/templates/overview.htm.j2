@@ -6,11 +6,25 @@
   <!-- set base_url variable -->
   <script> var base_url = "{{ base_url }}"; </script>
 
-  <!-- align text in tables with columns -->
   <style> 
+    
+    <!-- align text in tables with columns -->
     select {
         text-align-last:center;
     }
+
+    <!-- round the upload button -->
+    .uploadbtn {
+      border-radius: 6px;
+      border: 0.75px solid;
+    }
+
+    <!-- round the dropdown menu -->
+    .canvas_assign {
+      border-radius: 6px;
+      border: 0.75px solid;
+    }
+
   </style> 
 
 {%- endblock -%}
@@ -36,45 +50,57 @@ Grading Overview
 
 <!-- Block for messages (if needed) -->
 {%- block messages -%}
-
 {%- endblock -%}
 
 <!--
   Create the header with nbgrader assignments, assignment relation with
-  Canvas, and relation display with Canvas
+  Canvas, and upload details to Canvas
 -->
 {%- block table_header -%}
 <tr>
   <th class="text-center">Nbgrader Assignment</th>
   <th class="text-center">Canvas Assignment</th>
-  <th class="text-center">Canvas Status</th>
+  <th class="text-center">Upload Grades to Canvas</th>
 </tr>
 {%- endblock -%}
 
 <!--
   Create rows in the table.
-  Each row contains the nbgrader assignment name, options for what to do
-  in Canvas, and a status indicator of the assignment within Canvas
+  Each row contains the nbgrader assignment name, options for assignment within
+  in Canvas, and a status indicator of the assignment to Canvas
 -->
 {%- block table_body -%}
   {% for assignment in nb_assign %}
   <tr>
     <td class="text-center" style="vertical-align: middle">{{assignment.name}}</td>
+    
+    <!-- create dropdown menu of assignments in Canvas -->
     <td class="text-center" style="vertical-align: middle">
-      <select name="canvas_assign"> 
+      <select class="canvas_assign"> 
+
+      <!-- default option if no matching assignment found -->
       <option value="create">Create Canvas Assignment </option>
-      <option value="found">Canvas Assignment Found</option>
-      {% for cv in cv_assign %}
-        <option value="assignment">{{cv.name}}</option>
+      {% for cv in cv_assign['name'] %}
+        <!-- choose matching assignment if it exists -->
+        {% if assignment.name == cv %}
+          <option value="match" selected="selected">{{cv}}</option>
+        {% else %}
+          <option value="assignment">{{cv}}</option>
+        {% endif %}
       {% endfor %}
       </select>
     </td>
-    {% if assignment.name in cv_assign.get_name() %}
-      <td class="text-center" style="color:green">Assignment found in Canvas</td>
+
+    <!-- display the upload button -->
+    <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button>
+    
+    <!-- TO DO == Need to implement status bar -->
+    {% if assignment.name in cv_assign['name'] %}
+      <p style="color:green">Assignment found in Canvas</p>
     {% else %}
-      <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button>
-      <p style="color:red">Assignment not found in Canvas<p></td>
+      <p style="color:red">Assignment not found in Canvas</p>
     {% endif %}
+    </td>
   </tr>
   {% endfor %}
 {%- endblock -%}
