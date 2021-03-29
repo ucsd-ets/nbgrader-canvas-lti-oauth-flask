@@ -25,6 +25,17 @@
       border: 0.75px solid;
     }
 
+    /* styling for text color */
+    .blackText
+    {
+        color:black;
+    }
+
+    .redText
+    {
+        color:red;
+    }
+
   </style> 
 
 {%- endblock -%}
@@ -92,14 +103,11 @@ Grading Overview
     </td>
 
     <!-- display the upload button -->
-    <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button>
+    <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button><br />
     
     <!-- TO DO == Need to implement status bar -->
-    {% if assignment.name in cv_assign['name'] %}
-      <p style="color:green">Assignment found in Canvas</p>
-    {% else %}
-      <p style="color:red">Assignment not found in Canvas</p>
-    {% endif %}
+    <!--       == Change spacing as well -->
+    <span class="blackText">Status:</span>&nbsp;<span class="redText">not uploaded yet</span>
     </td>
   </tr>
   {% endfor %}
