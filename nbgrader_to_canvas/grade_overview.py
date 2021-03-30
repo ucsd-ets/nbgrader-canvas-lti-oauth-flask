@@ -6,8 +6,6 @@ from .utils import get_canvas, return_error
 
 from nbgrader.api import Gradebook
 
-from .upload_grades import upload_grades
-
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
 
 # grade_overview
