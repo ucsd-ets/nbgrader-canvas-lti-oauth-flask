@@ -15,25 +15,29 @@
 
     /* round the upload button */
     .uploadbtn {
-      border-radius: 6px;
+      border-radius: 7px;
       border: 0.75px solid;
     }
 
     /* round the dropdown menu */
     .canvas_assign {
-      border-radius: 6px;
+      border-radius: 7px;
       border: 0.75px solid;
     }
 
     /* styling for text color */
-    .blackText
-    {
+    .blackText {
         color:black;
+        font-weight:bold;
     }
 
-    .redText
-    {
+    .redText {
         color:red;
+    }
+
+    .br {
+        display: block;
+        margin-bottom: 0.5em;
     }
 
   </style> 
@@ -103,10 +107,11 @@ Grading Overview
     </td>
 
     <!-- display the upload button -->
-    <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button><br />
+    <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button>
     
-    <!-- TO DO == Need to implement status bar -->
-    <!--       == Change spacing as well -->
+    <!-- TO DO == Need to implement status bar -->    
+
+    <span class="br"></span>
     <span class="blackText">Status:</span>&nbsp;<span class="redText">not uploaded yet</span>
     </td>
   </tr>
