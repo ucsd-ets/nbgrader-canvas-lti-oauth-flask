@@ -30,3 +30,13 @@ class Sessions(db.Model):
             self.session_id = session_id
             self.data = data
             self.expiry = expiry
+
+
+# TODO add an AssignmentMatches class with columns:
+
+# nbgrader_assign_name (string)
+# canvas_assign_ID
+# upload_progress_url (string)
+# upload_status (string): 'queued', 'running', 'completed', 'failed'
+
+# we only insert a row into this table when the instructor has matched up assignments.

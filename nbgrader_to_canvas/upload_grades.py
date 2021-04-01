@@ -61,9 +61,26 @@ def upload_grades(lti=lti):
     app.logger.info("request.method:")
     app.logger.info(request.method)
 
-    # POST: submit grade
+    # progress object status types: the state of the job one of 'queued', 'running', 'completed', 'failed'
+
+
+    # ADD JS TO VIEW:
+    # 1) every 10 seconds, update the status of any assignments in the UI that have a status of queued or running in sqlalchemy assignments_table
+    #    a) fetch the url from the sqlalchemy assignments_table, get the status
+    # 2) if status is different than status in db, update db and UI with this new value 
+
+    # POST: 
+    # 1) submit assignment using submissions_bulk_update
+    #    a) find the nbgrader assignment by name
+    # 2) insert/update sqlalchemy assignment_match table for the submitted nbgrader assignment:
+    #    a) if nbgrader assignment does not exist: insert row with matching nbgrader/canvas assignment IDs, upload progress ID and upload status string
+    #    b) if it does: 
     if request.method == 'POST':
 
+
+        #
+        # get canvas info
+        #
         course = canvas.get_course(course_id)
         canvas_assignments = course.get_assignments()
         canvas_users = course.get_users()
@@ -80,123 +97,106 @@ def upload_grades(lti=lti):
                 app.logger.debug(canvas_user.id)   
 
         #
-        # nbgrader code
+        # get nbgrader info
         #
 
         with Gradebook("sqlite:////mnt/nbgrader/TEST_NBGRADER/grader/gradebook.db") as gb:
         #with Gradebook("sqlite:////mnt/nbgrader/BIPN162_S120_A00/grader/gradebook.db") as gb:
 
             # create a list of dictionaries for each submission
-            nb_assignments = gb.assignments
+            #nb_assignments = gb.assignments
+            # TODO: change from hardcoded assignment string to the POST assignment_name parameter
+            # TODO: handle exception here
+            nb_assignment = gb.find_assignment("assign 1")
+
+            # can we change this to just get the students for this assignment?
             nb_students = gb.students
-            nbgraderdata = {}
+            
+            app.logger.debug("nb assignment name:")
+            app.logger.debug(nb_assignment.name)
+            
+            nb_grade_data = {}
 
-            # create a list of assignments or students to grade
-            # if lists are empty, all students are selected
-            # NEED to find a way to populate this - most likely on flask application?? #
-            nb_assignmentList = []
-            nb_studentList = []
+            # loop over each nb student
+            for nb_student in nb_students:
 
-            # loop over all nb assignments
-            # TODO: modify this to only submit a single assignment at a time
-            for nb_assignment in nb_assignments:
+                app.logger.debug("student id:")
+                app.logger.debug(nb_student.id)
 
-                app.logger.debug("nb assignment name:")
-                app.logger.debug(nb_assignment.name)
-                
-                nb_grade_data = {}
+                # ceate dict for grade_data, with nested dict {student id: {score}}
+                nb_student_and_score = {}            
 
-                # only continue if nb assignment is required (pj: ?)
-                if nb_assignmentList and nb_assignment.name not in nb_assignmentList:
-                    continue
+                # Try to find the submission in the nbgrader database. If it doesn't exist, the
+                # MissingEntry exception will be raised and we assign them a score of None.
 
-                # loop over each nb student
-                for nb_student in nb_students:
+                try:
+                    nb_submission = gb.find_submission(nb_assignment.name, nb_student.id)
+                except MissingEntry:
+                    nb_student_and_score['posted_grade'] = None
+                else:
+                    nb_student_and_score["posted_grade"] = nb_submission.score
+                    app.logger.debug("sub name:")
+                    app.logger.debug(nb_submission.name)
+                    app.logger.debug("sub id:")
+                    app.logger.debug(nb_submission.id)
+                    app.logger.debug("sub score:")
+                    app.logger.debug(nb_submission.score)
 
-                    app.logger.debug("student id:")
-                    app.logger.debug(nb_student.id)
+                # student.id will give us student's username, ie shrakibullah. we will need to compare this to
+                # canvas's login_id instead of user_id
 
-                    # only continue if student is required (pj: ?)
-                    if nb_studentList and nb_student.id not in nb_studentList:
-                        continue
+                # TEMP HACK: e7li and shrakibullah are instructors; change their ids (after 
+                # submission fetch above) here to students in canvas course
+                # TODO: create submissions for canvas course students
+                temp_nb_student_id = nb_student.id
+                if nb_student.id == 'e7li':
+                    temp_nb_student_id = 'testacct222'
+                if nb_student.id == 'shrakibullah':
+                    temp_nb_student_id = 'testacct333'                    
 
-                    # ceate dict for grade_data, with nested dict {student id: {score}}
-                    nb_student_and_score = {}            
+                # convert nbgrader username to canvas id (integer)
+                #canvas_student_id = canvas_students[nb_student.id]
+                canvas_student_id = canvas_students[temp_nb_student_id]
+                nb_grade_data[canvas_student_id] = nb_student_and_score
 
-                    # Try to find the submission in the (pj: nbgrader?) database. If it doesn't exist, the
-                    # MissingEntry exception will be raised and we assign them a score of None.
+            # end nbgrader student loop
 
-                    try:
-                        nb_submission = gb.find_submission(nb_assignment.name, nb_student.id)
-                    except MissingEntry:
-                        nb_student_and_score['posted_grade'] = None
-                    else:
-                        nb_student_and_score["posted_grade"] = nb_submission.score
-                        app.logger.debug("sub name:")
-                        app.logger.debug(nb_submission.name)
-                        app.logger.debug("sub id:")
-                        app.logger.debug(nb_submission.id)
-                        app.logger.debug("sub score:")
-                        app.logger.debug(nb_submission.score)
+            # TODO: skip over canvas assignment loop if we already have canvas_assignment.id in our sqlachemy assignments table (re-submission?)
 
-                    # student.id will give us student's username, ie shrakibullah. we will need to compare this to
-                    # canvas's login_id instead of user_id
+            # loop over canvas assignments, upload submissions if name matches
+            # TODO: check for dup assignment names
+            for canvas_assignment in canvas_assignments:
+                if nb_assignment.name == canvas_assignment.name:
+                    app.logger.debug("canvas assignment name match; id:")
+                    app.logger.debug(canvas_assignment.id)
+                    app.logger.debug("canvas assignment name match; name:")
+                    app.logger.debug(canvas_assignment.name)
+                    app.logger.debug("upload submissions for existing canvas assignment")
+                    app.logger.debug("grade data to upload:")
+                    app.logger.debug(nb_grade_data)
 
-                    # TEMP HACK: e7li and shrakibullah are instructors; change their ids (after 
-                    # submission fetch above) here to students in canvas course
-                    # TODO: create submissions for canvas course students
-                    temp_nb_student_id = nb_student.id
-                    if nb_student.id == 'e7li':
-                        temp_nb_student_id = 'testacct222'
-                    if nb_student.id == 'shrakibullah':
-                        temp_nb_student_id = 'testacct333'                    
+                    assignment_to_upload = course.get_assignment(canvas_assignment.id)                
 
-                    # convert nbgrader username to canvas id (integer)
-                    #canvas_student_id = canvas_students[nb_student.id]
-                    canvas_student_id = canvas_students[temp_nb_student_id]
-                    nb_grade_data[canvas_student_id] = nb_student_and_score
-
-                nbgraderdata[nb_assignment] = nb_grade_data
-                match = False
-
-                # loop over canvas assignments, upload submissions if name matches
-                # TODO: check for dup assignment names
-                for canvas_assignment in canvas_assignments:
-                    if nb_assignment.name == canvas_assignment.name:
-                        app.logger.debug("canvas assignment name match; id:")
-                        app.logger.debug(canvas_assignment.id)
-                        app.logger.debug("canvas assignment name match; name:")
-                        app.logger.debug(canvas_assignment.name)
-                        app.logger.debug("upload submissions for existing canvas assignment")
-                        app.logger.debug("grade data to upload:")
-                        app.logger.debug(nbgraderdata[nb_assignment])
-
-                        assignment_to_upload = course.get_assignment(canvas_assignment.id)                
-
-                        # check if published, if not, publish?
-                        progress = assignment_to_upload.submissions_bulk_update(grade_data=nbgraderdata[nb_assignment])
-                        progress = progress.query()
-                        session['progress_json']=jsonpickle.encode(progress)
-                        session.modified=True
-
-                        # note we found a match, exit canvas assignment loop
-                        match = True
-                        break
-                
-                # no match found and instructor oks blind submissions - assignment does not exist in canvas, 
-                # create it (name it with nb assignment name) and upload submissions
-                if match == False and nb_assignment.name:
-                    app.logger.debug("upload submissions for non-existing canvas assignment; will be named:")
-                    app.logger.debug(nb_assignment.name)                
-
-                    # create new assignments as published
-                    new_assignment_to_upload = course.create_assignment({'name':nb_assignment.name, 'published':'true'})
-                    progress = new_assignment_to_upload.submissions_bulk_update(grade_data=nbgraderdata[nb_assignment])
+                    # TODO: check if published, if not, publish?
+                    progress = assignment_to_upload.submissions_bulk_update(grade_data=nb_grade_data)
                     progress = progress.query()
                     session['progress_json']=jsonpickle.encode(progress)
                     session.modified=True
+                # end assignment names match
+            # end canvas assignment loop
+        # end with gradebook
+    # end if POST
 
-        return redirect(url_for('upload_status.upload_status'))
+    # GET (and POST): 
+    # 1) get list of canvas assignments in the "assignments group" for course via canvasapi 
+    #    wrapper version of https://canvas.instructure.com/doc/api/assignment_groups.html; use this to populate canvas assignment dropdown lists in UI
+    # 2) query nbgrader db, populate list of nbgrader assignments
+    # 3) display a UI table where each row is an nbgrader assignment
+    # 4) for each nbgrader assignment, check the sqlalchemy assignment_match table to see if there's an entry (which means it has a corresponding canvas assignment)
+    #   a) if there is: set the corresponding canvas assignment in the dropdown in the second column of page
+    #   b) if there isn't: populate dropdown with canvas assignments that do not exist in sqlalchemy db table of matched assignments. set the dropdown to "create in canvas with same name" initially.
+    # 5) for each nbgrader assignment, indicate the status under the submit button for each assignment. 
+    #   a) if status in sqlachemy assignment_match table is complete/, show status as complete
+    #   b) if not complete: get the progress url from that db row, fetch the url using js, display the status (percent complete) below the button
 
-    # non-POST: submit button
     return render_template('upload_grades.htm.j2', progress=None, BASE_URL=settings.BASE_URL)
