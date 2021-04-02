@@ -41,6 +41,7 @@ def upload_grades(lti=lti):
 
     # initialize a new canvasapi Canvas object
     canvas = get_canvas()
+    progress = None
 
     # canvasapi debugging info https://github.com/ucfopen/canvasapi/blob/master/docs/debugging.rst
     canvasapi_logger = logging.getLogger("canvasapi")
@@ -76,7 +77,6 @@ def upload_grades(lti=lti):
     #    a) if nbgrader assignment does not exist: insert row with matching nbgrader/canvas assignment IDs, upload progress ID and upload status string
     #    b) if it does: 
     if request.method == 'POST':
-
 
         #
         # get canvas info
@@ -199,4 +199,41 @@ def upload_grades(lti=lti):
     #   a) if status in sqlachemy assignment_match table is complete/, show status as complete
     #   b) if not complete: get the progress url from that db row, fetch the url using js, display the status (percent complete) below the button
 
-    return render_template('upload_grades.htm.j2', progress=None, BASE_URL=settings.BASE_URL)
+    nb_assignments = get_nbgrader_assignments()
+    canvas_assignments = get_canvas_assignments()
+
+    # TODO: query sqlalchemy assignment_match table to do #4, #5 above
+
+    return render_template('upload_grades.htm.j2', nb_assign=nb_assignments, cv_assign=canvas_assignments, progress=progress)
+
+
+def get_nbgrader_assignments():
+    """
+    Get the nbgrader_assignments from the course gradebook
+    """
+    # get the gradebook and return the assignments
+    with Gradebook("sqlite:////mnt/nbgrader/TEST_NBGRADER/grader/gradebook.db") as gb:
+        return gb.assignments
+
+
+@lti(request='session', role='staff')
+def get_canvas_assignments(lti=lti):
+    """
+    Get all the Canvas Assignments from the course
+    """
+    # get the course id
+    course_id = session['course_id']
+
+    # initialize a new canvasapi Canvas object
+    canvas = get_canvas()
+
+    # get canvas assignments from course
+    course = canvas.get_course(course_id)
+    assignments = course.get_assignments()
+
+    # split the name and id for each course assignment
+    canvas_assignments = {}
+    canvas_assignments['name'] = [a.name for a in assignments]
+    canvas_assignments['id'] = [a.id for a in assignments]
+
+    return canvas_assignments
