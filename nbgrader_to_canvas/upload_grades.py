@@ -62,27 +62,31 @@ def upload_grades(lti=lti):
     app.logger.info("request.method:")
     app.logger.info(request.method)
 
-    # progress object status types: the state of the job one of 'queued', 'running', 'completed', 'failed'
+
+    #
+    # get canvas info
+    #
+    course = canvas.get_course(course_id)
+    canvas_assignments = course.get_assignments()
 
 
     # ADD JS TO VIEW:
     # 1) every 10 seconds, update the status of any assignments in the UI that have a status of queued or running in sqlalchemy assignments_table
-    #    a) fetch the url from the sqlalchemy assignments_table, get the status
+    #    a) fetch the progress url from the sqlalchemy assignments_table, get the status
     # 2) if status is different than status in db, update db and UI with this new value 
 
     # POST: 
     # 1) submit assignment using submissions_bulk_update
     #    a) find the nbgrader assignment by name
     # 2) insert/update sqlalchemy assignment_match table for the submitted nbgrader assignment:
-    #    a) if nbgrader assignment does not exist: insert row with matching nbgrader/canvas assignment IDs, upload progress ID and upload status string
-    #    b) if it does: 
+    #    a) if nbgrader assignment does not exist: insert row with matching nbgrader/canvas assignment IDs, upload progress object url (progress.url) 
+    #       and upload status string
+    #    b) if it does: check that the canvas assignment id they submitted matches the one in the db.  if it doesn't, return an error.  update the
+    #       row with the new progress object url and progress object status (progress.status)
+    #       progress object status types: the state of the job one of 'queued', 'running', 'completed', 'failed'
+
     if request.method == 'POST':
 
-        #
-        # get canvas info
-        #
-        course = canvas.get_course(course_id)
-        canvas_assignments = course.get_assignments()
         canvas_users = course.get_users()
         
         canvas_students = {}
@@ -193,12 +197,15 @@ def upload_grades(lti=lti):
     # 2) query nbgrader db, populate list of nbgrader assignments
     # 3) display a UI table where each row is an nbgrader assignment
     # 4) for each nbgrader assignment, check the sqlalchemy assignment_match table to see if there's an entry (which means it has a corresponding canvas assignment)
-    #   a) if there is: set the corresponding canvas assignment in the dropdown in the second column of page
+    #   a) if there is: set the corresponding canvas assignment in the dropdown in the second column of page, make the other canvas assignments un-selectable.
+    #      to make dropdown items unselectable, use javascript after page onload() or similar
     #   b) if there isn't: populate dropdown with canvas assignments that do not exist in sqlalchemy db table of matched assignments. set the dropdown to "create in canvas with same name" initially.
     # 5) for each nbgrader assignment, indicate the status under the submit button for each assignment. 
     #   a) if status in sqlachemy assignment_match table is complete/, show status as complete
     #   b) if not complete: get the progress url from that db row, fetch the url using js, display the status (percent complete) below the button
 
+
+    # set the nbgrader and canvas assignments that are shown in the UI
     nb_assignments = get_nbgrader_assignments()
     canvas_assignments = get_canvas_assignments()
 
@@ -229,11 +236,47 @@ def get_canvas_assignments(lti=lti):
 
     # get canvas assignments from course
     course = canvas.get_course(course_id)
-    assignments = course.get_assignments()
+
+    #assignments = course.get_assignments()
 
     # split the name and id for each course assignment
+    #canvas_assignments = {}
+    #canvas_assignments['name'] = [a.name for a in assignments]
+    #canvas_assignments['id'] = [a.id for a in assignments]
+
+
+
+    canvas_assignment_groups = course.get_assignment_groups()
+    for ag in canvas_assignment_groups:
+        
+    #    app.logger.debug("ag:")
+    #    app.logger.debug(ag)   
+    #    app.logger.debug("ag id:")
+    #    app.logger.debug(ag.id)   
+    #    app.logger.debug("ag:")
+    #    app.logger.debug(ag.name)   
+        if (ag.name == "Assignments"):
+            
+            canvas_assignment_group = course.get_assignment_group(ag.id)
+            app.logger.debug("canvas_assignment_group:")
+            app.logger.debug(canvas_assignment_group)
+
+            app.logger.debug("canvas_assignment_group id:")
+            app.logger.debug(canvas_assignment_group.id)
+
+
+            assignments = course.get_assignments_for_group(canvas_assignment_group)
+            for assign in assignments:        
+                app.logger.debug("assign:")
+                app.logger.debug(assign)   
+                app.logger.debug("assign id:")
+                app.logger.debug(assign.id)   
+                app.logger.debug("assign:")
+                app.logger.debug(assign.name)
+
+            break
+
     canvas_assignments = {}
     canvas_assignments['name'] = [a.name for a in assignments]
     canvas_assignments['id'] = [a.id for a in assignments]
-
     return canvas_assignments
