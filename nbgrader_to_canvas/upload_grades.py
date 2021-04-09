@@ -192,10 +192,10 @@ def upload_grades(lti=lti):
     # end if POST
 
     # GET (and POST): 
-    # 1) get list of canvas assignments in the "assignments group" for course via canvasapi 
+    # 1) DONE get list of canvas assignments in the "assignments group" for course via canvasapi 
     #    wrapper version of https://canvas.instructure.com/doc/api/assignment_groups.html; use this to populate canvas assignment dropdown lists in UI
-    # 2) query nbgrader db, populate list of nbgrader assignments
-    # 3) display a UI table where each row is an nbgrader assignment
+    # 2) DONE query nbgrader db, populate list of nbgrader assignments
+    # 3) DONE display a UI table where each row is an nbgrader assignment
     # 4) for each nbgrader assignment, check the sqlalchemy assignment_match table to see if there's an entry (which means it has a corresponding canvas assignment)
     #   a) if there is: set the corresponding canvas assignment in the dropdown in the second column of page, make the other canvas assignments un-selectable.
     #      to make dropdown items unselectable, use javascript after page onload() or similar
