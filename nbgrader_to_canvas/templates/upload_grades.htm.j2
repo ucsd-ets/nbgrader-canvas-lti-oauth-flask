@@ -79,6 +79,7 @@ Grading Overview
 </tr>
 {%- endblock -%}
 
+
 <!--
   Create rows in the table.
   Each row contains the nbgrader assignment name, options for assignment within
@@ -87,6 +88,7 @@ Grading Overview
 {%- block table_body -%}
   {% for assignment in nb_assign %}
   <tr>
+    <form action = "" method = "POST">
     <td class="text-center" style="vertical-align: middle">{{assignment.name}}</td>
     
     <!-- create dropdown menu of assignments in Canvas -->
@@ -114,6 +116,7 @@ Grading Overview
     <span class="br"></span>
     <span class="blackText">Status:</span>&nbsp;<span class="redText">not uploaded yet</span>
     </td>
+    </form>
   </tr>
   {% endfor %}
 {%- endblock -%}
