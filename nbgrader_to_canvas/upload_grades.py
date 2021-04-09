@@ -86,6 +86,10 @@ def upload_grades(lti=lti):
     #       progress object status types: the state of the job one of 'queued', 'running', 'completed', 'failed'
 
     if request.method == 'POST':
+        app.logger.debug("form data: nb_assignment_name:")
+        app.logger.debug(request.form.get('nb_assignment_name'))
+        app.logger.debug("form data: canvas_assign:")
+        app.logger.debug(request.form.get('canvas_assign'))
 
         canvas_users = course.get_users()
         
@@ -108,7 +112,10 @@ def upload_grades(lti=lti):
         #with Gradebook("sqlite:////mnt/nbgrader/BIPN162_S120_A00/grader/gradebook.db") as gb:
 
             # create a list of dictionaries for each submission
-            #nb_assignments = gb.assignments
+            nb_assignments = gb.assignments
+
+            app.logger.debug("nb assignments:")
+            app.logger.debug(nb_assignments)
             # TODO: change from hardcoded assignment string to the POST assignment_name parameter
             # TODO: handle exception here
             nb_assignment = gb.find_assignment("assign 1")
