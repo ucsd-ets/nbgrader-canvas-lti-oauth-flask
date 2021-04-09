@@ -85,22 +85,25 @@ Grading Overview
   Each row contains the nbgrader assignment name, options for assignment within
   in Canvas, and a status indicator of the assignment to Canvas
 -->
+
 {%- block table_body -%}
-  {% for assignment in nb_assign %}
+  <form action = "" method = "POST">
+  {% for nb_assignment in nb_assign %}
   <tr>
-    <form action = "" method = "POST">
-    <td class="text-center" style="vertical-align: middle">{{assignment.name}}</td>
+    <td class="text-center" style="vertical-align: middle">
+    {{nb_assignment.name}}
+    </td>
     
     <!-- create dropdown menu of assignments in Canvas -->
     <td class="text-center" style="vertical-align: middle">
-      <select class="canvas_assign"> 
+      <select name="canvas_assign" class="canvas_assign"> 
 
       <!-- default option if no matching assignment found -->
       <option value="create">Create Canvas Assignment </option>
       {% for cv in cv_assign['name'] %}
         <!-- choose matching assignment if it exists -->
-        {% if assignment.name == cv %}
-          <option value="match" selected="selected">{{cv}}</option>
+        {% if nb_assignment.name == cv %}
+          <option value="{{cv}}" selected="selected">{{cv}}</option>
         {% else %}
           <option value="assignment">{{cv}}</option>
         {% endif %}
@@ -109,17 +112,19 @@ Grading Overview
     </td>
 
     <!-- display the upload button -->
-    <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button>
-    
+    <td class="text-center" style="vertical-align: middle">
+    <input type="submit" class="uploadbtn" name="submit_button" name={{nb_assignment.name}} value="Upload Grades"</input>
+    <input type="hidden" name="nb_assignment_name" value={{nb_assignment.name}} />
+
     <!-- TO DO == Need to implement status bar -->    
 
     <span class="br"></span>
     <span class="blackText">Status:</span>&nbsp;<span class="redText">not uploaded yet</span>
     </td>
-    </form>
   </tr>
   {% endfor %}
 {%- endblock -%}
+</form>
 
 <!-- Final line under all rows -->
 {%- block table_footer -%}
