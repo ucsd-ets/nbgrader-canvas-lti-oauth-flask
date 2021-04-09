@@ -55,7 +55,7 @@ def get_canvas_assignments(lti=lti):
 
     # get canvas assignments from course
     course = canvas.get_course(course_id)
-    assignments = course.get_assignments()
+    assignments = course.get_assignment_group("assignments")
 
     # split the name and id for each course assignment
     canvas_assignments = {}

@@ -1,5 +1,3 @@
-
-
 from nbgrader_to_canvas import db
 
 
