@@ -51,9 +51,9 @@ Grading Overview
 
 <!-- Display sidebar with highlighting for current section -->
 {%- block sidebar -%}
-<li role="presentation" class="active"><a href="{{ base_url }}/grade_overview">Grading Overview</a></li>
+<li role="presentation" class="active"><a href="{{ base_url }}/upload_grades">Grading Overview</a></li>
 <!-- <li role="presentation"><a href="{{ base_url }}/grade_assignments">Grade Assignments</a></li> --> <!-- Not necessary anymore -->
-<li role="presentation"><a href="{{ base_url }}/grade_students">Grade Students</a></li>
+<li role="presentation"><a href="{{ base_url }}/grade_students">(TODO) Grade Students</a></li>
 {%- endblock -%}
 
 <!-- Create bar across page -->
@@ -65,6 +65,21 @@ Grading Overview
 
 <!-- Block for messages (if needed) -->
 {%- block messages -%}
+
+<!-- TODO: styling -->
+{% if progress %}
+<h4>Upload Status</h4>
+<ul>
+    <li>{{ progress.tag }}</li>
+    <li>Created: {{ progress.created_at }}</li>
+    <li>Last updated: {{ progress.updated_at }}</li>
+    <li>Details: {{ progress.message }}</li>
+    <li>Percent completed: {{ progress.completion }}</li>
+    <li>Workflow state: {{ progress.workflow_state }}</li>
+    <li>Results: {{ progress.results }}</li>
+    <li>Progress update url: <a href="{{ progress.url }}">{{ progress.url }}</a></li>
+</ul>
+{% endif %}
 {%- endblock -%}
 
 <!--
@@ -96,7 +111,7 @@ Grading Overview
     
     <!-- create dropdown menu of assignments in Canvas -->
     <td class="text-center" style="vertical-align: middle">
-      <select name="canvas_assign" class="canvas_assign"> 
+      <select name="form_canvas_assign_name" class="canvas_assign"> 
 
       <!-- default option if no matching assignment found -->
       <option value="create">Create Canvas Assignment </option>
@@ -114,7 +129,7 @@ Grading Overview
     <!-- display the upload button -->
     <td class="text-center" style="vertical-align: middle">
     <input type="submit" class="uploadbtn" name="submit_button" name={{nb_assignment.name}} value="Upload Grades"</input>
-    <input type="hidden" name="nb_assignment_name" value={{nb_assignment.name}} />
+    <input type="hidden" name="form_nb_assign_name" value={{nb_assignment.name}} />
 
     <!-- TO DO == Need to implement status bar -->    
 
