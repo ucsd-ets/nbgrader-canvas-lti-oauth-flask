@@ -86,23 +86,27 @@ def upload_grades(lti=lti):
     #       progress object status types: the state of the job one of 'queued', 'running', 'completed', 'failed'
 
     if request.method == 'POST':
-        app.logger.debug("form data: nb_assignment_name:")
-        app.logger.debug(request.form.get('nb_assignment_name'))
-        app.logger.debug("form data: canvas_assign:")
-        app.logger.debug(request.form.get('canvas_assign'))
+        canvas_assignment_id = None
+        assignment_to_upload = None
 
-        canvas_users = course.get_users()
-        
+        app.logger.debug("form_nb_assign_name:")
+        app.logger.debug(request.form.get('form_nb_assign_name'))
+        app.logger.debug("form_canvas_assign_name:")
+        app.logger.debug(request.form.get('form_canvas_assign_name'))
+        form_nb_assign_name = request.form.get('form_nb_assign_name')
+        form_canvas_assign_name = request.form.get('form_canvas_assign_name')
+
+        canvas_users = course.get_users()        
         canvas_students = {}
         # TODO: modify to only get active users
         for canvas_user in canvas_users:
             if hasattr(canvas_user, "login_id") and canvas_user.login_id is not None:
                 canvas_students[canvas_user.login_id]=canvas_user.id  
                 
-                app.logger.debug("canvas user login id:")
-                app.logger.debug(canvas_user.login_id)   
-                app.logger.debug("canvas user id:")
-                app.logger.debug(canvas_user.id)   
+                #app.logger.debug("canvas user login id:")
+                #app.logger.debug(canvas_user.login_id)   
+                #app.logger.debug("canvas user id:")
+                #app.logger.debug(canvas_user.id)   
 
         #
         # get nbgrader info
@@ -116,23 +120,25 @@ def upload_grades(lti=lti):
 
             app.logger.debug("nb assignments:")
             app.logger.debug(nb_assignments)
-            # TODO: change from hardcoded assignment string to the POST assignment_name parameter
-            # TODO: handle exception here
-            nb_assignment = gb.find_assignment("assign 1")
+           
+            #for nb_assign in nb_assignments:
+                #app.logger.debug("nb assignment name:")
+                #app.logger.debug("name>" + nb_assign.name + "</name>")
 
-            # can we change this to just get the students for this assignment?
-            nb_students = gb.students
-            
-            app.logger.debug("nb assignment name:")
-            app.logger.debug(nb_assignment.name)
-            
+            # get the nbgrader assignment from the nbgradebook for the 
+            # nbgrader assignment submitted in the form
+            # TODO: handle exception here
+            nb_assignment = gb.find_assignment(form_nb_assign_name)
+
+            # TODO: can we change this to just get the students for this assignment?
+            nb_students = gb.students            
             nb_grade_data = {}
 
             # loop over each nb student
             for nb_student in nb_students:
 
-                app.logger.debug("student id:")
-                app.logger.debug(nb_student.id)
+                #app.logger.debug("student id:")
+                #app.logger.debug(nb_student.id)
 
                 # ceate dict for grade_data, with nested dict {student id: {score}}
                 nb_student_and_score = {}            
@@ -146,12 +152,12 @@ def upload_grades(lti=lti):
                     nb_student_and_score['posted_grade'] = None
                 else:
                     nb_student_and_score["posted_grade"] = nb_submission.score
-                    app.logger.debug("sub name:")
-                    app.logger.debug(nb_submission.name)
-                    app.logger.debug("sub id:")
-                    app.logger.debug(nb_submission.id)
-                    app.logger.debug("sub score:")
-                    app.logger.debug(nb_submission.score)
+                    #app.logger.debug("sub name:")
+                    #app.logger.debug(nb_submission.name)
+                    #app.logger.debug("sub id:")
+                    #app.logger.debug(nb_submission.id)
+                    #app.logger.debug("sub score:")
+                    #app.logger.debug(nb_submission.score)
 
                 # student.id will give us student's username, ie shrakibullah. we will need to compare this to
                 # canvas's login_id instead of user_id
@@ -172,29 +178,52 @@ def upload_grades(lti=lti):
 
             # end nbgrader student loop
 
-            # TODO: skip over canvas assignment loop if we already have canvas_assignment.id in our sqlachemy assignments table (re-submission?)
+            # TODO: if we have an entry in our assignment match table for this nbgrader assignment,
+            # check if its respective canvas assignment matches what came from the form.  if it doesn't,
+            # instrutor has changed the association, post an error message and bail out
 
-            # loop over canvas assignments, upload submissions if name matches
-            # TODO: check for dup assignment names
-            for canvas_assignment in canvas_assignments:
-                if nb_assignment.name == canvas_assignment.name:
-                    app.logger.debug("canvas assignment name match; id:")
-                    app.logger.debug(canvas_assignment.id)
-                    app.logger.debug("canvas assignment name match; name:")
-                    app.logger.debug(canvas_assignment.name)
-                    app.logger.debug("upload submissions for existing canvas assignment")
-                    app.logger.debug("grade data to upload:")
-                    app.logger.debug(nb_grade_data)
+            # if we're creating a new canvas assignment
+            if (form_canvas_assign_name == 'create') :
+                app.logger.debug("upload submissions for non-existing canvas assignment; will be named:")
+                app.logger.debug(form_nb_assign_name)                
 
-                    assignment_to_upload = course.get_assignment(canvas_assignment.id)                
+                # create new assignments as published
+                assignment_to_upload = course.create_assignment({'name':form_nb_assign_name, 'published':'true'})
 
-                    # TODO: check if published, if not, publish?
-                    progress = assignment_to_upload.submissions_bulk_update(grade_data=nb_grade_data)
-                    progress = progress.query()
-                    session['progress_json']=jsonpickle.encode(progress)
-                    session.modified=True
-                # end assignment names match
-            # end canvas assignment loop
+            # if we're uploading to an existing canvas assignment
+            else:
+                # get the id of the canvas assignment for the canvas assignment name that was submitted
+                for canvas_assignment in canvas_assignments:
+                    if (canvas_assignment.name == form_canvas_assign_name):
+                        canvas_assignment_id = canvas_assignment.id
+                        assignment_to_upload = course.get_assignment(canvas_assignment_id)           
+                        app.logger.debug("uploading submissions for canvas assignment id:")     
+                        app.logger.debug(canvas_assignment_id)     
+                        break                    
+
+            #for canvas_assignment in canvas_assignments:
+            #app.logger.debug("canvas assignment name match; id:")
+            #app.logger.debug(canvas_assignment.id)
+            #app.logger.debug("canvas assignment name match; name:")
+            #app.logger.debug(canvas_assignment.name)
+            #app.logger.debug("upload submissions for existing canvas assignment")
+            #app.logger.debug("grade data to upload:")
+            #app.logger.debug(nb_grade_data)
+
+
+            # TODO: check if assignment is published, if not, publish?
+            # submit assignment
+            progress = assignment_to_upload.submissions_bulk_update(grade_data=nb_grade_data)
+            progress = progress.query()
+            session['progress_json']=jsonpickle.encode(progress)
+            session.modified=True
+            app.logger.debug("progress url:")
+            app.logger.debug(progress.url)
+            app.logger.debug("progress json:")
+            app.logger.debug(session['progress_json'])
+
+
+            # TODO: insert/update row in assignment match table
         # end with gradebook
     # end if POST
 
@@ -271,7 +300,7 @@ def get_canvas_assignments(lti=lti):
             app.logger.debug("canvas_assignment_group id:")
             app.logger.debug(canvas_assignment_group.id)
 
-
+            # TODO: check if this is published and unpublished
             assignments = course.get_assignments_for_group(canvas_assignment_group)
             for assign in assignments:        
                 app.logger.debug("assign:")
