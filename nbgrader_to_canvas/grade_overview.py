@@ -33,29 +33,38 @@ def grade_overview():
         return return_error(msg)
 
 
-def get_nbgrader_assignments():
+def get_nbgrader_assignments(course="TEST_NBGRADER"):
     """
     Get the nbgrader_assignments from the course gradebook
     """
     # get the gradebook and return the assignments
-    with Gradebook("sqlite:////mnt/nbgrader/TEST_NBGRADER/grader/gradebook.db") as gb:
+    with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
         return gb.assignments
 
 
 @lti(request='session', role='staff')
 def get_canvas_assignments(lti=lti):
     """
-    Get all the Canvas Assignments from the course
+    Get the assignments for the Canvas course
     """
+
     # get the course id
     course_id = session['course_id']
 
     # initialize a new canvasapi Canvas object
     canvas = get_canvas()
 
-    # get canvas assignments from course
+    # get canvas assignment groups from course
     course = canvas.get_course(course_id)
-    assignments = course.get_assignment_group("assignments")["assignments"]
+    assignment_groups = course.get_assignment_groups()
+
+    # find the "Assignments" group
+    for ag in assignment_groups:
+        if (ag.name == "Assignments"):
+            group = course.get_assignment_group(ag.id)
+            break
+
+    assignments = course.get_assignments_for_group(group)
 
     # split the name and id for each course assignment
     canvas_assignments = {}
