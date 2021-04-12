@@ -1,0 +1,36 @@
+{% extends 'base.htm.j2' %}
+{% block content %}
+
+<h1>Upload grades status</h1>
+
+{% if progress %}
+<h2>Status</h2>
+<ul>
+    <li>{{ progress.tag }}</li>
+    <li>Created: {{ progress.created_at }}</li>
+    <li>Last updated: {{ progress.updated_at }}</li>
+    <li>Details: {{ progress.message }}</li>
+    <li>Percent completed: {{ progress.completion }}</li>
+    <li>Workflow state: {{ progress.workflow_state }}</li>
+    <li>Results: {{ progress.results }}</li>
+    <li>Progress update url: <a href="{{ progress.url }}">{{ progress.url }}</a></li>
+</ul>
+{% endif %}
+
+{% block script %}
+<script> 
+setTimeout(function(){
+  // only reload if status is queued or running
+  // TODO: cancel the settimeout loop for other statuses 
+  var status = '{{ progress.workflow_state }}';
+  console.log('status: ' + status);
+  if (status == 'queued' || status == 'running') { 
+     console.log('reload: ' + window.location.href);
+     window.location.reload(1);
+  }
+}, 10000);
+
+</script>
+{% endblock %}
+
+{% endblock content %}

@@ -13,7 +13,7 @@ ENV FLASK_APP=nbgrader_to_canvas
 
 RUN apt-get update && \
     apt-get install -y lsb-release \
-                       sqlite3
+    sqlite3
 
 # https://www.postgresql.org/download/linux/debian/
 RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \

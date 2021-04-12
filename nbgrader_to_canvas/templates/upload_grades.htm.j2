@@ -1,0 +1,129 @@
+{% extends 'base_grades.htm.j2' %}
+
+<!-- Scripts for overview page -->
+{%- block head -%}
+
+  <!-- set base_url variable -->
+  <script> var base_url = "{{ base_url }}"; </script>
+
+  <style> 
+    
+    /* align text in tables with columns */
+    select {
+        text-align-last:center;
+    }
+
+    /* round the upload button */
+    .uploadbtn {
+      border-radius: 7px;
+      border: 0.75px solid;
+    }
+
+    /* round the dropdown menu */
+    .canvas_assign {
+      border-radius: 7px;
+      border: 0.75px solid;
+    }
+
+    /* styling for text color */
+    .blackText {
+        color:black;
+        font-weight:bold;
+    }
+
+    .redText {
+        color:red;
+    }
+
+    .br {
+        display: block;
+        margin-bottom: 0.5em;
+    }
+
+  </style> 
+
+{%- endblock -%}
+
+<!-- Title of page -->
+{%- block title -%}
+Grading Overview
+{%- endblock -%}
+
+<!-- Display sidebar with highlighting for current section -->
+{%- block sidebar -%}
+<li role="presentation" class="active"><a href="{{ base_url }}/grade_overview">Grading Overview</a></li>
+<!-- <li role="presentation"><a href="{{ base_url }}/grade_assignments">Grade Assignments</a></li> --> <!-- Not necessary anymore -->
+<li role="presentation"><a href="{{ base_url }}/grade_students">Grade Students</a></li>
+{%- endblock -%}
+
+<!-- Create bar across page -->
+{%- block breadcrumbs -%}
+<ol class="breadcrumb">
+  <li class="active">Overview</li>
+</ol>
+{%- endblock -%}
+
+<!-- Block for messages (if needed) -->
+{%- block messages -%}
+{%- endblock -%}
+
+<!--
+  Create the header with nbgrader assignments, assignment relation with
+  Canvas, and upload details to Canvas
+-->
+{%- block table_header -%}
+<tr>
+  <th class="text-center">Nbgrader Assignment</th>
+  <th class="text-center">Canvas Assignment</th>
+  <th class="text-center">Upload Grades to Canvas</th>
+</tr>
+{%- endblock -%}
+
+
+<!--
+  Create rows in the table.
+  Each row contains the nbgrader assignment name, options for assignment within
+  in Canvas, and a status indicator of the assignment to Canvas
+-->
+{%- block table_body -%}
+  {% for assignment in nb_assign %}
+  <tr>
+    <form action = "" method = "POST">
+    <td class="text-center" style="vertical-align: middle">{{assignment.name}}</td>
+    
+    <!-- create dropdown menu of assignments in Canvas -->
+    <td class="text-center" style="vertical-align: middle">
+      <select class="canvas_assign"> 
+
+      <!-- default option if no matching assignment found -->
+      <option value="create">Create Canvas Assignment </option>
+      {% for cv in cv_assign['name'] %}
+        <!-- choose matching assignment if it exists -->
+        {% if assignment.name == cv %}
+          <option value="match" selected="selected">{{cv}}</option>
+        {% else %}
+          <option value="assignment">{{cv}}</option>
+        {% endif %}
+      {% endfor %}
+      </select>
+    </td>
+
+    <!-- display the upload button -->
+    <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button>
+    
+    <!-- TO DO == Need to implement status bar -->    
+
+    <span class="br"></span>
+    <span class="blackText">Status:</span>&nbsp;<span class="redText">not uploaded yet</span>
+    </td>
+    </form>
+  </tr>
+  {% endfor %}
+{%- endblock -%}
+
+<!-- Final line under all rows -->
+{%- block table_footer -%}
+  <tr>
+      <td colspan="3"></td>
+  </tr>
+{%- endblock -%}

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, request
+from flask import Blueprint, render_template, session, request, url_for, redirect
 from pylti.flask import lti
 
 from .utils import get_canvas, error
@@ -9,7 +9,7 @@ from . import settings
 index_blueprint = Blueprint('index', __name__)
 
 # Web Views / Routes
-@index_blueprint.route('/index', methods=['GET'])
+@index_blueprint.route('/index', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
 def index(course_id=None, user_id=None, lti=lti):
 
@@ -32,19 +32,10 @@ def index(course_id=None, user_id=None, lti=lti):
     args = request.args.to_dict()
 
     session['course_id'] = args['course_id']
-    session['user_id'] = args['user_id']
-    msg = "hi! Course ID is {}, User ID is {}.".format(session['course_id'], session['user_id'])
+    #session['user_id'] = args['user_id']
+    #msg = "hi! Course ID is {}, User ID is {}.".format(session['course_id'], session['user_id'])
 
-    #
-    # nbgrader to canvas code
-    #
 
-    # initialize a new canvasapi Canvas object
-    canvas = get_canvas()
-
-    if canvas is None:
-        courses = None
-    else:
-        courses = canvas.get_courses()
-    
-    return render_template('index.htm.j2', msg=msg, courses=courses, BASE_URL=settings.BASE_URL)
+    # get canvas assignments
+    canvas = get_canvas()    
+    return render_template('index.htm.j2', course_id=session['course_id'], BASE_URL=settings.BASE_URL)

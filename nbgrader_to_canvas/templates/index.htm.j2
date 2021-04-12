@@ -2,18 +2,9 @@
 {% block content %}
 
 <div>
-    <p>{{msg}}</p>
-    <p><img src={{ url_for('static', filename='img/example.jpg') }} alt="Example image" />
+    <ul>
+      <li><a href="/upload_grades">Upload datahub submission grades</a></li>
+      <li>Other menu items (?) </li>
+    </ul>
 </div>
-
-{% if courses != None %}
-<h2>Courses:</h2>
-<ul>
-    {% for course in courses %}
-    <li><a href="{{BASE_URL}}courses/{{course.id}}" target="_blank">{{ course.name }}</a></li>
-    {% endfor %}
-    <li><a href="{{url_for('grade_overview.grade_overview') }}"> Grading Overview</a></li>
-</ul>
-{% endif %}
-
 {% endblock content %}

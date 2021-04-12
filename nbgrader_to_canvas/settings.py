@@ -54,6 +54,9 @@ PYLTI_CONFIG = {
     },
     'roles': {
         'admin': ['Administrator', 'urn:lti:instrole:ims/lis/Administrator'],
+        'staff': [
+           'Administrator', 'urn:lti:instrole:ims/lis/Administrator', 
+           'Instructor', 'urn:lti:role:ims/lis/TeachingAssistant', 'Grader'],
         'student': ['Student', 'urn:lti:instrole:ims/lis/Student']
     }
 }
