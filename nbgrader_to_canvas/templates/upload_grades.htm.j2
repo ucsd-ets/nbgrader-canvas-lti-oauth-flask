@@ -33,6 +33,10 @@
 
     .redText {
         color:red;
+    } 
+    
+    .greenText {
+        color:green;
     }
 
     .br {
@@ -131,10 +135,10 @@ Grading Overview
     <input type="submit" class="uploadbtn" name="submit_button" name={{nb_assignment.name}} value="Upload Grades"</input>
     <input type="hidden" name="form_nb_assign_name" value={{nb_assignment.name}} />
 
-    <!-- TO DO == Need to implement status bar -->    
+    <!-- display status -->    
 
     <span class="br"></span>
-    <span class="blackText">Status:</span>&nbsp;<span class="redText">not uploaded yet</span>
+    <span class="blackText">Status: </span>&nbsp;<span id="{{nb_assignment.name}}_status" class="blackText"></span>
     </td>
   </tr>
   {% endfor %}
@@ -147,3 +151,35 @@ Grading Overview
       <td colspan="3"></td>
   </tr>
 {%- endblock -%}
+
+
+
+{% block script %}
+<script> 
+setInterval(function(){
+  // TODO: update status of any queued/running assignment submissions
+  // TODO: cancel the settimeout loop if none in queued/running
+  //var url = '{{ progress.url }}';
+
+  var call_clear_interval = 0;
+
+  // TODO: change this to a json array of urls where status is queued/running, and loop over them
+  // TODO: call clearInterval() if array length=0 
+  var url = '{{ upload_progress_url }}'; // 'https://ucsd.test.instructure.com/api/v1/progress/1355408';
+  var assignment = '{{ upload_progress_assignment }}';
+  console.log('url: ' + url);
+  console.log('assignment: ' + assignment);
+
+  $.getJSON(url, function(data) {        
+        console.log('data: ' + data);
+        console.log('data.workflow_state: ' + data.workflow_state);
+        $('#' + assignment + '_status').text(data.workflow_state);
+        //if (data.workflow_state == 'completed' || data.workflow_state == 'failed') {
+        //   console.log ('no running submissions, exit interval loop');
+        //   clearInterval();          
+        //}
+    });
+}, 5000);
+
+</script>
+{% endblock %}

@@ -9,6 +9,7 @@ services:
     volumes:
     - ./:/app
     - ./mocks:/tmp/nbgrader
+    - ./pgdata
     environment:
     - FLASK_DEBUG=1
     - FLASK_ENV=development
@@ -33,8 +34,10 @@ services:
     environment:
     - POSTGRES_USER=dev
     - POSTGRES_PASSWORD=mypassword
+    - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
     - ./scripts/start-db.sql:/docker-entrypoint-initdb.d/start-db.sql
+    - ./pgdata:/var/lib/postgresql/data/pgdata
   selenium:
     image: selenium/standalone-chrome
     ports:

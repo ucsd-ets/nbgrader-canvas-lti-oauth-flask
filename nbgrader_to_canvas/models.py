@@ -31,12 +31,19 @@ class Sessions(db.Model):
             self.data = data
             self.expiry = expiry
 
+class AssignmentMatch(db.Model):
+        #__tablename__ = table
 
-# TODO add an AssignmentMatches class with columns:
+        id = db.Column(db.Integer, primary_key=True)
+        nbgrader_assign_name = db.Column(db.String(255), unique=True)
+        canvas_assign_id = db.Column(db.Integer, unique=True)
+        upload_progress_url = db.Column(db.String(1000))
+        upload_status = db.Column(db.String(10))
 
-# nbgrader_assign_name (string)
-# canvas_assign_ID
-# upload_progress_url (string)
-# upload_status (string): 'queued', 'running', 'completed', 'failed'
+        def __init__(self, nbgrader_assign_name, canvas_assign_id, upload_progress_url, upload_status):
+            self.nbgrader_assign_name = nbgrader_assign_name
+            self.canvas_assign_id = canvas_assign_id
+            self.upload_progress_url = upload_progress_url
+            self.upload_status = upload_status
 
 # we only insert a row into this table when the instructor has matched up assignments.

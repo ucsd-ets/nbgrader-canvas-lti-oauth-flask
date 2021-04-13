@@ -6,6 +6,7 @@ from .utils import get_canvas, error
 from . import app
 from . import settings
 from nbgrader.api import Gradebook, MissingEntry
+from .models import AssignmentMatch
 
 import json
 import logging
@@ -59,8 +60,8 @@ def upload_grades(lti=lti):
     #else:
     #    courses = canvas.get_courses()
     app.logger.setLevel(logging.DEBUG)
-    app.logger.info("request.method:")
-    app.logger.info(request.method)
+    app.logger.debug("request.method:")
+    app.logger.debug(request.method)
 
 
     #
@@ -69,6 +70,17 @@ def upload_grades(lti=lti):
     course = canvas.get_course(course_id)
     canvas_assignments = course.get_assignments()
 
+    #
+    # get assignment match info from psql table
+    # TODO: fetch for all
+    #assignment_match = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
+    upload_progress_assignment = 'assign1'
+    assignment_match = AssignmentMatch.query.filter_by(nbgrader_assign_name=upload_progress_assignment).first()
+    app.logger.debug("assignment match:")
+    app.logger.debug(assignment_match)
+    app.logger.debug("assignment match url:")
+    app.logger.debug(assignment_match.upload_progress_url)
+    upload_progress_url=assignment_match.upload_progress_url
 
     # ADD JS TO VIEW:
     # 1) every 10 seconds, update the status of any assignments in the UI that have a status of queued or running in sqlalchemy assignments_table
@@ -247,7 +259,8 @@ def upload_grades(lti=lti):
 
     # TODO: query sqlalchemy assignment_match table to do #4, #5 above
 
-    return render_template('upload_grades.htm.j2', nb_assign=nb_assignments, cv_assign=canvas_assignments, progress=progress)
+    return render_template('upload_grades.htm.j2', nb_assign=nb_assignments, cv_assign=canvas_assignments, progress=progress, 
+        upload_progress_url=upload_progress_url,upload_progress_assignment=upload_progress_assignment)
 
 
 def get_nbgrader_assignments():
