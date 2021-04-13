@@ -1,4 +1,4 @@
-#vscode
+# vscode
 workspace.code-workspace
 nb-can-flask-oauth.code-workspace
 # Flask
@@ -13,3 +13,6 @@ environment
 .pytest_cache/
 *.png
 *.db
+flask_session/
+# postgresql
+pgdata/
