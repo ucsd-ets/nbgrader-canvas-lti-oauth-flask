@@ -1,4 +1,4 @@
-#vscode
+# vscode
 workspace.code-workspace
 nb-can-flask-oauth.code-workspace
 # Flask
@@ -14,3 +14,6 @@ environment
 *.png
 flask_session/
 *.db
+flask_session/
+# postgresql
+pgdata/
