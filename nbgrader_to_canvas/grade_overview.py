@@ -5,6 +5,9 @@ from . import app
 from .utils import get_canvas, return_error
 
 from nbgrader.api import Gradebook
+from .models import AssignmentMatch
+
+import time
 
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
 
@@ -18,14 +21,17 @@ def grade_overview():
     try:
         nb_assignments = get_nbgrader_assignments()
         canvas_assignments = get_canvas_assignments()
+        db_matches = match_assignments(nb_assignments)
+
         return Response(
-            render_template('overview.htm.j2', nb_assign=nb_assignments, cv_assign=canvas_assignments)
+            render_template('overview.htm.j2', nb_assign=nb_assignments, cv_assign=canvas_assignments, db_matches=db_matches)
         )
+
     except Exception as e:
         app.logger.error(e)
         import os
         app.logger.error(os.getcwd())
-        app.logger.error("No overview file.")
+        app.logger.error("Overview file error.")
         msg = (
             'Issues with the grade_overview file. Please refresh and try again. '
             'If this error persists, please contact support.'
@@ -47,7 +53,6 @@ def get_canvas_assignments(lti=lti):
     """
     Get the assignments for the Canvas course
     """
-
     # get the course id
     course_id = session['course_id']
 
@@ -66,10 +71,21 @@ def get_canvas_assignments(lti=lti):
 
     assignments = course.get_assignments_for_group(group)
 
-    # split the name and id for each course assignment
-    canvas_assignments = {}
-    canvas_assignments['name'] = [a.name for a in assignments]
-    canvas_assignments['id'] = [a.id for a in assignments]
+    # have the id:name key,value pair for each course assignment
+    canvas_assignments = {a.id:a.name for a in assignments}
+    app.logger.debug(canvas_assignments)
 
     return canvas_assignments
+
+def match_assignments(nb_assignments, upload_assignment="assign1"):
+    """
+    Check sqlalchemy table for match with nbgrader assignments. Creates a dictionary with nbgrader
+        assignments as the key
+    If match is found, query the entry from the table and set as the value.
+    Else, set the value to None
+    """
+    nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_name=assignment.name).first()
+                                                            for assignment in nb_assignments}
+    app.logger.debug(nb_matches)
+    return nb_matches
 

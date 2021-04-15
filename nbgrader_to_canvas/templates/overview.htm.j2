@@ -56,6 +56,7 @@
     <a class="dropdown-item" href="#">Another action</a>
     <a class="dropdown-item" href="#">Something else here</a>
   </div>
+  
 </div>Grading Overview
 {%- endblock -%}
 
@@ -95,24 +96,27 @@
   in Canvas, and a status indicator of the assignment to Canvas
 -->
 {%- block table_body -%}
-  {% for assignment in nb_assign %}
+  {# {% for assignment in nb_assign %} #}
+  {% for name,match in db_matches.items() %}
   <tr>
-    <td class="text-center" style="vertical-align: middle">{{assignment.name}}</td>
-    
-    <!-- create dropdown menu of assignments in Canvas -->
+    <td class="text-center" style="vertical-align: middle">{{name}}</td>
     <td class="text-center" style="vertical-align: middle">
-      <select class="canvas_assign"> 
 
+    {% if match %}
+      <!-- create dropdown menu of unselectable assignmets in Canvas -->
+      <select class="canvas_assign" disabled> 
+        <option value="match" selected="selected">{{cv_assign[match.canvas_id]}}</option>
+
+    {% else %}
+      <select class="canvas_assign"> 
       <!-- default option if no matching assignment found -->
-      <option value="create">Create Canvas Assignment </option>
-      {% for cv in cv_assign['name'] %}
-        <!-- choose matching assignment if it exists -->
-        {% if assignment.name == cv %}
-          <option value="match" selected="selected">{{cv}}</option>
-        {% else %}
-          <option value="assignment">{{cv}}</option>
-        {% endif %}
-      {% endfor %}
+      <option value="create" selected="selected">Create Canvas Assignment </option>
+    {% endif %}
+
+    {% for name in cv_assign.values() %}
+      <!-- list the canvas assignments -->
+      <option value="assignment">{{name}}</option>
+    {% endfor %}
       </select>
     </td>
 

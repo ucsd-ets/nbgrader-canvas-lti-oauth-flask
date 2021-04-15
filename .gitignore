@@ -12,5 +12,7 @@ src/
 environment
 .pytest_cache/
 *.png
-flask_session/
 *.db
+flask_session/
+# postgresql
+pgdata/
