@@ -83,9 +83,9 @@ def get_canvas_assignments(course_id):
 
     return canvas_assignments
 
-def match_assignments(nb_assignments, course_id, upload_assignment="assign1"):
+def match_assignments(nb_assignments, course_id):
     """
-    Check sqlalchemy table for match with nbgrader assignments. Creates a dictionary with nbgrader
+    Check sqlalchemy table for match with nbgrader assignments from a specified course. Creates a dictionary with nbgrader
         assignments as the key
     If match is found, query the entry from the table and set as the value.
     Else, set the value to None
