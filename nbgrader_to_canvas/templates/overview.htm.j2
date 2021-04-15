@@ -35,6 +35,10 @@
         color:red;
     }
 
+    .greenText {
+        color:green;
+    }
+
     .br {
         display: block;
         margin-bottom: 0.5em;
@@ -139,12 +143,19 @@ Grading Overview
     </td>
 
     <!-- display the upload button -->
-    <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button>
+    {# <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button> #}
+    <td class="text-center" style="vertical-align: middle">
+    <input type="submit" class="uploadbtn" name="submit_button" name={{name}} value="Upload Grades" />
+    <input type="hidden" name="form_nb_assign_name" value={{name}} />
     
     <!-- TO DO == Need to implement status bar -->    
 
     <span class="br"></span>
-    <span class="blackText">Status:</span>&nbsp;<span class="redText"><em>{{match.status}}</em></span>
+    {% if match %}
+      <span class="blackText">Status:</span>&nbsp;<span class="greenText"><em>{{match.status}}</em></span>
+    {% else %}
+      <span class="blackText">Status:</span>&nbsp;<span class="redText"><em>No match found</em></span>
+    {% endif %}
     </td>
   </tr>
   {% endfor %}
