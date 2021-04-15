@@ -20,8 +20,9 @@ def grade_overview():
     """
     try:
         nb_assignments = get_nbgrader_assignments()
-        canvas_assignments = get_canvas_assignments()
-        db_matches = match_assignments(nb_assignments)
+        course_id = get_canvas_id()
+        canvas_assignments = get_canvas_assignments(course_id)
+        db_matches = match_assignments(nb_assignments, course_id)
 
         return Response(
             render_template('overview.htm.j2', nb_assign=nb_assignments, cv_assign=canvas_assignments, db_matches=db_matches)
@@ -49,13 +50,18 @@ def get_nbgrader_assignments(course="TEST_NBGRADER"):
 
 
 @lti(request='session', role='staff')
-def get_canvas_assignments(lti=lti):
+def get_canvas_id(lti=lti):
+    """
+    Get the canvas course id
+    """
+    app.logger.debug(session['course_id'])
+    return session['course_id']
+
+
+def get_canvas_assignments(course_id):
     """
     Get the assignments for the Canvas course
     """
-    # get the course id
-    course_id = session['course_id']
-
     # initialize a new canvasapi Canvas object
     canvas = get_canvas()
 
@@ -77,14 +83,14 @@ def get_canvas_assignments(lti=lti):
 
     return canvas_assignments
 
-def match_assignments(nb_assignments, upload_assignment="assign1"):
+def match_assignments(nb_assignments, course_id, upload_assignment="assign1"):
     """
     Check sqlalchemy table for match with nbgrader assignments. Creates a dictionary with nbgrader
         assignments as the key
     If match is found, query the entry from the table and set as the value.
     Else, set the value to None
     """
-    nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_name=assignment.name).first()
+    nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_name=assignment.name, course_id=course_id).first()
                                                             for assignment in nb_assignments}
     app.logger.debug(nb_matches)
     return nb_matches

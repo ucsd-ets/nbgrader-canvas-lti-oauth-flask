@@ -33,12 +33,14 @@ class AssignmentMatch(db.Model):
     #__tablename__ = table
 
     id = db.Column(db.Integer, primary_key=True)
-    nbgrader_name = db.Column(db.String(255), unique=True)
+    course_id = db.Column(db.Integer)
+    nbgrader_name = db.Column(db.String(255))
     canvas_id = db.Column(db.Integer, unique=True)
     progress_url = db.Column(db.String(255))
     status = db.Column(db.String(10))
 
-    def __init__(self, nbgrader_name, canvas_id, progress_url, status):
+    def __init__(self, course_id, nbgrader_name, canvas_id, progress_url, status):
+        self.course_id = course_id
         self.nbgrader_name = nbgrader_name
         self.canvas_id = canvas_id
         self.progress_url = progress_url
