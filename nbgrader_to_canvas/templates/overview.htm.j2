@@ -46,18 +46,7 @@
 
 <!-- Title of page -->
 {%- block title -%}
-
-<div class="dropdown">
-  <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-    Dropdown button
-  </button>
-  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-    <a class="dropdown-item" href="#">Action</a>
-    <a class="dropdown-item" href="#">Another action</a>
-    <a class="dropdown-item" href="#">Something else here</a>
-  </div>
-  
-</div>Grading Overview
+Grading Overview
 {%- endblock -%}
 
 <!-- Display sidebar with highlighting for current section -->
@@ -76,6 +65,33 @@
 
 <!-- Block for messages (if needed) -->
 {%- block messages -%}
+{% if progress %}
+  <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
+    <div class="panel panel-default">
+      <div class="panel-heading" role="tab" id="headingOne">
+        <h4 class="panel-title">
+          <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+            Upload Status (click to expand)
+          </a>
+        </h4>
+      </div>
+      <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
+        <div class="panel-body">
+          <ul>
+            <li>{{ progress.tag }}</li>
+            <li>Created: {{ progress.created_at }}</li>
+            <li>Last updated: {{ progress.updated_at }}</li>
+            <li>Details: {{ progress.message }}</li>
+            <li>Percent completed: {{ progress.completion }}</li>
+            <li>Workflow state: {{ progress.workflow_state }}</li>
+            <li>Results: {{ progress.results }}</li>
+            <li>Progress update url: <a href="{{ progress.url }}">{{ progress.url }}</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
 {%- endblock -%}
 
 <!--
@@ -104,19 +120,21 @@
 
     {% if match %}
       <!-- create dropdown menu of unselectable assignmets in Canvas -->
-      <select class="canvas_assign" disabled> 
+      <select class="canvas_assign"> 
         <option value="match" selected="selected">{{cv_assign[match.canvas_id]}}</option>
-
+        {% for name in cv_assign.values() %}
+          <!-- list the canvas assignments -->
+          <option value="assignment" disabled=True>{{name}}</option>
+        {% endfor %}
     {% else %}
       <select class="canvas_assign"> 
-      <!-- default option if no matching assignment found -->
-      <option value="create" selected="selected">Create Canvas Assignment </option>
-    {% endif %}
-
-    {% for name in cv_assign.values() %}
-      <!-- list the canvas assignments -->
-      <option value="assignment">{{name}}</option>
-    {% endfor %}
+        <!-- default option if no matching assignment found -->
+        <option value="create" selected="selected">Create Canvas Assignment </option>
+        {% for name in cv_assign.values() %}
+          <!-- list the canvas assignments -->
+          <option value="assignment">{{name}}</option>
+        {% endfor %}
+      {% endif %}
       </select>
     </td>
 
@@ -126,7 +144,7 @@
     <!-- TO DO == Need to implement status bar -->    
 
     <span class="br"></span>
-    <span class="blackText">Status:</span>&nbsp;<span class="redText"><em>not uploaded yet</em></span>
+    <span class="blackText">Status:</span>&nbsp;<span class="redText"><em>{{match.status}}</em></span>
     </td>
   </tr>
   {% endfor %}
