@@ -9,3 +9,4 @@ for dirname in "${nbgrader_dirs[@]}"; do
     useradd -m $username
     chown -R $username:nbgrader2canvas /mnt/nbgrader/$dirname
     chmod 0640 /mnt/nbgrader/$dirname/grader/gradebook.db
+done

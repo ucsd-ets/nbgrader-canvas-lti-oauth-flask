@@ -17,21 +17,29 @@ class Users(db.Model):
         return '<User %r>' % self.user_id
     
 class Sessions(db.Model):
-        #__tablename__ = table
+    #__tablename__ = table
 
-        id = db.Column(db.Integer, primary_key=True)
-        session_id = db.Column(db.String(255), unique=True)
-        data = db.Column(db.LargeBinary)
-        expiry = db.Column(db.DateTime)
-
-        def __init__(self, session_id, data, expiry):
-            self.session_id = session_id
-            self.data = data
-            self.expiry = expiry
-
-class AssignmentMatches(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nbgrader_assign_name = db.Column(db.String(255))
-    canvas_assign_ID = db.Column(db.Integer)
-    upload_progress_url = db.Column(db.String(255))
-    upload_status = db.Column(db.String(255))
+    session_id = db.Column(db.String(255), unique=True)
+    data = db.Column(db.LargeBinary)
+    expiry = db.Column(db.DateTime)
+
+    def __init__(self, session_id, data, expiry):
+        self.session_id = session_id
+        self.data = data
+        self.expiry = expiry
+
+class AssignmentMatch(db.Model):
+    #__tablename__ = table
+
+    id = db.Column(db.Integer, primary_key=True)
+    nbgrader_name = db.Column(db.String(255), unique=True)
+    canvas_id = db.Column(db.Integer, unique=True)
+    progress_url = db.Column(db.String(255))
+    status = db.Column(db.String(10))
+
+    def __init__(self, nbgrader_name, canvas_id, progress_url, status):
+        self.nbgrader_name = nbgrader_name
+        self.canvas_id = canvas_id
+        self.progress_url = progress_url
+        self.status = status
