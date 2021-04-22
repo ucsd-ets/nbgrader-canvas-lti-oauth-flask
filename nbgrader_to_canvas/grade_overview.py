@@ -79,7 +79,9 @@ def get_canvas_assignments(course_id):
 
     # have the id:name key,value pair for each course assignment
     canvas_assignments = {a.id:a.name for a in assignments}
+    app.logger.debug("canvas_assign: ")
     app.logger.debug(canvas_assignments)
+
 
     return canvas_assignments
 
@@ -92,6 +94,7 @@ def match_assignments(nb_assignments, course_id):
     """
     nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_name=assignment.name, course_id=course_id).first()
                                                             for assignment in nb_assignments}
+    app.logger.debug("nb_match: ")
     app.logger.debug(nb_matches)
     return nb_matches
 
