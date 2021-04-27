@@ -6,6 +6,8 @@ from .utils import get_canvas, error
 from . import app
 from . import settings
 from nbgrader.api import Gradebook, MissingEntry
+from .models import AssignmentMatch
+from .grade_overview import *
 
 import json
 import logging
@@ -15,14 +17,21 @@ upload_grades_blueprint = Blueprint('upload_grades', __name__)
 
 # Web Views / Routes
 @upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
+# @upload_grades_blueprint.route('/upload_grades/<course_id>/<nb_assign>/<cv_assign>/<db_matches>/<course>', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
-def upload_grades(lti=lti):
+def upload_grades(upload="assign1", lti=lti):
+
+    nb_assign = get_nbgrader_assignments()
+    course_id = get_canvas_id()
+    cv_assign = get_canvas_assignments(course_id)
+    db_matches = match_assignments(nb_assign, course_id)
+    course_name="TEST_NBGRADER"
 
     import sys
     import os
     import canvasapi
     import pytest
-    # Import the Canvas class
+    #  Import the Canvas class
     from canvasapi.assignment import (
         Assignment,
         AssignmentGroup,
@@ -37,10 +46,10 @@ def upload_grades(lti=lti):
 
     args = request.args.to_dict()
 
-    course_id = session['course_id']
-
     # initialize a new canvasapi Canvas object
     canvas = get_canvas()
+    course = canvas.get_course(course_id)
+
     progress = None
 
     # canvasapi debugging info https://github.com/ucfopen/canvasapi/blob/master/docs/debugging.rst
@@ -59,16 +68,20 @@ def upload_grades(lti=lti):
     #else:
     #    courses = canvas.get_courses()
     app.logger.setLevel(logging.DEBUG)
-    app.logger.info("request.method:")
-    app.logger.info(request.method)
-
+    app.logger.debug("request.method:")
+    app.logger.debug(request.method)
 
     #
-    # get canvas info
-    #
-    course = canvas.get_course(course_id)
-    canvas_assignments = course.get_assignments()
-
+    # get assignment match info from psql table
+    # TODO: fetch for all
+    #assignment_match = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
+    upload_assignment = upload  #  cv_assign.values()[0]
+    assignment_match = AssignmentMatch.query.filter_by(nbgrader_name=upload_assignment, course_id=course_id).first()
+    app.logger.debug("assignment match:")
+    app.logger.debug(assignment_match)
+    app.logger.debug("assignment match url:")
+    app.logger.debug(assignment_match.progress_url)
+    upload_url=assignment_match.progress_url
 
     # ADD JS TO VIEW:
     # 1) every 10 seconds, update the status of any assignments in the UI that have a status of queued or running in sqlalchemy assignments_table
@@ -86,46 +99,49 @@ def upload_grades(lti=lti):
     #       progress object status types: the state of the job one of 'queued', 'running', 'completed', 'failed'
 
     if request.method == 'POST':
+        canvas_assignment_id = None
+        assignment_to_upload = None
 
-        canvas_users = course.get_users()
-        
+        app.logger.debug("form_nb_assign_name:")
+        app.logger.debug(request.form.get('form_nb_assign_name'))
+        app.logger.debug("form_canvas_assign_name:")
+        app.logger.debug(request.form.get('form_canvas_assign_name'))
+        form_nb_assign_name = request.form.get('form_nb_assign_name')
+        form_canvas_assign_name = request.form.get('form_canvas_assign_name')
+
+        canvas_users = course.get_users()        
         canvas_students = {}
         # TODO: modify to only get active users
         for canvas_user in canvas_users:
             if hasattr(canvas_user, "login_id") and canvas_user.login_id is not None:
                 canvas_students[canvas_user.login_id]=canvas_user.id  
                 
-                app.logger.debug("canvas user login id:")
-                app.logger.debug(canvas_user.login_id)   
-                app.logger.debug("canvas user id:")
-                app.logger.debug(canvas_user.id)   
+                # app.logger.debug("canvas user login id:")
+                #app.logger.debug(canvas_user.login_id)   
+                #app.logger.debug("canvas user id:")
+                #app.logger.debug(canvas_user.id)   
 
         #
         # get nbgrader info
         #
 
-        with Gradebook("sqlite:////mnt/nbgrader/TEST_NBGRADER/grader/gradebook.db") as gb:
+        with Gradebook("sqlite:////mnt/nbgrader/"+course_name+"/grader/gradebook.db") as gb:
         #with Gradebook("sqlite:////mnt/nbgrader/BIPN162_S120_A00/grader/gradebook.db") as gb:
 
-            # create a list of dictionaries for each submission
-            #nb_assignments = gb.assignments
-            # TODO: change from hardcoded assignment string to the POST assignment_name parameter
+            # get the nbgrader assignment from the nbgradebook for the 
+            # nbgrader assignment submitted in the form
             # TODO: handle exception here
-            nb_assignment = gb.find_assignment("assign 1")
+            nb_assignment = gb.find_assignment(form_nb_assign_name)
 
-            # can we change this to just get the students for this assignment?
-            nb_students = gb.students
-            
-            app.logger.debug("nb assignment name:")
-            app.logger.debug(nb_assignment.name)
-            
+            # TODO: can we change this to just get the students for this assignment?
+            nb_students = gb.students            
             nb_grade_data = {}
 
             # loop over each nb student
             for nb_student in nb_students:
 
-                app.logger.debug("student id:")
-                app.logger.debug(nb_student.id)
+                #app.logger.debug("student id:")
+                #app.logger.debug(nb_student.id)
 
                 # ceate dict for grade_data, with nested dict {student id: {score}}
                 nb_student_and_score = {}            
@@ -139,12 +155,6 @@ def upload_grades(lti=lti):
                     nb_student_and_score['posted_grade'] = None
                 else:
                     nb_student_and_score["posted_grade"] = nb_submission.score
-                    app.logger.debug("sub name:")
-                    app.logger.debug(nb_submission.name)
-                    app.logger.debug("sub id:")
-                    app.logger.debug(nb_submission.id)
-                    app.logger.debug("sub score:")
-                    app.logger.debug(nb_submission.score)
 
                 # student.id will give us student's username, ie shrakibullah. we will need to compare this to
                 # canvas's login_id instead of user_id
@@ -165,37 +175,51 @@ def upload_grades(lti=lti):
 
             # end nbgrader student loop
 
-            # TODO: skip over canvas assignment loop if we already have canvas_assignment.id in our sqlachemy assignments table (re-submission?)
+            # TODO: if we have an entry in our assignment match table for this nbgrader assignment,
+            # check if its respective canvas assignment matches what came from the form.  if it doesn't,
+            # instrutor has changed the association, post an error message and bail out
 
-            # loop over canvas assignments, upload submissions if name matches
-            # TODO: check for dup assignment names
-            for canvas_assignment in canvas_assignments:
-                if nb_assignment.name == canvas_assignment.name:
-                    app.logger.debug("canvas assignment name match; id:")
-                    app.logger.debug(canvas_assignment.id)
-                    app.logger.debug("canvas assignment name match; name:")
-                    app.logger.debug(canvas_assignment.name)
-                    app.logger.debug("upload submissions for existing canvas assignment")
-                    app.logger.debug("grade data to upload:")
-                    app.logger.debug(nb_grade_data)
+            # if we're creating a new canvas assignment
+            if (form_canvas_assign_name == 'create') :
+                app.logger.debug("upload submissions for non-existing canvas assignment; will be named:")
+                app.logger.debug(form_nb_assign_name)                
 
-                    assignment_to_upload = course.get_assignment(canvas_assignment.id)                
+                # create new assignments as published
+                assignment_to_upload = course.create_assignment({'name':form_nb_assign_name, 'published':'true'})
 
-                    # TODO: check if published, if not, publish?
-                    progress = assignment_to_upload.submissions_bulk_update(grade_data=nb_grade_data)
-                    progress = progress.query()
-                    session['progress_json']=jsonpickle.encode(progress)
-                    session.modified=True
-                # end assignment names match
-            # end canvas assignment loop
+            # if we're uploading to an existing canvas assignment
+            else:
+                # get the id of the canvas assignment for the canvas assignment name that was submitted
+                for canvas_assignment in cv_assign.values():
+                    if (canvas_assignment.name == form_canvas_assign_name):
+                        canvas_assignment_id = canvas_assignment.id
+                        assignment_to_upload = course.get_assignment(canvas_assignment_id)           
+                        app.logger.debug("uploading submissions for canvas assignment id:")     
+                        app.logger.debug(canvas_assignment_id)     
+                        break                   
+
+
+            # TODO: check if assignment is published, if not, publish?
+            # submit assignment
+            progress = assignment_to_upload.submissions_bulk_update(grade_data=nb_grade_data)
+            progress = progress.query()
+            session['progress_json']=jsonpickle.encode(progress)
+            session.modified=True
+            app.logger.debug("progress url:")
+            app.logger.debug(progress.url)
+            app.logger.debug("progress json:")
+            app.logger.debug(session['progress_json'])
+
+
+            # TODO: insert/update row in assignment match table
         # end with gradebook
     # end if POST
 
     # GET (and POST): 
-    # 1) DONE get list of canvas assignments in the "assignments group" for course via canvasapi 
+    # 1) get list of canvas assignments in the "assignments group" for course via canvasapi 
     #    wrapper version of https://canvas.instructure.com/doc/api/assignment_groups.html; use this to populate canvas assignment dropdown lists in UI
-    # 2) DONE query nbgrader db, populate list of nbgrader assignments
-    # 3) DONE display a UI table where each row is an nbgrader assignment
+    # 2) query nbgrader db, populate list of nbgrader assignments
+    # 3) display a UI table where each row is an nbgrader assignment
     # 4) for each nbgrader assignment, check the sqlalchemy assignment_match table to see if there's an entry (which means it has a corresponding canvas assignment)
     #   a) if there is: set the corresponding canvas assignment in the dropdown in the second column of page, make the other canvas assignments un-selectable.
     #      to make dropdown items unselectable, use javascript after page onload() or similar
@@ -205,78 +229,9 @@ def upload_grades(lti=lti):
     #   b) if not complete: get the progress url from that db row, fetch the url using js, display the status (percent complete) below the button
 
 
-    # set the nbgrader and canvas assignments that are shown in the UI
-    nb_assignments = get_nbgrader_assignments()
-    canvas_assignments = get_canvas_assignments()
-
     # TODO: query sqlalchemy assignment_match table to do #4, #5 above
 
-    return render_template('upload_grades.htm.j2', nb_assign=nb_assignments, cv_assign=canvas_assignments, progress=progress)
-
-
-def get_nbgrader_assignments():
-    """
-    Get the nbgrader_assignments from the course gradebook
-    """
-    # get the gradebook and return the assignments
-    with Gradebook("sqlite:////mnt/nbgrader/TEST_NBGRADER/grader/gradebook.db") as gb:
-        return gb.assignments
-
-
-@lti(request='session', role='staff')
-def get_canvas_assignments(lti=lti):
-    """
-    Get all the Canvas Assignments from the course
-    """
-    # get the course id
-    course_id = session['course_id']
-
-    # initialize a new canvasapi Canvas object
-    canvas = get_canvas()
-
-    # get canvas assignments from course
-    course = canvas.get_course(course_id)
-
-    #assignments = course.get_assignments()
-
-    # split the name and id for each course assignment
-    #canvas_assignments = {}
-    #canvas_assignments['name'] = [a.name for a in assignments]
-    #canvas_assignments['id'] = [a.id for a in assignments]
-
-
-
-    canvas_assignment_groups = course.get_assignment_groups()
-    for ag in canvas_assignment_groups:
-        
-    #    app.logger.debug("ag:")
-    #    app.logger.debug(ag)   
-    #    app.logger.debug("ag id:")
-    #    app.logger.debug(ag.id)   
-    #    app.logger.debug("ag:")
-    #    app.logger.debug(ag.name)   
-        if (ag.name == "Assignments"):
-            
-            canvas_assignment_group = course.get_assignment_group(ag.id)
-            app.logger.debug("canvas_assignment_group:")
-            app.logger.debug(canvas_assignment_group)
-
-            app.logger.debug("canvas_assignment_group id:")
-            app.logger.debug(canvas_assignment_group.id)
-
-
-            assignments = course.get_assignments_for_group(canvas_assignment_group)
-            for assign in assignments:        
-                app.logger.debug("assign:")
-                app.logger.debug(assign)   
-                app.logger.debug("assign id:")
-                app.logger.debug(assign.id)   
-                app.logger.debug("assign:")
-                app.logger.debug(assign.name)
-
-            break
-
-    canvas_assignments = {}
-    canvas_assignments['name'] = [a.name for a in assignments]
-    canvas_assignments['id'] = [a.id for a in assignments]
-    return canvas_assignments
+    # return render_template('upload_grades.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, progress=progress, 
+    #     upload_progress_url=upload_progress_url,upload_progress_assignment=upload_progress_assignment)
+    render_template('overview.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, db_matches=db_matches,
+                         progress = progress, upload_url = upload_url, upload_assignment = upload_assignment)
