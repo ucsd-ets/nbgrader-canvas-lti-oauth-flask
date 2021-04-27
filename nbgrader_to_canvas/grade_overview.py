@@ -1,4 +1,4 @@
-from flask import Blueprint, Response, render_template, session, request
+from flask import Blueprint, Response, render_template, session, request, url_for
 from pylti.flask import lti
 
 from . import app
@@ -12,20 +12,24 @@ import time
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
 
 # grade_overview
-@grade_overview_blueprint.route("/grade_overview", methods=['GET'], strict_slashes=False)
+@grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'], strict_slashes=False)
 def grade_overview():
     """
     Returns the overview file for the app.
     grade_overview can be viewed at overview.htm.j2
     """
+
     try:
         nb_assignments = get_nbgrader_assignments()
         course_id = get_canvas_id()
         canvas_assignments = get_canvas_assignments(course_id)
         db_matches = match_assignments(nb_assignments, course_id)
+        
+        # params = url_for('upload_grades.upload_grades', course_id=course_id, nb_assign=nb_assignments, cv_assign=canvas_assignments, db_matches=db_matches, course="TEST_NBGRADER").split("?",1)[1]
+        # app.logger.debug(params)
 
         return Response(
-            render_template('overview.htm.j2', nb_assign=nb_assignments, cv_assign=canvas_assignments, db_matches=db_matches)
+            render_template('overview.htm.j2', course_id=course_id, nb_assign=nb_assignments, cv_assign=canvas_assignments, db_matches=db_matches, progress=None)
         )
 
     except Exception as e:
@@ -54,7 +58,6 @@ def get_canvas_id(lti=lti):
     """
     Get the canvas course id
     """
-    app.logger.debug(session['course_id'])
     return session['course_id']
 
 
@@ -79,8 +82,8 @@ def get_canvas_assignments(course_id):
 
     # have the id:name key,value pair for each course assignment
     canvas_assignments = {a.id:a.name for a in assignments}
-    app.logger.debug("canvas_assign: ")
-    app.logger.debug(canvas_assignments)
+    # app.logger.debug("canvas_assign: ")
+    # app.logger.debug(canvas_assignments)
 
 
     return canvas_assignments
@@ -94,7 +97,6 @@ def match_assignments(nb_assignments, course_id):
     """
     nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_name=assignment.name, course_id=course_id).first()
                                                             for assignment in nb_assignments}
-    app.logger.debug("nb_match: ")
-    app.logger.debug(nb_matches)
+    # app.logger.debug("nb_match: ")
+    # app.logger.debug(nb_matches)
     return nb_matches
-

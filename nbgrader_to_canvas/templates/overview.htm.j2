@@ -6,6 +6,25 @@
   <!-- set base_url variable -->
   <script> var base_url = "{{ base_url }}"; </script>
 
+  <!-- variable for storing url parameters -->
+  {# <script> var upload_url = "{{ url_for('upload_grades.upload_grades', course_id=course_id, nb_assign=nb_assignments, cv_assign=canvas_assignments, db_matches=db_matches, course='TEST_NBGRADER') }}"; </script>
+
+  <script type="text/javascript">
+      var params = new Object();
+      params.course_id = {{course_id}};
+      params.nb_assign = {{nb_assign}};
+      params.cv_assign = {{cv_assign}};
+      params.db_matches = {{db_matches}};
+      params.course = {{course}};
+
+      // Turn the data object into an array of URL-encoded key/value pairs.
+      let urlEncodedData = "", urlEncodedDataPairs = [], name;
+      for( name in params ) {
+        urlEncodedDataPairs.push(encodeURIComponent(name)+'='+encodeURIComponent(params[name]));
+      }
+
+ </script> #}
+
   <!-- link to css for style-->
   <link rel="stylesheet" href="{{ base_url }}/static/css/main.css"/>
 
@@ -91,7 +110,7 @@ Grading Overview
 
     {% if match %}
       <!-- create dropdown menu of unselectable assignmets in Canvas -->
-      <select class="canvas_assign"> 
+      <select name="canvas_select" class="canvas_assign"> 
         <option value="match" selected="selected">{{match.nbgrader_name}}</option>
         {% for assignment in cv_assign.values() %}
           {% if assignment != match.nbgrader_name %}
@@ -100,7 +119,7 @@ Grading Overview
           {% endif %}
         {% endfor %}
     {% else %}
-      <select class="canvas_assign"> 
+      <select name="canvas_select" class="canvas_assign"> 
         <!-- default option if no matching assignment found -->
         <option value="create" selected="selected">Create Canvas Assignment </option>
         {% for name in cv_assign.values() %}
@@ -114,21 +133,21 @@ Grading Overview
     <!-- display the upload button -->
     {# <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button> #}
     <td class="text-center" style="vertical-align: middle">
-    <input type="submit" class="uploadbtn" name="submit_button" name={{name}} value="Upload Grades" onClick="progress()"/>
+    <input type="submit" class="uploadbtn" name="submit_button" name={{name}} value="Upload Grades"/>
     <input type="hidden" name="form_nb_assign_name" value={{name}} />
     
     <!-- TO DO == Need to implement status bar -->    
 
     <span class="br"></span>
     {% if match.status == "completed" %}
-      <span class="blackText">Status:</span>
+      {# <span class="blackText">Status:</span>
       <div class="text-center">
         <div class="progress center-block" style="width:25%" >
           <div class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar" aria-valuenow="90" aria-valuemin="0" aria-valuemax="100" style="width:40%">
           </div>
         </div>
-      </div>
-      {# <span class="greenText">{{match.status}}</span> #}
+      </div> #}
+      <span class="blackText">Status:</span>&nbsp;<span class="greenText">{{match.status}}</span>
     {% else %}
       <span class="blackText">Status:</span>&nbsp;<span class="redText">No match found</span>
     {% endif %}
@@ -143,3 +162,76 @@ Grading Overview
       <td colspan="3"></td>
   </tr>
 {%- endblock -%}
+
+
+{% if progress %}
+    {% block javascript %}
+
+    <script> 
+    setInterval(function(){
+      // TODO: update status of any queued/running assignment submissions
+      // TODO: cancel the settimeout loop if none in queued/running
+      //var url = '{{ progress.url }}';
+      var call_clear_interval = 0;
+      // TODO: change this to a json array of urls where status is queued/running, and loop over them
+      // TODO: call clearInterval() if array length=0 
+      var url = '{{ upload_url }}'; // 'https://ucsd.test.instructure.com/api/v1/progress/1355408';
+      var assignment = '{{ upload_assignment }}';
+      console.log('url: ' + url);
+      console.log('assignment: ' + assignment);
+      $.getJSON(url, function(data) {        
+            console.log('data: ' + data);
+            console.log('data.workflow_state: ' + data.workflow_state);
+            $('#' + assignment + '_status').text(data.workflow_state);
+            //if (data.workflow_state == 'completed' || data.workflow_state == 'failed') {
+            //   console.log ('no running submissions, exit interval loop');
+            //   clearInterval();          
+            //}
+        });
+    }, 5000);
+    </script>
+    {% endblock %}
+{% endif %}
+
+{% block script %}
+<script>
+// Only run what comes next *after* the page has loaded
+addEventListener("DOMContentLoaded", function() {
+  // Grab all of the elements with a class of command
+  // (which all of the buttons we just created have)
+  var uploadButtons = document.querySelectorAll(".uploadbtn");
+  for (var i=0, l=uploadButtons.length; i<l; i++) {
+    var button = uploadButtons[i];
+    // For each button, listen for the "click" event
+    button.addEventListener("click", function(e) {
+      // When a click happens, stop the button
+      // from submitting our form (if we have one)
+      e.preventDefault();
+
+      var clickedButton = e.target;
+      var command = clickedButton.value;
+
+      // Now we need to send the data to our server
+      // without reloading the page - this is the domain of
+      // AJAX (Asynchronous JavaScript And XML)
+      // We will create a new request object
+      // and set up a handler for the response
+      var request = new XMLHttpRequest();
+      request.onload = function() {
+          // We could do more interesting things with the response
+          // or, we could ignore it entirely
+          alert(request.responseText);
+      };
+      // We point the request at the appropriate command
+      request.open("POST", "/upload_grades", true);
+      //Send the proper header information along with the request
+      {# request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded'); #}
+
+      request.send();
+      // and then we send it off
+      //request.send({{params}});
+    });
+  }
+}, true);
+</script>
+{% endblock %}
