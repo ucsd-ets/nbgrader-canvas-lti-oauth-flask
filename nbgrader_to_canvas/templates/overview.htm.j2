@@ -6,25 +6,6 @@
   <!-- set base_url variable -->
   <script> var base_url = "{{ base_url }}"; </script>
 
-  <!-- variable for storing url parameters -->
-  {# <script> var upload_url = "{{ url_for('upload_grades.upload_grades', course_id=course_id, nb_assign=nb_assignments, cv_assign=canvas_assignments, db_matches=db_matches, course='TEST_NBGRADER') }}"; </script>
-
-  <script type="text/javascript">
-      var params = new Object();
-      params.course_id = {{course_id}};
-      params.nb_assign = {{nb_assign}};
-      params.cv_assign = {{cv_assign}};
-      params.db_matches = {{db_matches}};
-      params.course = {{course}};
-
-      // Turn the data object into an array of URL-encoded key/value pairs.
-      let urlEncodedData = "", urlEncodedDataPairs = [], name;
-      for( name in params ) {
-        urlEncodedDataPairs.push(encodeURIComponent(name)+'='+encodeURIComponent(params[name]));
-      }
-
- </script> #}
-
   <!-- link to css for style-->
   <link rel="stylesheet" href="{{ base_url }}/static/css/main.css"/>
 
@@ -55,33 +36,35 @@ Grading Overview
 <!-- Block for messages (if needed) -->
 {%- block messages -%}
 
-{% if progress %}
-  <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
-    <div class="panel panel-default">
-      <div class="panel-heading" role="tab" id="headingOne">
-        <h4 class="panel-title">
-          <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-            Upload Status (click to expand)
-          </a>
-        </h4>
-      </div>
-      <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
-        <div class="panel-body">
-          <ul>
-            <li>{{ progress.tag }}</li>
-            <li>Created: {{ progress.created_at }}</li>
-            <li>Last updated: {{ progress.updated_at }}</li>
-            <li>Details: {{ progress.message }}</li>
-            <li>Percent completed: {{ progress.completion }}</li>
-            <li>Workflow state: {{ progress.workflow_state }}</li>
-            <li>Results: {{ progress.results }}</li>
-            <li>Progress update url: <a href="{{ progress.url }}">{{ progress.url }}</a></li>
-          </ul>
+  <!-- Display the upload progress information -->
+  {% if progress %}
+    <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
+      <div class="panel panel-default">
+        <div class="panel-heading" role="tab" id="headingOne">
+          <h4 class="panel-title">
+            <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+              Upload Status (click to expand)
+            </a>
+          </h4>
+        </div>
+        <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
+          <div class="panel-body">
+            <ul>
+              <li>{{ progress.tag }}</li>
+              <li>Created: {{ progress.created_at }}</li>
+              <li>Last updated: {{ progress.updated_at }}</li>
+              <li>Details: {{ progress.message }}</li>
+              <li>Percent completed: {{ progress.completion }}</li>
+              <li>Workflow state: {{ progress.workflow_state }}</li>
+              <li>Results: {{ progress.results }}</li>
+              <li>Progress update url: <a href="{{ progress.url }}" target="_blank">{{ progress.url }}</a></li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-{% endif %}
+  {% endif %}
+
 {%- endblock -%}
 
 <!--
@@ -102,44 +85,54 @@ Grading Overview
   in Canvas, and a status indicator of the assignment to Canvas
 -->
 {%- block table_body -%}
-  {# {% for assignment in nb_assign %} #}
+
   {% for name,match in db_matches.items() %}
   <tr>
-    <td class="text-center" style="vertical-align: middle">{{name}}</td>
-    <td class="text-center" style="vertical-align: middle">
+    <!-- create a submit form to upload grades for each row -->
+    <form action="{{ url_for('upload_grades.upload_grades') }}" method="POST">
 
-    {% if match %}
-      <!-- create dropdown menu of unselectable assignmets in Canvas -->
-      <select name="canvas_select" class="canvas_assign"> 
-        <option value="match" selected="selected">{{match.nbgrader_name}}</option>
-        {% for assignment in cv_assign.values() %}
-          {% if assignment != match.nbgrader_name %}
+    <!-- display the nbgrader assignment names -->
+    <td class="text-center" style="vertical-align: middle">{{name}}</td>
+
+    <!-- create dropdown of canvas assignments -->
+    <td class="text-center" style="vertical-align: middle">
+    <select name="form_canvas_assign_name" class="canvas_assign"> 
+
+      <!-- if a match is found, form match and create dropdown menu of unselectable assignments from Canvas -->
+      {% if match %}
+          <option value="{{match.nbgrader_name}}" selected="selected">{{match.nbgrader_name}}</option>
+          {% for assignment in cv_assign.values() %}
+            <!-- list the unmatched canvas assignments -->
+            {% if assignment != match.nbgrader_name %}
+              <option value="{{assignment}}" disabled=True>{{assignment}}</option>
+            {% endif %}
+          {% endfor %}
+      <!-- if no match found, default to creating an assignment and list all Canvas assignments -->
+      {% else %}
+          <option value="create" selected="selected">Create Canvas Assignment</option>
+          {% for name in cv_assign.values() %}
             <!-- list the canvas assignments -->
-            <option value="assignment" disabled=True>{{assignment}}</option>
-          {% endif %}
-        {% endfor %}
-    {% else %}
-      <select name="canvas_select" class="canvas_assign"> 
-        <!-- default option if no matching assignment found -->
-        <option value="create" selected="selected">Create Canvas Assignment </option>
-        {% for name in cv_assign.values() %}
-          <!-- list the canvas assignments -->
-          <option value="assignment">{{name}}</option>
-        {% endfor %}
+            <option value="{{name}}">{{name}}</option>
+          {% endfor %}
       {% endif %}
       </select>
     </td>
 
-    <!-- display the upload button -->
-    {# <td class="text-center" style="vertical-align: middle"><button class="uploadbtn">Upload Grades</button> #}
+    <!-- display the upload button, which store the name for each nbgrader assignment  -->
     <td class="text-center" style="vertical-align: middle">
-    <input type="submit" class="uploadbtn" name="submit_button" name={{name}} value="Upload Grades"/>
-    <input type="hidden" name="form_nb_assign_name" value={{name}} />
+    <input type="submit" class="uploadbtn" name={{name}} value="Upload Grades"/>
+    <input type="hidden" name="form_nb_assign_name" value="{{name}}" />
     
-    <!-- TO DO == Need to implement status bar -->    
+    </form>
 
     <span class="br"></span>
     {% if match.status == "completed" %}
+      <span class="blackText">Status:</span>&nbsp;<span class="greenText">{{match.status}}</span>
+    {% else %}
+      <span class="blackText">Status:</span>&nbsp;<span class="redText">No match found</span>
+    {% endif %}
+    
+      <!-- TO DO == Need to implement status bar -->    
       {# <span class="blackText">Status:</span>
       <div class="text-center">
         <div class="progress center-block" style="width:25%" >
@@ -147,91 +140,15 @@ Grading Overview
           </div>
         </div>
       </div> #}
-      <span class="blackText">Status:</span>&nbsp;<span class="greenText">{{match.status}}</span>
-    {% else %}
-      <span class="blackText">Status:</span>&nbsp;<span class="redText">No match found</span>
-    {% endif %}
     </td>
   </tr>
   {% endfor %}
 {%- endblock -%}
 
+
 <!-- Final line under all rows -->
 {%- block table_footer -%}
   <tr>
-      <td colspan="3"></td>
+    <td colspan="3"></td>
   </tr>
 {%- endblock -%}
-
-
-{% if progress %}
-    {% block javascript %}
-
-    <script> 
-    setInterval(function(){
-      // TODO: update status of any queued/running assignment submissions
-      // TODO: cancel the settimeout loop if none in queued/running
-      //var url = '{{ progress.url }}';
-      var call_clear_interval = 0;
-      // TODO: change this to a json array of urls where status is queued/running, and loop over them
-      // TODO: call clearInterval() if array length=0 
-      var url = '{{ upload_url }}'; // 'https://ucsd.test.instructure.com/api/v1/progress/1355408';
-      var assignment = '{{ upload_assignment }}';
-      console.log('url: ' + url);
-      console.log('assignment: ' + assignment);
-      $.getJSON(url, function(data) {        
-            console.log('data: ' + data);
-            console.log('data.workflow_state: ' + data.workflow_state);
-            $('#' + assignment + '_status').text(data.workflow_state);
-            //if (data.workflow_state == 'completed' || data.workflow_state == 'failed') {
-            //   console.log ('no running submissions, exit interval loop');
-            //   clearInterval();          
-            //}
-        });
-    }, 5000);
-    </script>
-    {% endblock %}
-{% endif %}
-
-{% block script %}
-<script>
-// Only run what comes next *after* the page has loaded
-addEventListener("DOMContentLoaded", function() {
-  // Grab all of the elements with a class of command
-  // (which all of the buttons we just created have)
-  var uploadButtons = document.querySelectorAll(".uploadbtn");
-  for (var i=0, l=uploadButtons.length; i<l; i++) {
-    var button = uploadButtons[i];
-    // For each button, listen for the "click" event
-    button.addEventListener("click", function(e) {
-      // When a click happens, stop the button
-      // from submitting our form (if we have one)
-      e.preventDefault();
-
-      var clickedButton = e.target;
-      var command = clickedButton.value;
-
-      // Now we need to send the data to our server
-      // without reloading the page - this is the domain of
-      // AJAX (Asynchronous JavaScript And XML)
-      // We will create a new request object
-      // and set up a handler for the response
-      var request = new XMLHttpRequest();
-      request.onload = function() {
-          // We could do more interesting things with the response
-          // or, we could ignore it entirely
-          alert(request.responseText);
-      };
-      // We point the request at the appropriate command
-      request.open("POST", "/upload_grades", true);
-      //Send the proper header information along with the request
-      {# request.setRequestHeader('Content-type', 'application/x-www-form-urlencoded'); #}
-
-      request.send();
-      // and then we send it off
-      //request.send({{params}});
-    });
-  }
-}, true);
-</script>
-{% endblock %}

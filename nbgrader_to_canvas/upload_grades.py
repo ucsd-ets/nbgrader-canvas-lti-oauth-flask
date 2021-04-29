@@ -19,13 +19,15 @@ upload_grades_blueprint = Blueprint('upload_grades', __name__)
 @upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
 # @upload_grades_blueprint.route('/upload_grades/<course_id>/<nb_assign>/<cv_assign>/<db_matches>/<course>', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
-def upload_grades(upload="assign1", lti=lti):
+def upload_grades(lti=lti):
 
     nb_assign = get_nbgrader_assignments()
     course_id = get_canvas_id()
-    cv_assign = get_canvas_assignments(course_id)
+    cv_assign, group = get_canvas_assignments(course_id)
     db_matches = match_assignments(nb_assign, course_id)
     course_name="TEST_NBGRADER"
+    
+    app.logger.debug("group "+str(group))
 
     import sys
     import os
@@ -75,7 +77,7 @@ def upload_grades(upload="assign1", lti=lti):
     # get assignment match info from psql table
     # TODO: fetch for all
     #assignment_match = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
-    upload_assignment = upload  #  cv_assign.values()[0]
+    upload_assignment = "assign1"  #  cv_assign.values()[0]
     assignment_match = AssignmentMatch.query.filter_by(nbgrader_name=upload_assignment, course_id=course_id).first()
     app.logger.debug("assignment match:")
     app.logger.debug(assignment_match)
@@ -108,7 +110,7 @@ def upload_grades(upload="assign1", lti=lti):
         app.logger.debug(request.form.get('form_canvas_assign_name'))
         form_nb_assign_name = request.form.get('form_nb_assign_name')
         form_canvas_assign_name = request.form.get('form_canvas_assign_name')
-
+        
         canvas_users = course.get_users()        
         canvas_students = {}
         # TODO: modify to only get active users
@@ -122,7 +124,7 @@ def upload_grades(upload="assign1", lti=lti):
                 #app.logger.debug(canvas_user.id)   
 
         #
-        # get nbgrader info
+        #  get nbgrader info
         #
 
         with Gradebook("sqlite:////mnt/nbgrader/"+course_name+"/grader/gradebook.db") as gb:
@@ -179,24 +181,34 @@ def upload_grades(upload="assign1", lti=lti):
             # check if its respective canvas assignment matches what came from the form.  if it doesn't,
             # instrutor has changed the association, post an error message and bail out
 
-            # if we're creating a new canvas assignment
+            #  if we're creating a new canvas assignment
             if (form_canvas_assign_name == 'create') :
                 app.logger.debug("upload submissions for non-existing canvas assignment; will be named:")
                 app.logger.debug(form_nb_assign_name)                
 
                 # create new assignments as published
-                assignment_to_upload = course.create_assignment({'name':form_nb_assign_name, 'published':'true'})
+                assignment_to_upload = course.create_assignment({'name':form_nb_assign_name, 'published':'true', 'assignment_group_id':group})
 
-            # if we're uploading to an existing canvas assignment
+            #  if we're uploading to an existing canvas assignment
             else:
                 # get the id of the canvas assignment for the canvas assignment name that was submitted
-                for canvas_assignment in cv_assign.values():
-                    if (canvas_assignment.name == form_canvas_assign_name):
-                        canvas_assignment_id = canvas_assignment.id
+                for id,name in cv_assign.items():
+             
+                    if (name == form_canvas_assign_name):
+
+                        app.logger.debug("id")
+                        app.logger.debug(id)
+                        app.logger.debug("name")
+                        app.logger.debug(name)
+                        app.logger.debug("form_canvas_assign_name")
+                        app.logger.debug(form_canvas_assign_name)   
+
+                        canvas_assignment_id = id
                         assignment_to_upload = course.get_assignment(canvas_assignment_id)           
                         app.logger.debug("uploading submissions for canvas assignment id:")     
                         app.logger.debug(canvas_assignment_id)     
-                        break                   
+                        break
+                                      
 
 
             # TODO: check if assignment is published, if not, publish?
@@ -233,5 +245,5 @@ def upload_grades(upload="assign1", lti=lti):
 
     # return render_template('upload_grades.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, progress=progress, 
     #     upload_progress_url=upload_progress_url,upload_progress_assignment=upload_progress_assignment)
-    render_template('overview.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, db_matches=db_matches,
+    return render_template('overview.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, db_matches=db_matches,
                          progress = progress, upload_url = upload_url, upload_assignment = upload_assignment)
