@@ -22,14 +22,12 @@ def grade_overview():
     try:
         nb_assignments = get_nbgrader_assignments()
         course_id = get_canvas_id()
-        canvas_assignments = get_canvas_assignments(course_id)
+        canvas_assignments, group = get_canvas_assignments(course_id)
         db_matches = match_assignments(nb_assignments, course_id)
         
-        # params = url_for('upload_grades.upload_grades', course_id=course_id, nb_assign=nb_assignments, cv_assign=canvas_assignments, db_matches=db_matches, course="TEST_NBGRADER").split("?",1)[1]
-        # app.logger.debug(params)
-
         return Response(
-            render_template('overview.htm.j2', course_id=course_id, nb_assign=nb_assignments, cv_assign=canvas_assignments, db_matches=db_matches, progress=None)
+            render_template('overview.htm.j2', course_id=course_id, nb_assign=nb_assignments,
+                            cv_assign=canvas_assignments, db_matches=db_matches, progress=None)
         )
 
     except Exception as e:
@@ -85,8 +83,8 @@ def get_canvas_assignments(course_id):
     # app.logger.debug("canvas_assign: ")
     # app.logger.debug(canvas_assignments)
 
-
-    return canvas_assignments
+    return canvas_assignments, group.id
+    
 
 def match_assignments(nb_assignments, course_id):
     """
