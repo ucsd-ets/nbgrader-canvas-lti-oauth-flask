@@ -92,7 +92,7 @@ Grading Overview
     <form action="{{ url_for('upload_grades.upload_grades') }}" method="POST">
 
     <!-- display the nbgrader assignment names -->
-    <td class="text-center" style="vertical-align: middle">{{name}}</td>
+    <td class="text-center" style="vertical-align: middle">{{ name }}</td>
 
     <!-- create dropdown of canvas assignments -->
     <td class="text-center" style="vertical-align: middle">
@@ -100,36 +100,42 @@ Grading Overview
 
       <!-- if a match is found, form match and create dropdown menu of unselectable assignments from Canvas -->
       {% if match %}
-          <option value="{{match.nbgrader_name}}" selected="selected">{{match.nbgrader_name}}</option>
+          <option value="{{ match.nbgrader_name }}" selected="selected">{{ match.nbgrader_name }}</option>
           {% for assignment in cv_assign.values() %}
-            <!-- list the unmatched canvas assignments -->
-            {% if assignment != match.nbgrader_name %}
-              <option value="{{assignment}}" disabled=True>{{assignment}}</option>
-            {% endif %}
+              <!-- list the unmatched canvas assignments -->
+              {% if assignment != match.nbgrader_name %}
+                  <option value="{{ assignment }}" disabled=True>{{ assignment }}</option>
+              {% endif %}
           {% endfor %}
+
       <!-- if no match found, default to creating an assignment and list all Canvas assignments -->
       {% else %}
           <option value="create" selected="selected">Create Canvas Assignment</option>
-          {% for name in cv_assign.values() %}
-            <!-- list the canvas assignments -->
-            <option value="{{name}}">{{name}}</option>
+          {% for assignment in cv_assign.values() %}
+              <!-- make a match if similar nbgrader assignment exists in Canvas -->
+              {% if assignment == name %}
+                  <option value="{{ assignment }}" selected="selected">{{ assignment }}</option>
+              <!-- list the canvas assignments -->
+              {% else %}
+                  <option value="{{ assignment }}">{{ assignment }}</option>
+              {% endif %}
           {% endfor %}
       {% endif %}
-      </select>
+    </select>
     </td>
 
     <!-- display the upload button, which store the name for each nbgrader assignment  -->
     <td class="text-center" style="vertical-align: middle">
-    <input type="submit" class="uploadbtn" name={{name}} value="Upload Grades"/>
-    <input type="hidden" name="form_nb_assign_name" value="{{name}}" />
+    <input type="submit" class="uploadbtn" name="{{ name }}" value="Upload Grades"/>
+    <input type="hidden" name="form_nb_assign_name" value="{{ name }}" />
     
     </form>
 
     <span class="br"></span>
-    {% if match.status == "completed" %}
-      <span class="blackText">Status:</span>&nbsp;<span class="greenText">{{match.status}}</span>
+    {% if match %}
+        <span class="blackText">Status:</span>&nbsp;<span class="greenText">{{match.status}}</span>
     {% else %}
-      <span class="blackText">Status:</span>&nbsp;<span class="redText">No match found</span>
+        <span class="blackText">Status:</span>&nbsp;<span class="redText">No match found</span>
     {% endif %}
     
       <!-- TO DO == Need to implement status bar -->    
