@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, session, request, redirect, url_fo
 from pylti.flask import lti
 
 from .utils import get_canvas, error
-from . import app
+from . import app, db
 from . import settings
 from nbgrader.api import Gradebook, MissingEntry
 from .models import AssignmentMatch
@@ -17,7 +17,6 @@ upload_grades_blueprint = Blueprint('upload_grades', __name__)
 
 # Web Views / Routes
 @upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
-# @upload_grades_blueprint.route('/upload_grades/<course_id>/<nb_assign>/<cv_assign>/<db_matches>/<course>', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
 def upload_grades(lti=lti):
 
@@ -77,13 +76,6 @@ def upload_grades(lti=lti):
     # get assignment match info from psql table
     # TODO: fetch for all
     #assignment_match = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
-    upload_assignment = "assign1"  #  cv_assign.values()[0]
-    assignment_match = AssignmentMatch.query.filter_by(nbgrader_name=upload_assignment, course_id=course_id).first()
-    app.logger.debug("assignment match:")
-    app.logger.debug(assignment_match)
-    app.logger.debug("assignment match url:")
-    app.logger.debug(assignment_match.progress_url)
-    upload_url=assignment_match.progress_url
 
     # ADD JS TO VIEW:
     # 1) every 10 seconds, update the status of any assignments in the UI that have a status of queued or running in sqlalchemy assignments_table
@@ -108,8 +100,16 @@ def upload_grades(lti=lti):
         app.logger.debug(request.form.get('form_nb_assign_name'))
         app.logger.debug("form_canvas_assign_name:")
         app.logger.debug(request.form.get('form_canvas_assign_name'))
+
         form_nb_assign_name = request.form.get('form_nb_assign_name')
         form_canvas_assign_name = request.form.get('form_canvas_assign_name')
+
+        assignment_match = AssignmentMatch.query.filter_by(nbgrader_name=form_nb_assign_name, course_id=course_id).first()
+        app.logger.debug("assignment match:")
+        app.logger.debug(assignment_match)
+        # app.logger.debug("assignment match url:")
+        # app.logger.debug(assignment_match.progress_url)
+        # upload_url=assignment_match.progress_url
         
         canvas_users = course.get_users()        
         canvas_students = {}
@@ -188,7 +188,8 @@ def upload_grades(lti=lti):
 
                 # create new assignments as published
                 assignment_to_upload = course.create_assignment({'name':form_nb_assign_name, 'published':'true', 'assignment_group_id':group})
-
+                canvas_assignment_id = assignment_to_upload.id
+                
             #  if we're uploading to an existing canvas assignment
             else:
                 # get the id of the canvas assignment for the canvas assignment name that was submitted
@@ -220,7 +221,19 @@ def upload_grades(lti=lti):
             app.logger.debug("progress url:")
             app.logger.debug(progress.url)
             app.logger.debug("progress json:")
-            app.logger.debug(session['progress_json'])
+            # app.logger.debug(session['progress_json'])
+
+            # check if row exists in assignment match table
+            if assignment_match:
+                match = AssignmentMatch.query.filter_by(nbgrader_name=form_nb_assign_name, course_id=course_id).first()
+                match.progress_url = progress.url
+                match.status = progress.workflow_state
+            else:
+                newMatch = AssignmentMatch(course_id=course_id, nbgrader_name=form_nb_assign_name,
+                            canvas_id=canvas_assignment_id, progress_url=progress.url, status=progress.workflow_state)
+                db.session.add(newMatch)
+            
+            db.session.commit()
 
 
             # TODO: insert/update row in assignment match table
@@ -246,4 +259,4 @@ def upload_grades(lti=lti):
     # return render_template('upload_grades.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, progress=progress, 
     #     upload_progress_url=upload_progress_url,upload_progress_assignment=upload_progress_assignment)
     return render_template('overview.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, db_matches=db_matches,
-                         progress = progress, upload_url = upload_url, upload_assignment = upload_assignment)
+                         progress = progress, upload_url = progress.url, upload_assignment = form_nb_assign_name)
