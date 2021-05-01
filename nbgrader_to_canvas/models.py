@@ -1,5 +1,3 @@
-
-
 from nbgrader_to_canvas import db
 
 
@@ -19,31 +17,31 @@ class Users(db.Model):
         return '<User %r>' % self.user_id
     
 class Sessions(db.Model):
-        #__tablename__ = table
+    #__tablename__ = table
 
-        id = db.Column(db.Integer, primary_key=True)
-        session_id = db.Column(db.String(255), unique=True)
-        data = db.Column(db.LargeBinary)
-        expiry = db.Column(db.DateTime)
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(255), unique=True)
+    data = db.Column(db.LargeBinary)
+    expiry = db.Column(db.DateTime)
 
-        def __init__(self, session_id, data, expiry):
-            self.session_id = session_id
-            self.data = data
-            self.expiry = expiry
+    def __init__(self, session_id, data, expiry):
+        self.session_id = session_id
+        self.data = data
+        self.expiry = expiry
 
 class AssignmentMatch(db.Model):
-        #__tablename__ = table
+    #__tablename__ = table
 
-        id = db.Column(db.Integer, primary_key=True)
-        nbgrader_assign_name = db.Column(db.String(255), unique=True)
-        canvas_assign_id = db.Column(db.Integer, unique=True)
-        upload_progress_url = db.Column(db.String(1000))
-        upload_status = db.Column(db.String(10))
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer)
+    nbgrader_name = db.Column(db.String(255))
+    canvas_id = db.Column(db.Integer, unique=True)
+    progress_url = db.Column(db.String(255))
+    status = db.Column(db.String(10))
 
-        def __init__(self, nbgrader_assign_name, canvas_assign_id, upload_progress_url, upload_status):
-            self.nbgrader_assign_name = nbgrader_assign_name
-            self.canvas_assign_id = canvas_assign_id
-            self.upload_progress_url = upload_progress_url
-            self.upload_status = upload_status
-
-# we only insert a row into this table when the instructor has matched up assignments.
+    def __init__(self, course_id, nbgrader_name, canvas_id, progress_url, status):
+        self.course_id = course_id
+        self.nbgrader_name = nbgrader_name
+        self.canvas_id = canvas_id
+        self.progress_url = progress_url
+        self.status = status

@@ -1,3 +1,46 @@
-body {
-    color: blue;
+/* align text in tables with columns */
+select {
+    text-align-last:center;
+}
+
+/* round the upload button */
+.uploadbtn {
+    border-radius: 7px;
+    border: 0.75px solid;
+}
+
+/* round the dropdown menu */
+.canvas_assign {
+    border-radius: 7px;
+    border: 0.75px solid;
+}
+
+/* styling for text color */
+.blackText {
+    color:black;
+    font-weight:bold;
+}
+
+/* for red color text */
+.redText {
+    color:red;
+}
+
+/* for green color text */
+.greenText {
+    color:green;
+}
+
+/* format a line break */
+.br {
+    display: block;
+    margin-bottom: 0.5em;
+}
+
+/* change size of progress bar */
+  .progress {
+    border-radius: 3px;
+    height: 10px;
+    margin-top: 2px;
+    margin-bottom: 1px;
 }

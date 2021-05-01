@@ -1,0 +1,160 @@
+{% extends 'base.htm.j2' %}
+
+<!-- Scripts for overview page -->
+{%- block head -%}
+
+  <!-- set base_url variable -->
+  <script> var base_url = "{{ base_url }}"; </script>
+
+  <!-- link to css for style-->
+  <link rel="stylesheet" href="{{ base_url }}/static/css/main.css"/>
+
+  <style>
+  </style>
+
+{%- endblock -%}
+
+<!-- Title of page -->
+{%- block title -%}
+Grading Overview
+{%- endblock -%}
+
+<!-- Display sidebar with highlighting for current section -->
+{%- block sidebar -%}
+<li role="presentation" class="active"><a href="{{ base_url }}/grade_overview">Grading Overview</a></li>
+<!-- <li role="presentation"><a href="{{ base_url }}/grade_assignments">Grade Assignments</a></li> --> <!-- Not necessary anymore -->
+<li role="presentation"><a href="{{ base_url }}/grade_students">Grade Students</a></li>
+{%- endblock -%}
+
+<!-- Create bar across page -->
+{%- block breadcrumbs -%}
+<ol class="breadcrumb">
+  <li class="active">Overview</li>
+</ol>
+{%- endblock -%}
+
+<!-- Block for messages (if needed) -->
+{%- block messages -%}
+
+  <!-- Display the upload progress information -->
+  {% if progress %}
+    <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
+      <div class="panel panel-default">
+        <div class="panel-heading" role="tab" id="headingOne">
+          <h4 class="panel-title">
+            <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+              Upload Status (click to expand)
+            </a>
+          </h4>
+        </div>
+        <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
+          <div class="panel-body">
+            <ul>
+              <li>{{ progress.tag }}</li>
+              <li>Created: {{ progress.created_at }}</li>
+              <li>Last updated: {{ progress.updated_at }}</li>
+              <li>Details: {{ progress.message }}</li>
+              <li>Percent completed: {{ progress.completion }}</li>
+              <li>Workflow state: {{ progress.workflow_state }}</li>
+              <li>Results: {{ progress.results }}</li>
+              <li>Progress update url: <a href="{{ progress.url }}" target="_blank">{{ progress.url }}</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+{%- endblock -%}
+
+<!--
+  Create the header with nbgrader assignments, assignment relation with
+  Canvas, and upload details to Canvas
+-->
+{%- block table_header -%}
+<tr>
+  <th class="text-center">Nbgrader Assignment</th>
+  <th class="text-center">Canvas Assignment</th>
+  <th class="text-center">Upload Grades to Canvas</th>
+</tr>
+{%- endblock -%}
+
+<!--
+  Create rows in the table.
+  Each row contains the nbgrader assignment name, options for assignment within
+  in Canvas, and a status indicator of the assignment to Canvas
+-->
+{%- block table_body -%}
+
+  {% for name,match in db_matches.items() %}
+  <tr>
+    <!-- create a submit form to upload grades for each row -->
+    <form action="{{ url_for('upload_grades.upload_grades') }}" method="POST">
+
+    <!-- display the nbgrader assignment names -->
+    <td class="text-center" style="vertical-align: middle">{{ name }}</td>
+
+    <!-- create dropdown of canvas assignments -->
+    <td class="text-center" style="vertical-align: middle">
+    <select name="form_canvas_assign_name" class="canvas_assign"> 
+
+      <!-- if a match is found, form match and create dropdown menu of unselectable assignments from Canvas -->
+      {% if match %}
+          <option value="{{ match.nbgrader_name }}" selected="selected">{{ match.nbgrader_name }}</option>
+          {% for assignment in cv_assign.values() %}
+              <!-- list the unmatched canvas assignments -->
+              {% if assignment != match.nbgrader_name %}
+                  <option value="{{ assignment }}" disabled=True>{{ assignment }}</option>
+              {% endif %}
+          {% endfor %}
+
+      <!-- if no match found, default to creating an assignment and list all Canvas assignments -->
+      {% else %}
+          <option value="create" selected="selected">Create Canvas Assignment</option>
+          {% for assignment in cv_assign.values() %}
+              <!-- make a match if similar nbgrader assignment exists in Canvas -->
+              {% if assignment == name %}
+                  <option value="{{ assignment }}" selected="selected">{{ assignment }}</option>
+              <!-- list the canvas assignments -->
+              {% else %}
+                  <option value="{{ assignment }}">{{ assignment }}</option>
+              {% endif %}
+          {% endfor %}
+      {% endif %}
+    </select>
+    </td>
+
+    <!-- display the upload button, which store the name for each nbgrader assignment  -->
+    <td class="text-center" style="vertical-align: middle">
+    <input type="submit" class="uploadbtn" name="{{ name }}" value="Upload Grades"/>
+    <input type="hidden" name="form_nb_assign_name" value="{{ name }}" />
+    
+    </form>
+
+    <span class="br"></span>
+    {% if match %}
+        <span class="blackText">Status:</span>&nbsp;<span class="greenText">{{match.status}}</span>
+    {% else %}
+        <span class="blackText">Status:</span>&nbsp;<span class="redText">No match found</span>
+    {% endif %}
+    
+      <!-- TO DO == Need to implement status bar -->    
+      {# <span class="blackText">Status:</span>
+      <div class="text-center">
+        <div class="progress center-block" style="width:25%" >
+          <div class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar" aria-valuenow="90" aria-valuemin="0" aria-valuemax="100" style="width:40%">
+          </div>
+        </div>
+      </div> #}
+    </td>
+  </tr>
+  {% endfor %}
+{%- endblock -%}
+
+
+<!-- Final line under all rows -->
+{%- block table_footer -%}
+  <tr>
+    <td colspan="3"></td>
+  </tr>
+{%- endblock -%}
