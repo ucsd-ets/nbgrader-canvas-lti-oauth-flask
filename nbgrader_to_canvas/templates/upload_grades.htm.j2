@@ -106,9 +106,9 @@ Grading Overview
 -->
 
 {%- block table_body -%}
-  <form action = "" method = "POST">
   {% for nb_assignment in nb_assign %}
   <tr>
+    <form action = "" method = "POST">
     <td class="text-center" style="vertical-align: middle">
     {{nb_assignment.name}}
     </td>
@@ -140,6 +140,7 @@ Grading Overview
     <span class="br"></span>
     <span class="blackText">Status: </span>&nbsp;<span id="{{nb_assignment.name}}_status" class="blackText"></span>
     </td>
+  </form>
   </tr>
   {% endfor %}
 {%- endblock -%}
