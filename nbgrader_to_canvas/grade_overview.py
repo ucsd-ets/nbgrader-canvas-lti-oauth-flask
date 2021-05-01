@@ -93,7 +93,7 @@ def match_assignments(nb_assignments, course_id):
     If match is found, query the entry from the table and set as the value.
     Else, set the value to None
     """
-    nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_name=assignment.name, course_id=course_id).first()
+    nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment.name, course_id=course_id).first()
                                                             for assignment in nb_assignments}
     # app.logger.debug("nb_match: ")
     # app.logger.debug(nb_matches)
