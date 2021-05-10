@@ -23,7 +23,6 @@ def upload_grades(lti=lti):
     nb_assign = get_nbgrader_assignments()
     course_id = get_canvas_id()
     cv_assign, group = get_canvas_assignments(course_id)
-    db_matches = match_assignments(nb_assign, course_id)
     course_name="TEST_NBGRADER"
     
     app.logger.debug("group "+str(group))
@@ -189,7 +188,7 @@ def upload_grades(lti=lti):
                 # create new assignments as published
                 assignment_to_upload = course.create_assignment({'name':form_nb_assign_name, 'published':'true', 'assignment_group_id':group})
                 canvas_assignment_id = assignment_to_upload.id
-                
+
             #  if we're uploading to an existing canvas assignment
             else:
                 # get the id of the canvas assignment for the canvas assignment name that was submitted
@@ -255,6 +254,8 @@ def upload_grades(lti=lti):
 
 
     # TODO: query sqlalchemy assignment_match table to do #4, #5 above
+
+    db_matches = match_assignments(nb_assign, course_id)
 
     # return render_template('upload_grades.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, progress=progress, 
     #     upload_progress_url=upload_progress_url,upload_progress_assignment=upload_progress_assignment)
