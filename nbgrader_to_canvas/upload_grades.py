@@ -17,7 +17,7 @@ upload_grades_blueprint = Blueprint('upload_grades', __name__)
 # Web Views / Routes
 @upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
-def upload_grades(course_id, nb_assign, cv_assign, group, course_name="TEST_NBGRADER", lti=lti):
+def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
       
     import sys
     import os
