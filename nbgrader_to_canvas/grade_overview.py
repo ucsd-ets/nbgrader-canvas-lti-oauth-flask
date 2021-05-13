@@ -2,17 +2,20 @@ from flask import Blueprint, Response, render_template, session, request, url_fo
 from pylti.flask import lti
 
 from . import app
-from .utils import get_canvas, return_error
+from .utils import get_canvas, return_error, error
 
 from nbgrader.api import Gradebook
 from .models import AssignmentMatch
+
+from .upload_grades import upload_grades
 
 import time
 
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
 
+
 # grade_overview
-@grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'], strict_slashes=False)
+@grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'])
 def grade_overview():
     """
     Returns the overview file for the app.
@@ -20,14 +23,19 @@ def grade_overview():
     """
 
     try:
+        progress = None
         nb_assignments = get_nbgrader_assignments()
         course_id = get_canvas_id()
         canvas_assignments, group = get_canvas_assignments(course_id)
+
+        if request.method == 'POST':
+            progress = upload_grades(course_id, nb_assignments, canvas_assignments, group)
+
         db_matches = match_assignments(nb_assignments, course_id)
         
         return Response(
-            render_template('overview.htm.j2', course_id=course_id, nb_assign=nb_assignments,
-                            cv_assign=canvas_assignments, db_matches=db_matches, progress=None)
+            render_template('overview.htm.j2', course_id=course_id,  nb_assign=nb_assignments,
+                            cv_assign=canvas_assignments, db_matches=db_matches, progress = progress)
         )
 
     except Exception as e:
@@ -80,8 +88,6 @@ def get_canvas_assignments(course_id):
 
     # have the id:name key,value pair for each course assignment
     canvas_assignments = {a.id:a.name for a in assignments}
-    # app.logger.debug("canvas_assign: ")
-    # app.logger.debug(canvas_assignments)
 
     return canvas_assignments, group.id
     
@@ -93,8 +99,6 @@ def match_assignments(nb_assignments, course_id):
     If match is found, query the entry from the table and set as the value.
     Else, set the value to None
     """
-    nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_name=assignment.name, course_id=course_id).first()
+    nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment.name, course_id=course_id).first()
                                                             for assignment in nb_assignments}
-    # app.logger.debug("nb_match: ")
-    # app.logger.debug(nb_matches)
     return nb_matches
