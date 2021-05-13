@@ -22,8 +22,7 @@ Grading Overview
 <!-- Display sidebar with highlighting for current section -->
 {%- block sidebar -%}
 <li role="presentation" class="active"><a href="{{ base_url }}/grade_overview">Grading Overview</a></li>
-<!-- <li role="presentation"><a href="{{ base_url }}/grade_assignments">Grade Assignments</a></li> --> <!-- Not necessary anymore -->
-<li role="presentation"><a href="{{ base_url }}/grade_students">Grade Students</a></li>
+<li role="presentation"><a href="{{ base_url }}/grade_students">Grade Students {TODO}</a></li>
 {%- endblock -%}
 
 <!-- Create bar across page -->
@@ -37,7 +36,8 @@ Grading Overview
 {%- block messages -%}
 
   <!-- Display the upload progress information -->
-  {% if progress %}
+  {% if False %}
+  {# {% if  progress %} #}
     <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
       <div class="panel panel-default">
         <div class="panel-heading" role="tab" id="headingOne">
@@ -89,35 +89,35 @@ Grading Overview
   {% for name,match in db_matches.items() %}
   <tr>
     <!-- create a submit form to upload grades for each row -->
-    <form action="{{ url_for('upload_grades.upload_grades') }}" method="POST">
+    <form action="" method="POST"> {# {{ url_for('upload_grades.upload_grades') }} #}
 
     <!-- display the nbgrader assignment names -->
     <td class="text-center" style="vertical-align: middle">{{ name }}</td>
 
     <!-- create dropdown of canvas assignments -->
     <td class="text-center" style="vertical-align: middle">
-    <select name="form_canvas_assign_name" class="canvas_assign"> 
+    <select name="form_canvas_assign_id" class="canvas_assign"> 
 
       <!-- if a match is found, form match and create dropdown menu of unselectable assignments from Canvas -->
       {% if match %}
-          <option value="{{ match.nbgrader_name }}" selected="selected">{{ match.nbgrader_name }}</option>
-          {% for assignment in cv_assign.values() %}
+          <option value="{{ match.canvas_assign_id }}" selected="selected">{{ match.nbgrader_assign_name }}</option>
+          {% for id, assignment in cv_assign.items() %}
               <!-- list the unmatched canvas assignments -->
-              {% if assignment != match.nbgrader_name %}
-                  <option value="{{ assignment }}" disabled=True>{{ assignment }}</option>
+              {% if assignment != match.nbgrader_assign_name %}
+                  <option value="{{ id }}" disabled=True>{{ assignment }}</option>
               {% endif %}
           {% endfor %}
 
       <!-- if no match found, default to creating an assignment and list all Canvas assignments -->
       {% else %}
           <option value="create" selected="selected">Create Canvas Assignment</option>
-          {% for assignment in cv_assign.values() %}
+          {% for id, assignment in cv_assign.items() %}
               <!-- make a match if similar nbgrader assignment exists in Canvas -->
               {% if assignment == name %}
-                  <option value="{{ assignment }}" selected="selected">{{ assignment }}</option>
+                  <option value="{{ id }}" selected="selected">{{ assignment }}</option>
               <!-- list the canvas assignments -->
               {% else %}
-                  <option value="{{ assignment }}">{{ assignment }}</option>
+                  <option value="{{ id }}">{{ assignment }}</option>
               {% endif %}
           {% endfor %}
       {% endif %}
@@ -133,7 +133,7 @@ Grading Overview
 
     <span class="br"></span>
     {% if match %}
-        <span class="blackText">Status:</span>&nbsp;<span class="greenText">{{match.status}}</span>
+        <span class="blackText">Status:</span>&nbsp;<span class="greenText">{{match.upload_status}}</span>
     {% else %}
         <span class="blackText">Status:</span>&nbsp;<span class="redText">No match found</span>
     {% endif %}
