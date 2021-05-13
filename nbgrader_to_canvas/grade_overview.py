@@ -29,11 +29,10 @@ def load_ids():
             break
 
 
-# grade_overview
 @grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'])
 def grade_overview():
     """
-    Returns the overview file for the app.
+    Renders the main template for the flask application.
     grade_overview can be viewed at overview.htm.j2
     """
 
