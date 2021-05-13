@@ -70,7 +70,6 @@ from .upload_status import upload_status_blueprint
 from .upload_grades import upload_grades_blueprint
 
 from .grade_overview import grade_overview_blueprint
-from .grade_assignments import grade_assignments_blueprint
 from .grade_students import grade_students_blueprint
 
 app.register_blueprint(healthz_blueprint)
@@ -84,7 +83,6 @@ app.register_blueprint(upload_status_blueprint)
 app.register_blueprint(upload_grades_blueprint)
 
 app.register_blueprint(grade_overview_blueprint)
-app.register_blueprint(grade_assignments_blueprint)
 app.register_blueprint(grade_students_blueprint)
 
 # setup Prometheus route at /metrics
