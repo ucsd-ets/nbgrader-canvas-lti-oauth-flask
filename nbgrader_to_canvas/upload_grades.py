@@ -233,8 +233,6 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
 
     # TODO: query sqlalchemy assignment_match table to do #4, #5 above
 
-    # db_matches = match_assignments(nb_assign, course_id)
-
     return progress
     # return render_template('upload_grades.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, progress=progress, 
     #     upload_progress_url=upload_progress_url,upload_progress_assignment=upload_progress_assignment)
