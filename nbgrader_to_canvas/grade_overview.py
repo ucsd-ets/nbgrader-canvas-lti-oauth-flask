@@ -13,21 +13,6 @@ import time
 
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
 
-@app.before_first_request
-def load_ids():
-
-    # initialize a new canvasapi Canvas object
-    canvas = get_canvas()
-    
-    # find the "Assignments" group
-    course = canvas.get_course(get_canvas_id())
-    assignment_groups = course.get_assignment_groups()
-
-    for ag in assignment_groups:
-        if (ag.name == "Assignments"):
-            session['group'] = course.get_assignment_group(ag.id)
-            break
-
 
 @grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'])
 def grade_overview():
@@ -40,7 +25,9 @@ def grade_overview():
         progress = None
         nb_assignments = get_nbgrader_assignments()
         course_id = get_canvas_id()
-        group = session['group']
+        group = get_assignment_group_id()
+        app.logger.debug("group value:")
+        app.logger.debug(group)
         canvas_assignments = get_canvas_assignments(course_id, group)
 
         if request.method == 'POST':
@@ -80,6 +67,20 @@ def get_canvas_id(lti=lti):
     Get the canvas course id
     """
     return session['course_id']
+
+
+def get_assignment_group_id():
+
+    # initialize a new canvasapi Canvas object
+    canvas = get_canvas()
+    
+    # find the "Assignments" group
+    course = canvas.get_course(get_canvas_id())
+    assignment_groups = course.get_assignment_groups()
+
+    for ag in assignment_groups:
+        if (ag.name == "Assignments"):
+            return course.get_assignment_group(ag.id).id
 
 
 def get_canvas_assignments(course_id, group):
