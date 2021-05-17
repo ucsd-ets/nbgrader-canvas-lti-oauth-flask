@@ -203,11 +203,11 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
             if assignment_match:
                 app.logger.debug("Updating assignment in database")
                 assignment_match.progress_url = progress.url
-                assignment_match.status = progress.workflow_state
+                assignment_match.last_updated_time = progress.updated_at
             else:
                 app.logger.debug("Creating new assignment in database")
                 newMatch = AssignmentMatch(course_id=course_id, nbgrader_assign_name=form_nb_assign_name,
-                            canvas_assign_id=canvas_assignment_id, upload_progress_url=progress.url, upload_status=progress.workflow_state)
+                            canvas_assign_id=canvas_assignment_id, upload_progress_url=progress.url, last_updated_time=progress.updated_at)
                 db.session.add(newMatch)
             
             db.session.commit()
