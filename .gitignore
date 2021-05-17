@@ -9,7 +9,7 @@ venv/
 test.db
 src/
 *.log
-environment
+.env
 .pytest_cache/
 *.png
 *.db
