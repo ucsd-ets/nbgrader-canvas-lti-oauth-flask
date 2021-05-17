@@ -1,0 +1,33 @@
+export CANVAS_SSO_USERNAME=testacct111
+export CANVAS_SSO_PASSWORD=LearnXedX1
+
+# prod
+export CANVAS_BASE_URL=https://canvas.ucsd.edu
+
+# test
+export CANVAS_BASE_URL=https://ucsd.test.instructure.com
+
+# key id from developer keys page (under "Details")
+# TEMP ucsd.test.instructure value
+#export OAUTH2_ID=131710000000000233
+# prod value (that overwrite test)
+export OAUTH2_ID=131710000000000200
+
+# key value from "show key" button for key id above
+# export OAUTH2_KEY=BRC5UCUiJfXWeoNbsJzAWqgrW4pCevfkXqKRffsOsZIcG3j7P97BD6xPgseQwPbn
+# prod value that overwrite test
+export OAUTH2_KEY=SEiaMoeQlBtPGrPPn0jKu5cVpD9Inl6LSHKo5btvPJL9xmuzMa4MundBppig4lm4
+export OAUTH2_URI=http://localhost:5000/oauthlogin
+
+# to do recreate in prod for dev
+export SELENIUM_OAUTH2_ID=131710000000000234
+export SELENIUM_OAUTH2_KEY=QEsDRmaEUUs7BKqLxcdoPpFtDhQiHJB00GMprOvMWILhaMLb1nxrsd1ikGcC45oM
+export SELENIUM_OAUTH2_URI=http://web:5000/oauthlogin
+
+# these go in "+ App" Paste XML consumer key, secret fields
+export LTI_CONSUMER_KEY=0c906c6afd18eddfa566c9f9960e4c9717887297a75b0f88
+export LTI_SHARED_SECRET=0825dcc00ab01a9f768791072d1f5c018e377586a241e318
+
+export SECRET_KEY=SfHNb6S3uwUmg68VrZF67dZErsR/WGNg
+export DATABASE_URI=postgresql://dev:mypassword@postgres/test
+export SESSION_KEY=DfXNy51awgtE5D5RV8oK0Q

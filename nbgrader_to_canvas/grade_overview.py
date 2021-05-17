@@ -2,32 +2,42 @@ from flask import Blueprint, Response, render_template, session, request, url_fo
 from pylti.flask import lti
 
 from . import app
-from .utils import get_canvas, return_error
+from .utils import get_canvas, return_error, error
 
 from nbgrader.api import Gradebook
 from .models import AssignmentMatch
+
+from .upload_grades import upload_grades
 
 import time
 
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
 
-# grade_overview
-@grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'], strict_slashes=False)
+
+@grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'])
 def grade_overview():
     """
-    Returns the overview file for the app.
+    Renders the main template for the flask application.
     grade_overview can be viewed at overview.htm.j2
     """
 
     try:
+        progress = None
         nb_assignments = get_nbgrader_assignments()
         course_id = get_canvas_id()
-        canvas_assignments, group = get_canvas_assignments(course_id)
+        group = get_assignment_group_id()
+        app.logger.debug("group value:")
+        app.logger.debug(group)
+        canvas_assignments = get_canvas_assignments(course_id, group)
+
+        if request.method == 'POST':
+            progress = upload_grades(course_id, group)
+
         db_matches = match_assignments(nb_assignments, course_id)
         
         return Response(
-            render_template('overview.htm.j2', course_id=course_id, nb_assign=nb_assignments,
-                            cv_assign=canvas_assignments, db_matches=db_matches, progress=None)
+            render_template('overview.htm.j2', course_id=course_id,  nb_assign=nb_assignments,
+                            cv_assign=canvas_assignments, db_matches=db_matches, progress = progress)
         )
 
     except Exception as e:
@@ -59,7 +69,21 @@ def get_canvas_id(lti=lti):
     return session['course_id']
 
 
-def get_canvas_assignments(course_id):
+def get_assignment_group_id():
+
+    # initialize a new canvasapi Canvas object
+    canvas = get_canvas()
+    
+    # find the "Assignments" group
+    course = canvas.get_course(get_canvas_id())
+    assignment_groups = course.get_assignment_groups()
+
+    for ag in assignment_groups:
+        if (ag.name == "Assignments"):
+            return course.get_assignment_group(ag.id).id
+
+
+def get_canvas_assignments(course_id, group):
     """
     Get the assignments for the Canvas course
     """
@@ -68,22 +92,12 @@ def get_canvas_assignments(course_id):
 
     # get canvas assignment groups from course
     course = canvas.get_course(course_id)
-    assignment_groups = course.get_assignment_groups()
-
-    # find the "Assignments" group
-    for ag in assignment_groups:
-        if (ag.name == "Assignments"):
-            group = course.get_assignment_group(ag.id)
-            break
-
     assignments = course.get_assignments_for_group(group)
 
-    # have the id:name key,value pair for each course assignment
+    # have the id:name key:value pair for each course assignment
     canvas_assignments = {a.id:a.name for a in assignments}
-    # app.logger.debug("canvas_assign: ")
-    # app.logger.debug(canvas_assignments)
 
-    return canvas_assignments, group.id
+    return canvas_assignments
     
 
 def match_assignments(nb_assignments, course_id):
@@ -95,6 +109,4 @@ def match_assignments(nb_assignments, course_id):
     """
     nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment.name, course_id=course_id).first()
                                                             for assignment in nb_assignments}
-    # app.logger.debug("nb_match: ")
-    # app.logger.debug(nb_matches)
     return nb_matches
