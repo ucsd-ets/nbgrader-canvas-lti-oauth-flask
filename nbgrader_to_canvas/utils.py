@@ -52,8 +52,15 @@ def check_valid_user(f):
             session.permanent = True
             # 1 hour long session
             app.permanent_session_lifetime = timedelta(minutes=60)
+
+            app.logger.debug("request.form in utils:")
+            app.logger.debug(request.form)
+
             session['course_id'] = request.form.get('custom_canvas_course_id')
             session['canvas_user_id'] = request.form.get('custom_canvas_user_id')
+
+            app.logger.debug("session in utils:")
+            app.logger.debug(session)
             roles = request.form['roles']
 
             if "Administrator" in roles:

@@ -17,9 +17,10 @@ launch_blueprint = Blueprint('launch', __name__)
 @lti(error=error, request='initial', role='staff', app=app)
 @check_valid_user
 def launch(lti=lti):
-    
+    user = None
     # Try to grab the user
-    user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
+    if session is not None and hasattr ('session','canvas_user_id'):
+        user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
 
     # Found a user
     if not user:

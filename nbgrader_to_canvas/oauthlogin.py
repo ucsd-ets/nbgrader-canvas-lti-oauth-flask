@@ -77,7 +77,10 @@ def oauth_login(lti=lti):
             session['expires_in'] = expires_in
 
             # check if user is in the db
-            user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
+            user = None
+            if session is not None and hasattr ('session','canvas_user_id'):
+                user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
+
             if user is not None:
                 # update the current user's expiration time in db
                 user.refresh_key = refresh_token
@@ -114,6 +117,9 @@ def oauth_login(lti=lti):
                 db.session.commit()
 
                 # check that the user got added
+
+                app.logger.debug("session in oauthlogin:")
+                app.logger.debug(session)
                 check_user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
 
                 if check_user is None:
