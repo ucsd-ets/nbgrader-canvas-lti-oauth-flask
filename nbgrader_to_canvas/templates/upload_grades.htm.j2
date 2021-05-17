@@ -120,7 +120,7 @@ Grading Overview
       <!-- default option if no matching assignment found -->
       <option value="create">Create Canvas Assignment </option>
       {% for cv in cv_assign['name'] %}
-        <!-- choose matching assignment if it exists -->
+        <!-- choose matching assignment if it exists (need to match on id here, not name?) -->
         {% if nb_assignment.name == cv %}
           <option value="{{cv}}" selected="selected">{{cv}}</option>
         {% else %}
