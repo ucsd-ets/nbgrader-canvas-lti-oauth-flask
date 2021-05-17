@@ -224,7 +224,8 @@ def upload_grades(lti=lti):
             # app.logger.debug(session['progress_json'])
 
             # check if row exists in assignment match table
-            if assignment_match:
+            # HERE TODO add debugging; why are we attempting to re-insert
+            if assignment_match:                
                 match = AssignmentMatch.query.filter_by(nbgrader_assign_name=form_nb_assign_name, course_id=course_id).first()
                 match.progress_url = progress.url
                 match.status = progress.workflow_state
