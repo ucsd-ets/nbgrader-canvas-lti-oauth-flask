@@ -15,8 +15,4 @@ src/
 *.db
 flask_session/
 # postgresql
-<<<<<<< HEAD
 pgdata/
-=======
-pgdata/
->>>>>>> origin/grading_overview
