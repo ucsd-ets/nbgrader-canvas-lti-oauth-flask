@@ -10,6 +10,7 @@ test.db
 src/
 *.log
 .env
+environment
 .pytest_cache/
 *.png
 *.db
