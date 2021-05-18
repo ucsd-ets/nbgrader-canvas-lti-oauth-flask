@@ -117,9 +117,6 @@ def oauth_login(lti=lti):
                 db.session.commit()
 
                 # check that the user got added
-
-                app.logger.debug("session in oauthlogin:")
-                app.logger.debug(session)
                 check_user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
 
                 if check_user is None:

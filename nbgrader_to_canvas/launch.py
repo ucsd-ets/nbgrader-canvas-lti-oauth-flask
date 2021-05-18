@@ -19,8 +19,7 @@ launch_blueprint = Blueprint('launch', __name__)
 def launch(lti=lti):
     user = None
     # Try to grab the user
-    if session is not None and hasattr ('session','canvas_user_id'):
-        user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
+    user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
 
     # Found a user
     if not user:
