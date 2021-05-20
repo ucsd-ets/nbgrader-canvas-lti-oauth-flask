@@ -56,11 +56,10 @@ def check_valid_user(f):
             app.logger.debug("request.form in utils:")
             app.logger.debug(request.form)
 
+            # if these are missing you didn't set LTI to public 
             session['course_id'] = request.form.get('custom_canvas_course_id')
             session['canvas_user_id'] = request.form.get('custom_canvas_user_id')
 
-            app.logger.debug("session in utils:")
-            app.logger.debug(session)
             roles = request.form['roles']
 
             if "Administrator" in roles:

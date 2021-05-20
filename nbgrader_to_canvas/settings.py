@@ -34,6 +34,10 @@ else:
     oauth2_key = os.getenv('OAUTH2_KEY')
     oauth2_uri = os.getenv('OAUTH2_URI')
 
+
+print ("oauth2_id:")
+print (oauth2_id)
+
 oauth2_scopes = " ".join([
     # Uncomment the following line and add your desired scopes to enable token scoping:
     # "url:GET|/api/v1/users/:user_id/profile",
