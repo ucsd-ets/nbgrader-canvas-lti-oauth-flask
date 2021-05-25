@@ -30,11 +30,8 @@ def launch(lti=lti):
         return redirect_to_auth()
 
     if check_token_freshness(user):
-        return redirect(url_for(
-            'index.index',
-            course_id=session['course_id'],
-            user_id=session['canvas_user_id']
-            ))
+        app.logger.debug("redirecting to grade_overview")
+        return redirect(url_for('grade_overview.grade_overview'))
     else:
         # Refresh didn't work. Reauthenticate.
         app.logger.info('Reauthenticating:\nSession: {}'.format(session))

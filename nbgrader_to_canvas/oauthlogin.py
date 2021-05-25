@@ -127,7 +127,7 @@ def oauth_login(lti=lti):
                 else:
                     course_id = session['course_id']
                     user_id = session['canvas_user_id']
-                    return redirect(url_for('index.index', course_id=course_id, user_id=user_id))
+                    return redirect(url_for('grade_overview.grade_overview'))
 
             # got beyond if/else
             # error in adding or updating db
