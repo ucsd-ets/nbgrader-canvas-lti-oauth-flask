@@ -8,6 +8,9 @@ from . import settings
 from nbgrader.api import Gradebook, MissingEntry
 from .models import AssignmentMatch
 
+import datetime
+import requests
+
 import json
 import logging
 import sys
@@ -238,3 +241,32 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
     #     upload_progress_url=upload_progress_url,upload_progress_assignment=upload_progress_assignment)
     # return render_template('overview.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, db_matches=db_matches,
                         #  progress = progress)
+
+
+@app.route('/get_progress', methods='POST')
+def get_progress(assignment, db_matches):
+    
+    # return this json as a string in an endpoint
+    progress = requests.get(db_matches[assignment].upload_progress_url).json()
+
+    return progress
+
+# def format_time(datetime):
+
+#     months = {'01':'Jan', '02':'Feb', '03':'Mar', '04':'Apr', '05':'May', '06':'Jun',
+# 		      '07':'Jul', '08':'Aug', '09':'Sep', '10':'Oct', '11':'Nov', '12':'Dec'}
+
+#     date, time = datetime.split("T")
+#     date = date.split("-")
+#     time = list(map(int, time.strip("Z").split("-")))
+    
+#     time[0] = time[0] - 
+#     if time[0] // 12 == 1:
+#         time[2] = "pm"
+#     else:
+#         time[2] = "am"
+    
+#     if time[0] == ""
+
+
+#     return "{0} {1} at {2}:{3}{4}".format(months[date[1]], date[2], time[0], time[1], time[2])

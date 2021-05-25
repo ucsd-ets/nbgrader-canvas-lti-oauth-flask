@@ -36,8 +36,8 @@ Grading Overview
 {%- block messages -%}
 
   <!-- Display the upload progress information -->
-  {% if False %}
-  {# {% if  progress %} #}
+  {# {% if False %} #}
+  {% if  progress %}
     <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
       <div class="panel panel-default">
         <div class="panel-heading" role="tab" id="headingOne">
@@ -133,7 +133,7 @@ Grading Overview
 
     <span class="br"></span>
     {% if match %}
-        <span class="blackText">Status:</span>&nbsp;<span class="greenText">{{match.upload_status}}</span>
+        <span class="blackText">Last Updated:</span>&nbsp;<span class="greenText">{{match.last_updated_time}}</span>
     {% else %}
         <span class="blackText">Status:</span>&nbsp;<span class="redText">No match found</span>
     {% endif %}
@@ -157,4 +157,37 @@ Grading Overview
   <tr>
     <td colspan="3"></td>
   </tr>
+{%- endblock -%}
+
+<!-- Javascript to show upload progress -->
+{%- block javascript -%}
+
+    <script> 
+    
+    setInterval(function(){
+      // TODO: update status of any queued/running assignment submissions
+      // TODO: cancel the settimeout loop if none in queued/running
+      //var url = '{{ progress.url }}';
+      var call_clear_interval = 0;
+      // TODO: change this to a json array of urls where status is queued/running, and loop over them
+      // TODO: call clearInterval() if array length=0 
+      var assignment = '{{ upload_assignment }}';
+
+      var url = {{ url_for("get_progress", assignment=assignment, db_matches=db_matches) }}; // 'https://ucsd.test.instructure.com/api/v1/progress/1355408';
+
+      console.log('url: ' + url);
+      // console.log('assignment: ' + assignment);
+
+      $.getJSON('/get_progress', function(data) {        
+            console.log('data: ' + data);
+            console.log('data.workflow_state: ' + data.workflow_state);
+            $('#' + assignment + '_status').text(data.workflow_state);
+            //if (data.workflow_state == 'completed' || data.workflow_state == 'failed') {
+            //   console.log ('no running submissions, exit interval loop');
+            //   clearInterval();          
+            //}
+        });
+    }, 5000);
+    </script>
+
 {%- endblock -%}

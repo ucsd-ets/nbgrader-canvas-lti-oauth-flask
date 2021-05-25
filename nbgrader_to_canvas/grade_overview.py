@@ -1,5 +1,8 @@
-from flask import Blueprint, Response, render_template, session, request, url_for
+from flask import Blueprint, Response, render_template, session, request, url_for, redirect
 from pylti.flask import lti
+
+import os
+
 
 from . import app
 from .utils import get_canvas, return_error, error
@@ -7,6 +10,7 @@ from .utils import get_canvas, return_error, error
 from nbgrader.api import Gradebook
 from .models import AssignmentMatch
 
+from canvasapi.exceptions import InvalidAccessToken
 from .upload_grades import upload_grades
 
 import time
@@ -15,36 +19,53 @@ grade_overview_blueprint = Blueprint('grade_overview', __name__)
 
 
 @grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'])
-def grade_overview():
+def grade_overview(progress = None):
     """
     Renders the main template for the flask application.
     grade_overview can be viewed at overview.htm.j2
     """
 
     try:
-        progress = None
         nb_assignments = get_nbgrader_assignments()
         course_id = get_canvas_id()
         group = get_assignment_group_id()
-        app.logger.debug("group value:")
-        app.logger.debug(group)
         canvas_assignments = get_canvas_assignments(course_id, group)
+
 
         if request.method == 'POST':
             progress = upload_grades(course_id, group)
+            return redirect(url_for('grade_overview.grade_overview'))
 
         db_matches = match_assignments(nb_assignments, course_id)
-        
+
         return Response(
-            render_template('overview.htm.j2', course_id=course_id,  nb_assign=nb_assignments,
-                            cv_assign=canvas_assignments, db_matches=db_matches, progress = progress)
+            render_template('overview.htm.j2',  nb_assign=nb_assignments, cv_assign=canvas_assignments,
+                             db_matches=db_matches, progress = progress)
         )
 
-    except Exception as e:
-        app.logger.error(e)
-        import os
+    except KeyError as keyE:
+        app.logger.error("KeyError: " + str(keyE))
         app.logger.error(os.getcwd())
-        app.logger.error("Overview file error.")
+
+        msg = (
+            'Issues with querying the database for the canvas_user_id. '
+            'Cannot call functions on the canvas object'
+        )
+        return return_error(msg)
+
+    except InvalidAccessToken as eTok:
+        app.logger.error("InvalidAccessToken: " + str(eTok))
+        app.logger.error(os.getcwd())
+
+        msg = (
+            'Issues with access token.'
+        )
+        return return_error(msg)
+
+    except Exception as e:
+        app.logger.error("Exception: " + str(type(e)))
+        app.logger.error(os.getcwd())
+        app.logger.error(str(type(e)) + " error occurred.")
         msg = (
             'Issues with the grade_overview file. Please refresh and try again. '
             'If this error persists, please contact support.'
