@@ -162,64 +162,15 @@ Grading Overview
 <!-- Javascript to show upload -->
 {%- block javascript -%}
 
-    <script> 
-    
-    setInterval(function(){
-      // TODO: update status of any queued/running assignment submissions
-      // TODO: cancel the settimeout loop if none in queued/running
-      //var url = '{{ progress.url }}';
-      var call_clear_interval = 0;
-      // TODO: change this to a json array of urls where status is queued/running, and loop over them
-      // TODO: call clearInterval() if array length=0 
-      var assignment = 'assign1';
-
-      var url = {{ url_for("get_progress", assignment=assignment, db_matches=db_matches) }}; // 'https://ucsd.test.instructure.com/api/v1/progress/1355408';
-
-      console.log('url: ' + url);
-      // console.log('assignment: ' + assignment);
-
-      $.getJSON(url, function(data) {        
-            console.log('data: ' + data);
-            console.log('data.workflow_state: ' + data.workflow_state);
-            $('#' + assignment + '_status').text(data.workflow_state);
-            if (data.workflow_state == 'completed' || data.workflow_state == 'failed') {
-               console.log ('no running submissions, exit interval loop');
-               clearInterval();          
-            }
-        });
-    }, 5000);
-    </script>
-
     {# loop through the rows, add nb name to array, and use ajax to call url and display #}
     <script>
-    function test()
-    {
-        var arr = new Array();
-        var counter = 0;
-
-        $('.form_nb_assign_name').each(function(i, el) {
-            arr.push(el);       
-        });
-
-        doRequest(counter);
-
-        function doRequest(counter)
-        {
-            var assignment = $(arr[counter]).children('.editable').children('.query').text();
-            var page    = $(arr[counter]).children('.editable').children('.page').text();
-
-            $.ajax({
-                url: 'http://www.google.com?'+query+'&page='+page,
-                success: function(data){
-                    alert("made request with query="+ query);   
-                    counter++;
-                    if(counter<arr.length)
-                    doRequest(counter);
-                }
-            });
-        }
-
-    }
+    $(function () {
+      $("form").submit(function(e) {
+          alert("submitting this form");
+          e.preventDefault();
+      });
+    });
+    
     </script>
 
 {%- endblock -%}
