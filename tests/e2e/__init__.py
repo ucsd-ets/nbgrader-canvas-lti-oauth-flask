@@ -58,8 +58,8 @@ def driver():
     driver.find_element(By.ID, "ssousername").send_keys(canvas_sso_username)
     driver.find_element(By.ID, "ssopassword").click()
     driver.find_element(By.ID, "ssopassword").send_keys(canvas_sso_pw)
-
     driver.find_element(By.NAME, "_eventId_proceed").click()
+
     WebDriverWait(driver, SECONDS_WAIT).until(
         expected_conditions.visibility_of_element_located(
             (By.ID, "footer"))

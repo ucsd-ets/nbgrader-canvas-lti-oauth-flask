@@ -23,12 +23,13 @@ def test_oauth_workflow(driver):
         scroll_to_bottom(driver)
 
         # navigate to the lti
+        # TODO: change link text once prod overwrites test (remove "-test")
         WebDriverWait(driver, SECONDS_WAIT).until(
             expected_conditions.element_to_be_clickable(
-                (By.LINK_TEXT, 'nbgrader-selenium'))
+                (By.LINK_TEXT, 'nbgrader-localhost-3-test'))
         ).click()
 
-        # select the load nbgrader-selenium button
+        # select the load nbgrader-* button
         external_lti_btn_selector = '//*[@id="tool_form"]/div/div[1]/div/button'
         driver.find_element_by_xpath(external_lti_btn_selector)
         WebDriverWait(driver, SECONDS_WAIT).until(
