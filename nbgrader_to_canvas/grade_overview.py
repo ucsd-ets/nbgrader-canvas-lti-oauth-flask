@@ -49,7 +49,8 @@ def grade_overview(progress = None):
 
         msg = (
             'Issues with querying the database for the canvas_user_id. '
-            'Cannot call functions on the canvas object'
+            'Cannot call functions on the canvas object. '
+            'Delete user from users table or wait for token refresh'
         )
         return return_error(msg)
 

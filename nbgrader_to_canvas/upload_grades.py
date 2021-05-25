@@ -243,9 +243,10 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
                         #  progress = progress)
 
 
-@app.route('/get_progress', methods='POST')
+@app.route('/get_progress', methods=['POST'])
 def get_progress(assignment, db_matches):
     
+    app.logger.debug("Called get_progress")
     # return this json as a string in an endpoint
     progress = requests.get(db_matches[assignment].upload_progress_url).json()
 
