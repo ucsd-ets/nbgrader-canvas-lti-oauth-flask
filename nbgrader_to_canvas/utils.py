@@ -251,5 +251,4 @@ def get_canvas():
             return canvas
     except Exception as ex:
         app.logger.error("An error occurred connecting to Canvas: {}".format(ex))
-
-    return None
+        raise

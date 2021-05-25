@@ -1,4 +1,7 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # API url and LTI key/secret
 BASE_URL = os.getenv('CANVAS_BASE_URL') + '/'
