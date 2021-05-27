@@ -163,14 +163,37 @@ Grading Overview
 {%- block javascript -%}
 
     {# loop through the rows, add nb name to array, and use ajax to call url and display #}
-    <script>
-    $(function () {
-      $("form").submit(function(e) {
-          alert("submitting this form");
-          e.preventDefault();
-      });
-    });
-    
+    <script> 
+    window.onload = function() {
+      console.log("hello");
+      setInterval(function ()
+      {
+          var arr = new Array();
+          var counter = 0;
+
+          $('.form_nb_assign_name').each(function(i, el) {
+              arr.push(el);       
+          });
+
+          progress(counter);
+
+          function progress(counter)
+          {
+              var current_assignment = $(arr[counter]);
+              var url = "{{ url_for('get_progress', assignment=current_assignment, db_matches=db_matches) }}";
+              $.getJSON(url, function(data) {
+                console.log('data: ' + data);
+                console.log('data.workflow_state: ' + data.workflow_state);
+                $('#' + assignment + '_status').text(data.workflow_state);
+                if (data.workflow_state == 'completed' || data.workflow_state == 'failed') {
+                  console.log ('no running submissions, exit interval loop');
+                  clearInterval(); 
+              }
+              });
+          }
+      }, 5000);
+    };
+
     </script>
 
 {%- endblock -%}

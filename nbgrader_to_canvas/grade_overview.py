@@ -64,7 +64,7 @@ def grade_overview(progress = None):
         return return_error(msg)
 
     except Exception as e:
-        app.logger.error("Exception: " + str(type(e)))
+        app.logger.error("Exception: " + str(type(e)) + str(e))
         app.logger.error(os.getcwd())
         app.logger.error(str(type(e)) + " error occurred.")
         msg = (

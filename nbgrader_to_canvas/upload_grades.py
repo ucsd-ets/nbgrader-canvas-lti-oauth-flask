@@ -243,7 +243,7 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
                         #  progress = progress)
 
 
-@app.route('/get_progress', methods=['POST'])
+@app.route('/get_progress', methods=['GET'])
 def get_progress(assignment, db_matches):
     
     app.logger.debug("Called get_progress")
