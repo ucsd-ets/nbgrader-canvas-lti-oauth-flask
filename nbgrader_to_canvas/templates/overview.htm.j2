@@ -1,12 +1,12 @@
 {% extends 'base.htm.j2' %}
 
-<!-- Scripts for overview page -->
+{# Scripts for overview page #}
 {%- block head -%}
 
-  <!-- set base_url variable -->
+  {# set base_url variable #}
   <script> var base_url = "{{ base_url }}"; </script>
 
-  <!-- link to css for style-->
+  {# link to css for style#}
   <link rel="stylesheet" href="{{ base_url }}/static/css/main.css"/>
 
   <style>
@@ -14,28 +14,28 @@
 
 {%- endblock -%}
 
-<!-- Title of page -->
+{# Title of page #}
 {%- block title -%}
 Grading Overview
 {%- endblock -%}
 
-<!-- Display sidebar with highlighting for current section -->
+{# Display sidebar with highlighting for current section #}
 {%- block sidebar -%}
 <li role="presentation" class="active"><a href="{{ base_url }}/grade_overview">Grading Overview</a></li>
 <li role="presentation"><a href="{{ base_url }}/grade_students">Grade Students {TODO}</a></li>
 {%- endblock -%}
 
-<!-- Create bar across page -->
+{# Create bar across page #}
 {%- block breadcrumbs -%}
 <ol class="breadcrumb">
   <li class="active">Overview</li>
 </ol>
 {%- endblock -%}
 
-<!-- Block for messages (if needed) -->
+{# Block for messages (if needed) #}
 {%- block messages -%}
 
-  <!-- Display the upload progress information -->
+  {# Display the upload progress information #}
   {# {% if False %} #}
   {% if  progress %}
     <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
@@ -67,10 +67,10 @@ Grading Overview
 
 {%- endblock -%}
 
-<!--
+{#
   Create the header with nbgrader assignments, assignment relation with
   Canvas, and upload details to Canvas
--->
+#}
 {%- block table_header -%}
 <tr>
   <th class="text-center">Nbgrader Assignment</th>
@@ -79,43 +79,43 @@ Grading Overview
 </tr>
 {%- endblock -%}
 
-<!--
+{#
   Create rows in the table.
   Each row contains the nbgrader assignment name, options for assignment within
   in Canvas, and a status indicator of the assignment to Canvas
--->
+#}
 {%- block table_body -%}
 
   {% for name,match in db_matches.items() %}
   <tr>
-    <!-- create a submit form to upload grades for each row -->
+    {# create a submit form to upload grades for each row #}
     <form action="" method="POST"> {# {{ url_for('upload_grades.upload_grades') }} #}
 
-    <!-- display the nbgrader assignment names -->
+    {# display the nbgrader assignment names #}
     <td class="text-center" style="vertical-align: middle">{{ name }}</td>
 
-    <!-- create dropdown of canvas assignments -->
+    {# create dropdown of canvas assignments #}
     <td class="text-center" style="vertical-align: middle">
     <select name="form_canvas_assign_id" class="canvas_assign"> 
 
-      <!-- if a match is found, form match and create dropdown menu of unselectable assignments from Canvas -->
+      {# if a match is found, form match and create dropdown menu of unselectable assignments from Canvas #}
       {% if match %}
           <option value="{{ match.canvas_assign_id }}" selected="selected">{{ match.nbgrader_assign_name }}</option>
           {% for id, assignment in cv_assign.items() %}
-              <!-- list the unmatched canvas assignments -->
+              {# list the unmatched canvas assignments #}
               {% if assignment != match.nbgrader_assign_name %}
                   <option value="{{ id }}" disabled=True>{{ assignment }}</option>
               {% endif %}
           {% endfor %}
 
-      <!-- if no match found, default to creating an assignment and list all Canvas assignments -->
+      {# if no match found, default to creating an assignment and list all Canvas assignments #}
       {% else %}
           <option value="create" selected="selected">Create Canvas Assignment</option>
           {% for id, assignment in cv_assign.items() %}
-              <!-- make a match if similar nbgrader assignment exists in Canvas -->
+              {# make a match if similar nbgrader assignment exists in Canvas #}
               {% if assignment == name %}
                   <option value="{{ id }}" selected="selected">{{ assignment }}</option>
-              <!-- list the canvas assignments -->
+              {# list the canvas assignments #}
               {% else %}
                   <option value="{{ id }}">{{ assignment }}</option>
               {% endif %}
@@ -124,7 +124,7 @@ Grading Overview
     </select>
     </td>
 
-    <!-- display the upload button, which store the name for each nbgrader assignment  -->
+    {# display the upload button, which store the name for each nbgrader assignment  #}
     <td class="text-center" style="vertical-align: middle">
     <input type="submit" class="uploadbtn" name="{{ name }}" value="Upload Grades"/>
     <input type="hidden" name="form_nb_assign_name" value="{{ name }}" />
@@ -138,7 +138,7 @@ Grading Overview
         <span class="blackText">Status:</span>&nbsp;<span class="redText">No match found</span>
     {% endif %}
     
-      <!-- TO DO == Need to implement status bar -->    
+      {# TO DO == Need to implement status bar #}    
       {# <span class="blackText">Status:</span>
       <div class="text-center">
         <div class="progress center-block" style="width:25%" >
@@ -152,44 +152,60 @@ Grading Overview
 {%- endblock -%}
 
 
-<!-- Final line under all rows -->
+{# Final line under all rows #}
 {%- block table_footer -%}
   <tr>
     <td colspan="3"></td>
   </tr>
 {%- endblock -%}
 
-<!-- Javascript to show upload -->
+{# Javascript to show upload #}
 {%- block javascript -%}
 
     {# loop through the rows, add nb name to array, and use ajax to call url and display #}
     <script> 
     window.onload = function() {
-      console.log("hello");
       setInterval(function ()
       {
           var arr = new Array();
           var counter = 0;
 
-          $('.form_nb_assign_name').each(function(i, el) {
-              arr.push(el);       
+          $("input[type=hidden]").each(function(i, el) {
+              arr.push($(this).val());       
           });
 
-          progress(counter);
+          console.log("arr");
+          console.log(arr);
+
+          while (counter < arr.length) {
+            console.log("enter loop")
+            progress(counter);
+            console.log("console" + $(counter));
+          }
+
+          console.log("looped");
 
           function progress(counter)
           {
+              console.log("enter function");
               var current_assignment = $(arr[counter]);
-              var url = "{{ url_for('get_progress', assignment=current_assignment, db_matches=db_matches) }}";
-              $.getJSON(url, function(data) {
-                console.log('data: ' + data);
-                console.log('data.workflow_state: ' + data.workflow_state);
-                $('#' + assignment + '_status').text(data.workflow_state);
-                if (data.workflow_state == 'completed' || data.workflow_state == 'failed') {
-                  console.log ('no running submissions, exit interval loop');
-                  clearInterval(); 
-              }
-              });
+              console.log("got current assignment");
+
+              $.getJSON(
+                "{{ url_for('get_progress') }}", 
+                { assignment: current_assignment,
+                  course_id: {{ course_id }} },
+                function(data) {
+                  console.log('data: ' + data);
+                  console.log('data.workflow_state: ' + data.workflow_state);
+                  $('#' + assignment + '_status').text(data.workflow_state);
+                  if (data.workflow_state == 'completed' || data.workflow_state == 'failed') {
+                    console.log ('no running submissions, exit interval loop');
+                    clearInterval(); 
+                  }
+                });
+              console.log("got json");
+            counter++;
           }
       }, 5000);
     };

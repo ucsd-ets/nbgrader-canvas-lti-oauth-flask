@@ -244,13 +244,22 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
 
 
 @app.route('/get_progress', methods=['GET'])
-def get_progress(assignment, db_matches):
+def get_progress():
     
-    app.logger.debug("Called get_progress")
-    # return this json as a string in an endpoint
-    progress = requests.get(db_matches[assignment].upload_progress_url).json()
+    assignment = request.args.get('assignment')
+    id = request.args.get('course_id')
 
-    return progress
+    app.logger.debug("request worked")
+    app.logger.debug("assignment: " + str(type(assignment)) + " " + str(assignment))
+    app.logger.debug("id: " + str(type(id)) + " " + str(id))
+
+    if request.method == 'GET':
+        app.logger.debug("Called get_progress")
+        # return this json as a string in an endpoint
+        match = AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
+        progress = requests.get(match.upload_progress_url).json()
+
+        return progress
 
 # def format_time(datetime):
 

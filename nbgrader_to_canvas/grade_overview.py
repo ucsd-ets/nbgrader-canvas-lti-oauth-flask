@@ -40,7 +40,7 @@ def grade_overview(progress = None):
 
         return Response(
             render_template('overview.htm.j2',  nb_assign=nb_assignments, cv_assign=canvas_assignments,
-                             db_matches=db_matches, progress = progress)
+                             db_matches=db_matches, course_id=course_id, progress = progress)
         )
 
     except KeyError as keyE:
