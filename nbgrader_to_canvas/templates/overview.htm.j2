@@ -192,7 +192,7 @@ Grading Overview
       //}, 5000);
     //};
 
-    function progress(counter, current_assignment)
+    function progress(counter, assignments)
           {
               console.log("enter function");
               var current_assignment = assignments[counter];
@@ -220,7 +220,7 @@ Grading Overview
 
               console.log("got json");
               counter++;
-              return counter;
+              return counter, assignment;
           }
 
     </script>
