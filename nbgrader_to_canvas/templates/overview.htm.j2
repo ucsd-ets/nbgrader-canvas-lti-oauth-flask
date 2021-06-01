@@ -205,11 +205,12 @@ Grading Overview
                 { assignment: current_assignment,
                   course_id: {{ course_id }} },
                 function(data) {
-                  console.log('data: ' + data);
-                  console.log('data.workflow_state: ' + data.workflow_state);
                   if (data == null) {
                     console.log("nothing");
                   }
+                  console.log('data: ' + data);
+                  console.log('data.workflow_state: ' + data.workflow_state);
+
                   $('#' + assignment + '_status').text(data.workflow_state);
                   if (data.workflow_state == 'completed' || data.workflow_state == 'failed') {
                     console.log ('no running submissions, exit interval loop');
