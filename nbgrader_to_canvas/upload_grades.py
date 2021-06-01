@@ -257,9 +257,14 @@ def get_progress():
         app.logger.debug("Called get_progress")
         # return this json as a string in an endpoint
         match = AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
-        progress = requests.get(match.upload_progress_url).json()
 
-        return progress
+        if match:
+            app.logger.debug("found match")
+            return requests.get(match.upload_progress_url).json()
+
+        else:
+            app.logger.debug("didn't find match")
+            return json.dumps(match)
 
 # def format_time(datetime):
 
