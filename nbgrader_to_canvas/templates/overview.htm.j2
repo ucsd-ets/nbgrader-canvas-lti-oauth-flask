@@ -132,11 +132,11 @@ Grading Overview
     </form>
 
     <span class="br"></span>
-    {% if match %}
+    {# {% if match %}
         <span class="blackText">Last Updated:</span>&nbsp;<span class="greenText">{{match.last_updated_time}}</span>
-    {% else %}
-        <span class="blackText">Status:</span>&nbsp;<span class="redText">No match found</span>
-    {% endif %}
+    {% else %} #}
+        <span class="blackText">Status:</span>&nbsp;<span class="redText" id="{{ name }}">No match found</span>
+    {# {% endif %} #}
     
       {# TO DO == Need to implement status bar #}    
       {# <span class="blackText">Status:</span>
@@ -206,18 +206,24 @@ Grading Overview
                   course_id: {{ course_id }} },
                 function(data) {
                   if (data == null) {
-                    console.log("nothing");
+                      console.log("nothing");
                   }
                   else {
-                    console.log('data: ' + data);
-                    console.log('data.workflow_state: ' + data.workflow_state);
+                      console.log('data: ' + data);
+                      console.log('data.workflow_state: ' + data.workflow_state);
+                      console.log('data.completion: ' + data.completion);
+                      console.log(current_assignment)
 
-                    $('#' + current_assignment + '_status').text(data.workflow_state);
 
-                    if (data.workflow_state == 'completed' || data.workflow_state == 'failed') {
-                      console.log ('no running submissions, exit interval loop');
-                      clearInterval(); 
-                    }
+                      $('#' + current_assignment + '_status').text(data.workflow_state);
+
+                      if (data.workflow_state == 'completed') {
+                          var change_value = document.getElementById(current_assignment)
+                          change_value.className = "greenText";
+                          change_value.innerHTML = data.workflow_state;
+                          console.log ('no running submissions, exit interval loop');
+                          clearInterval(); 
+                      }
                   }
 
 

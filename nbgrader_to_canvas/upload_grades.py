@@ -245,23 +245,27 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
 
 @app.route('/get_progress', methods=['GET'])
 def get_progress():
+
+    """
+    Endpoint to call from JS. queries the database for a specified assignment and returns the upload
+    url for the assignment as a JSON.
+
+    If no match is in the database, it returns null to JS.
+    """
     
+    # get assignment and course for db query
     assignment = request.args.get('assignment')
     id = request.args.get('course_id')
 
-    app.logger.debug("request worked")
-    app.logger.debug("assignment: " + str(type(assignment)) + " " + str(assignment))
-    app.logger.debug("id: " + str(type(id)) + " " + str(id))
-
     if request.method == 'GET':
-        app.logger.debug("Called get_progress")
-        # return this json as a string in an endpoint
         match = AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
 
+        # if match found, return db upload url as a json
         if match:
             app.logger.debug("found match")
             return requests.get(match.upload_progress_url).json()
 
+        # if match not found, return null
         else:
             app.logger.debug("didn't find match")
             return json.dumps(match)
