@@ -15,6 +15,21 @@ import json
 import logging
 import sys
 import jsonpickle
+
+import sys
+import os
+import canvasapi
+import pytest
+#  Import the Canvas class
+from canvasapi.assignment import (
+    Assignment,
+    AssignmentGroup,
+    AssignmentOverride,
+    AssignmentExtension,
+)
+from canvasapi.progress import Progress
+from canvasapi.course import Course
+
 upload_grades_blueprint = Blueprint('upload_grades', __name__)
 
 # Web Views / Routes
@@ -22,19 +37,7 @@ upload_grades_blueprint = Blueprint('upload_grades', __name__)
 @lti(error=error, request='session', role='staff', app=app)
 def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
       
-    import sys
-    import os
-    import canvasapi
-    import pytest
-    #  Import the Canvas class
-    from canvasapi.assignment import (
-        Assignment,
-        AssignmentGroup,
-        AssignmentOverride,
-        AssignmentExtension,
-    )
-    from canvasapi.progress import Progress
-    from canvasapi.course import Course
+    
 
     # TODO: modify below to redirect to status page after POST, see
     # https://stackoverflow.com/questions/31542243/redirect-to-other-view-after-submitting-form
@@ -289,3 +292,18 @@ def get_progress():
 
 
 #     return "{0} {1} at {2}:{3}{4}".format(months[date[1]], date[2], time[0], time[1], time[2])
+
+
+
+
+
+def _upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
+    '''
+    Step 1: Initialize course object
+    Step 2: Parse out the form data
+    Step 3: Modify database?
+    '''
+def init_course(course_id):
+    canvas = get_canvas()
+    course = canvas.get_course(course_id)
+    return course

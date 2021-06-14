@@ -13,7 +13,8 @@ ENV FLASK_APP=nbgrader_to_canvas
 
 RUN apt-get update && \
     apt-get install -y lsb-release \
-    sqlite3
+    sqlite3 \
+    dos2unix
 
 # https://www.postgresql.org/download/linux/debian/
 RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
@@ -29,6 +30,8 @@ COPY scripts/init-flask.sh /
 COPY scripts/start-flask.sh /
 COPY mocks /tmp/nbgrader
 RUN chmod +x /*.sh && \
+    dos2unix /init-flask.sh && \
+    dos2unix /start-flask.sh && \
     /init-flask.sh
 
 USER nbgrader2canvas

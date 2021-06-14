@@ -24,6 +24,7 @@ def grade_overview(progress = None):
     Renders the main template for the flask application.
     grade_overview can be viewed at overview.htm.j2
     """
+    
 
     try:
         nb_assignments = get_nbgrader_assignments()
@@ -35,8 +36,9 @@ def grade_overview(progress = None):
         if request.method == 'POST':
             progress = upload_grades(course_id, group)
             return redirect(url_for('grade_overview.grade_overview'))
-
+        app.logger.debug('before')
         db_matches = match_assignments(nb_assignments, course_id)
+        app.logger.debug('here')
 
         return Response(
             render_template('overview.htm.j2', nb_assign=nb_assignments, cv_assign=canvas_assignments,
@@ -64,7 +66,7 @@ def grade_overview(progress = None):
         return return_error(msg)
 
     except Exception as e:
-        app.logger.error("Exception: " + str(type(e)) + str(e))
+        app.logger.error("Exception unknown: " + str(type(e)) + str(e))
         app.logger.error(os.getcwd())
         app.logger.error(str(type(e)) + " error occurred.")
         msg = (
@@ -129,6 +131,9 @@ def match_assignments(nb_assignments, course_id):
     If match is found, query the entry from the table and set as the value.
     Else, set the value to None
     """
+    for assignment in nb_assignments:
+        app.logger.debug(assignment.name) 
+
     nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment.name, course_id=course_id).first()
                                                             for assignment in nb_assignments}
     return nb_matches

@@ -1,0 +1,11 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "database": "${workspaceFolder:nbgrader-canvas-lti-oauth-flask}/mocks/TEST_NBGRADER/grader/gradebook.db",
+            "name": "gradebook"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
+}
