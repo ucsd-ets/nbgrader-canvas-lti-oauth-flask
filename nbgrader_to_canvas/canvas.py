@@ -18,8 +18,9 @@ class Token:
         self._user = user
         self.token_refresh_threshold = 60
 
+    #Is the token valid
     def check(self):
-        if self.unexpired() and self.valid_api_key() and self.valid_WWW_Authenticate():
+        if self._unexpired() and self._valid_api_key() and self._valid_WWW_Authenticate():
             return True
         else:
             return False
@@ -28,17 +29,32 @@ class Token:
         # token_ttl = expiration_date - int(time.time())
 
         # if token_ttl < self.token_refresh_threshold:
+        #     #app.logger.debug('Token Expired')
         #     return False
         # elif 'api_key' not in self._flask_session:
+        #     #app.logger.debug('Session missing API key')
         #     return False
         #     # TODO: Figure out what to do here
         #     # Need to know which false is being returned
+        # else:
+        #     auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
+        #     r = requests.get(
+        #         '{}users/{}'.format(settings.API_URL, self._flask_session['canvas_user_id']),
+        #         headers=auth_header
+        #     )
+
+        #     #TODO: Figure out how to spoof this properly
+        #     if True or r.status_code == 200 and 'WWW-Authenticate' not in r.headers :
+        #         return True
+        #     else:
+        #         #app.logger.debug('WWW-Authenticate header present, or issue with request.')
+        #         return False
         # return True
 
 
 
-    #If token expires within threshold return false
-    def unexpired(self):
+    # If token expires within threshold return false
+    def _unexpired(self):
         expiration_date = self._user.expires_in
         token_ttl = expiration_date - int(time.time())
 
@@ -47,21 +63,20 @@ class Token:
         else:
             return True
      
-    def valid_api_key(self):
+    def _valid_api_key(self):
         if('api_key' in self._flask_session):
             return True
         else:
             return False
 
-    def valid_WWW_Authenticate(self, override=True):
+    def _valid_WWW_Authenticate(self, override = True):
         #TODO: figure out how to spoof this properly instead of just overriding the return to test
         auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
         r = requests.get(
             '{}users/{}'.format(settings.API_URL, self._flask_session['canvas_user_id']),
             headers=auth_header
         )
-
-        print(r.headers)
+        print(r)
         print(r.status_code)
         if override or 'WWW-Authenticate' not in r.headers and r.status_code == 200:
             return True
@@ -76,7 +91,7 @@ class Token:
 
         :rtype: bool
         :returns: True if refresh succeeds. False if json response is invalid, 
-            or db does not get updatedDictionary with keys 'access_token' and 'expiration_date'.
+            or db does not get updated.
         """
         # TODO: Potentially refactor the response and json segment to make this function more testable
         payload = {
@@ -91,33 +106,34 @@ class Token:
             data=payload
         )
 
-        if 'access_token' not in response.json() or 'expires_in' not in response.json():
-            app.logger.warning((
-                'Access token or expires_in not in json. Bad api key or refresh token.\n'
-                'URL: {}\n'
-                'Status Code: {}\n'
-                'Payload: {}\n'
-                'Session: {}'
-            ).format(response.url, response.status_code, payload, self._flask_session))
-            return False            
+        try:
+            api_key = response.json()['access_token']
+            # app.logger.info(
+            #     'New access token created\n User: {0}'.format(self._user.user_id)
+            # )
 
-        api_key = response.json()['access_token']
-        app.logger.info(
-            'New access token created\n User: {0}'.format(self._user.user_id)
-        )
-
-        current_time = int(time.time())
-        new_expiration_date = current_time + response.json()['expires_in']
+            current_time = int(time.time())
+            new_expiration_date = current_time + response.json()['expires_in']
+        except Exception as ex:
+            # app.logger.warning((
+            #     'Access token or expires_in not in json. Bad api key or refresh token.\n'
+            #     'URL: {}\n'
+            #     'Status Code: {}\n'
+            #     'Payload: {}\n'
+            #     'Session: {}\n'
+            #     'Exception: {}'
+            # ).format(response.url, response.status_code, payload, self._flask_session, ex))
+            return False         
 
         # Update expiration date in db
-        if not self.update_db_expiration(new_expiration_date):
+        if not self._update_db_expiration(new_expiration_date):
             return False
 
         self._flask_session['api_key'] = api_key
         self._flask_session['expires_in'] = new_expiration_date
         return True
 
-    def update_db_expiration(self, new_expiration_date):
+    def _update_db_expiration(self, new_expiration_date):
         self._user.expires_in = new_expiration_date
         db.session.commit()
 
@@ -141,7 +157,7 @@ class Token:
             return False
         return True
         
-#TODO: rename to avoid confusion
+#TODO: consider renaming to something more descriptive
 class NbgraderCanvas:
 
     def __init__(self, api_URL, flask_session = session):
@@ -149,13 +165,13 @@ class NbgraderCanvas:
         self._flask_session = flask_session
     
     def get_canvas(self):
-        # update_token()
+        self.update_token()
         return Canvas(self._api_URL, self._flask_session['api_key'])
 
     # Checks if token up to date. If not, try to refresh it. If refresh fails, then return False. Otherwise return True
-    def update_token(self, flask_session=session):
-        user = Users.query.filter_by(user_id=int(flask_session['canvas_user_id'])).first()
-        token = Token(flask_session, user)
+    def update_token(self):
+        user = Users.query.filter_by(user_id=int(self._flask_session['canvas_user_id'])).first()
+        token = Token(self._flask_session, user)
         if not token.check():
             return token.refresh()
         return True

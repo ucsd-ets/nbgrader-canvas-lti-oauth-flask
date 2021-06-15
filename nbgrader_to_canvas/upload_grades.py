@@ -7,6 +7,7 @@ from . import app, db
 from . import settings
 from nbgrader.api import Gradebook, MissingEntry
 from .models import AssignmentMatch
+from .canvas import NbgraderCanvas
 
 import datetime
 import requests
@@ -303,7 +304,35 @@ def _upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
     Step 2: Parse out the form data
     Step 3: Modify database?
     '''
-def init_course(course_id):
-    canvas = get_canvas()
+
+    course = _init_course(course_id)
+    progress = None
+    _setup_canvasapi_debugging()
+    if request.method == "POST":
+        
+        canvas_students = _get_canvas_students()
+
+def _init_course(course_id):
+    nbgrader = NbgraderCanvas(settings.API_URL, session['api_key'])
+    canvas = nbgrader.get_canvas()
     course = canvas.get_course(course_id)
     return course
+
+def _setup_canvasapi_debugging():
+    canvasapi_logger = logging.getLogger("canvasapi")
+    canvasapi_handler = logging.StreamHandler(sys.stdout)
+    canvasapi_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    canvasapi_handler.setLevel(logging.ERROR)
+    canvasapi_handler.setFormatter(canvasapi_formatter)
+    canvasapi_logger.addHandler(canvasapi_handler)
+    canvasapi_logger.setLevel(logging.ERROR)
+
+def _get_canvas_students(course):
+    canvas_users = course.get_users()        
+    canvas_students = {}
+    # TODO: modify to only get active users
+    for user in canvas_users:
+        if hasattr(user, "login_id") and user.login_id is not None:
+            canvas_students[user.login_id]=user.id  
+    return canvas_students
