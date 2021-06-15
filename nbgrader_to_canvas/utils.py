@@ -191,6 +191,10 @@ def refresh_access_token(user):
     app.logger.info(
         'New access token created\n User: {0}'.format(user.user_id)
     )
+    # Use the following line to get valid refresh token when testing.
+    # TODO: Find a better way to get valid refresh token for testing.
+    app.logger.info('Refresh Token: {}'.format(refresh_token))
+
 
     if 'expires_in' not in response.json():
         app.logger.warning((
