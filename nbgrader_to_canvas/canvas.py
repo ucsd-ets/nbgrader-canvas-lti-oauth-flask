@@ -6,7 +6,7 @@ import json
 import time
 
 from . import settings
-from . import db
+from . import db, app
 
 from .models import Users
 
@@ -20,7 +20,7 @@ class Token:
 
     #Is the token valid
     def check(self):
-        if self._unexpired() and self._valid_api_key() and self._valid_WWW_Authenticate():
+        if self._unexpired() and self._contains_api_key() and self._valid_WWW_Authenticate():
             return True
         else:
             return False
@@ -63,22 +63,25 @@ class Token:
         else:
             return True
      
-    def _valid_api_key(self):
+    def _contains_api_key(self):
         if('api_key' in self._flask_session):
             return True
         else:
             return False
 
-    def _valid_WWW_Authenticate(self, override = True):
-        #TODO: figure out how to spoof this properly instead of just overriding the return to test
+    def _valid_WWW_Authenticate(self):
+        
+        #TODO: requesting from a page that doesn't exist. Fix
+        return True
         auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
         r = requests.get(
             '{}users/{}'.format(settings.API_URL, self._flask_session['canvas_user_id']),
-            headers=auth_header
+            headers = auth_header
         )
-        print(r)
+        print('WWW-Authenticate' not in r.headers)
         print(r.status_code)
-        if override or 'WWW-Authenticate' not in r.headers and r.status_code == 200:
+        print(r.url)
+        if 'WWW-Authenticate' not in r.headers and r.status_code == 200:
             return True
         else:
             return False
@@ -108,21 +111,21 @@ class Token:
 
         try:
             api_key = response.json()['access_token']
-            # app.logger.info(
-            #     'New access token created\n User: {0}'.format(self._user.user_id)
-            # )
+            app.logger.info(
+                'New access token created\n User: {0}'.format(self._user.user_id)
+            )
 
             current_time = int(time.time())
             new_expiration_date = current_time + response.json()['expires_in']
         except Exception as ex:
-            # app.logger.warning((
-            #     'Access token or expires_in not in json. Bad api key or refresh token.\n'
-            #     'URL: {}\n'
-            #     'Status Code: {}\n'
-            #     'Payload: {}\n'
-            #     'Session: {}\n'
-            #     'Exception: {}'
-            # ).format(response.url, response.status_code, payload, self._flask_session, ex))
+            app.logger.warning((
+                'Access token or expires_in not in json. Bad api key or refresh token.\n'
+                'URL: {}\n'
+                'Status Code: {}\n'
+                'Payload: {}\n'
+                'Session: {}\n'
+                'Exception: {}'
+            ).format(response.url, response.status_code, payload, self._flask_session, ex))
             return False         
 
         # Update expiration date in db
