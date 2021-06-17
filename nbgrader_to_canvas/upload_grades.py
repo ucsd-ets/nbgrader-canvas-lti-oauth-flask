@@ -45,9 +45,14 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
 
     args = request.args.to_dict()
 
+    app.logger.info("course_id: {}".format(course_id))
+    app.logger.info("group: {}".format(group))
+
     # initialize a new canvasapi Canvas object
     canvas = get_canvas()
     course = canvas.get_course(course_id)
+
+    app.logger.info("course: {}".format(course))
 
     progress = None
 
@@ -83,6 +88,7 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
     # POST: 
     # 1) submit assignment using submissions_bulk_update
     #    a) find the nbgrader assignment by name
+    #
     # 2) insert/update sqlalchemy assignment_match table for the submitted nbgrader assignment:
     #    a) if nbgrader assignment does not exist: insert row with matching nbgrader/canvas assignment IDs, upload progress object url (progress.url) 
     #       and upload status string
@@ -117,9 +123,9 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
                 canvas_students[canvas_user.login_id]=canvas_user.id  
                 
                 # app.logger.debug("canvas user login id:")
-                #app.logger.debug(canvas_user.login_id)   
-                #app.logger.debug("canvas user id:")
-                #app.logger.debug(canvas_user.id)   
+                # app.logger.debug(canvas_user.login_id)   
+                # app.logger.debug("canvas user id:")
+                # app.logger.debug(canvas_user.id)   
 
         #
         #  get nbgrader info
@@ -193,6 +199,7 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
                 # get the id of the canvas assignment for the canvas assignment name that was submitted
                 app.logger.debug("upload submissions for existing canvas assignment;")
                 assignment_to_upload = course.get_assignment(form_canvas_assign_id)
+                app.logger.debug("assignment: {}".format(assignment_to_upload))
                 canvas_assignment_id = form_canvas_assign_id           
 
             # TODO: check if assignment is published, if not, publish?
@@ -294,45 +301,164 @@ def get_progress():
 
 #     return "{0} {1} at {2}:{3}{4}".format(months[date[1]], date[2], time[0], time[1], time[2])
 
+def temp_upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
+    #If not posting, don't upload anything
+    if not request.method == "POST":
+        return None
+    app.logger.debug("form_nb_assign_name:")
+    app.logger.debug(request.form.get('form_nb_assign_name'))
+    app.logger.debug("form_canvas_assign_id:")
+    app.logger.debug(request.form.get('form_canvas_assign_id'))
+
+    form_canvas_assign_id = request.form.get('form_canvas_assign_id') 
+    form_nb_assign_name = request.form.get('form_nb_assign_name')
+    
+    uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, lti)
+    #TODO: When testing is done, can call these three in the UploadGrades __init__ funciton
+    uploader.init_course()
+    uploader.parse_form_data()
+    return uploader.update_database()
 
 
+class UploadGrades:
 
+    def __init__(self, course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name="TEST_NBGRADER", lti=lti):
+        '''
+        Step 1: Initialize course object
+        Step 2: Parse out the form data
+        Step 3: Modify database?
+        '''
+        self._course_id = course_id
+        self._group = group
+        self._form_canvas_assign_id = form_canvas_assign_id
+        self._form_nb_assign_name = form_nb_assign_name
+        self._course_name = course_name
+        self._lti = lti
 
-def _upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
-    '''
-    Step 1: Initialize course object
-    Step 2: Parse out the form data
-    Step 3: Modify database?
-    '''
+        self._setup_canvasapi_debugging()   
 
-    course = _init_course(course_id)
-    progress = None
-    _setup_canvasapi_debugging()
-    if request.method == "POST":
+    # Returns a course object corresponding to given course_id
+    # TEST: default is for testing
+    def init_course(self, flask_session = session):
+        nbgrader = NbgraderCanvas(settings.API_URL, flask_session)
+        canvas = nbgrader.get_canvas()
+        self._course = canvas.get_course(self._course_id)
+    
+    def parse_form_data(self):
+        canvas_students = self._get_canvas_students()
+        self.student_grades = self._get_student_grades(canvas_students)
+
+        if (self._form_canvas_assign_id == 'create') :
+            self.assignment_to_upload = self._create_assignment()
+        else: 
+            self.assignment_to_upload = self._get_assignment()
+
+        self.canvas_assignment_id = self.assignment_to_upload.id
+    
+    def update_database(self):
+        progress = self._submit_assignment()
+        self._update_matches(progress)
+        return progress
+
+    #Sets up debugging for canvasapi.
+    #TODO: Figure out what this actually does
+    def _setup_canvasapi_debugging(self):
+        canvasapi_logger = logging.getLogger("canvasapi")
+        canvasapi_handler = logging.StreamHandler(sys.stdout)
+        canvasapi_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+        canvasapi_handler.setLevel(logging.ERROR)
+        canvasapi_handler.setFormatter(canvasapi_formatter)
+        canvasapi_logger.addHandler(canvasapi_handler)
+        canvasapi_logger.setLevel(logging.ERROR)
+
+    #Returns a dict of student {login_id:id} corresponding to a canvas course object. Ex: {jsmith:13342}
+    def _get_canvas_students(self):
+        canvas_users = self._course.get_users()        
+        canvas_students = {}
+        # TODO: modify to only get active users
+        for user in canvas_users:
+            if hasattr(user, "login_id") and user.login_id is not None:
+                canvas_students[user.login_id]=user.id  
+        return canvas_students
+    
+    #Returns a dict of {id: {'posted_grade':score}} for all students in gradebook
+    def _get_student_grades(self, canvas_students):
+        with Gradebook("sqlite:////mnt/nbgrader/"+self._course_name+"/grader/gradebook.db") as gb:
         
-        canvas_students = _get_canvas_students()
+            nb_assignment = gb.find_assignment(self._form_nb_assign_name)
 
-def _init_course(course_id):
-    nbgrader = NbgraderCanvas(settings.API_URL, session['api_key'])
-    canvas = nbgrader.get_canvas()
-    course = canvas.get_course(course_id)
-    return course
+            # TODO: can we change this to just get the students for this assignment?
+            nb_students = gb.students            
+            nb_grade_data = {}
 
-def _setup_canvasapi_debugging():
-    canvasapi_logger = logging.getLogger("canvasapi")
-    canvasapi_handler = logging.StreamHandler(sys.stdout)
-    canvasapi_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            for nb_student in nb_students:
 
-    canvasapi_handler.setLevel(logging.ERROR)
-    canvasapi_handler.setFormatter(canvasapi_formatter)
-    canvasapi_logger.addHandler(canvasapi_handler)
-    canvasapi_logger.setLevel(logging.ERROR)
+                # ceate dict for grade_data, with nested dict {student id: {score}}
+                nb_student_and_score = {}            
 
-def _get_canvas_students(course):
-    canvas_users = course.get_users()        
-    canvas_students = {}
-    # TODO: modify to only get active users
-    for user in canvas_users:
-        if hasattr(user, "login_id") and user.login_id is not None:
-            canvas_students[user.login_id]=user.id  
-    return canvas_students
+                # Try to find the submission in the nbgrader database. If it doesn't exist, the
+                # MissingEntry exception will be raised and we assign them a score of None.
+                # Does it need to be a nested dict? Look into viability of {id:score}
+                try:
+                    nb_submission = gb.find_submission(nb_assignment.name, nb_student.id)
+                    nb_student_and_score['posted_grade'] = nb_submission.score
+                except MissingEntry:
+                    nb_student_and_score['posted_grade'] = None
+                    
+
+                # student.id will give us student's username, ie shrakibullah. we will need to compare this to
+                # canvas's login_id instead of user_id
+
+                # TEMP HACK: e7li and shrakibullah are instructors; change their ids (after 
+                # submission fetch above) here to students in canvas course
+                # TODO: create submissions for canvas course students
+                temp_nb_student_id = nb_student.id
+                if nb_student.id == 'e7li':
+                    temp_nb_student_id = 'testacct222'
+                if nb_student.id == 'shrakibullah':
+                    temp_nb_student_id = 'testacct333'                    
+
+                # convert nbgrader username to canvas id (integer)
+                #canvas_student_id = canvas_students[nb_student.id]
+                canvas_student_id = canvas_students[temp_nb_student_id]
+                nb_grade_data[canvas_student_id] = nb_student_and_score
+            return nb_grade_data
+
+    def _get_assignment(self, course):
+        app.logger.debug("upload submissions for existing canvas assignment;")
+        return self._course.get_assignment(self._form_canvas_assign_id)
+
+    def _create_assignment(self):
+        app.logger.debug("upload submissions for non-existing canvas assignment; will be named:")
+        app.logger.debug(self._form_nb_assign_name)                
+
+        # create new assignments as published
+        return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group})
+
+    # Updates grades for given assignment. Returns progress resulting from upload attempt.
+    def _submit_assignment(self):
+        progress = self.assignment_to_upload.submissions_bulk_update(grade_data=self.student_grades)
+        progress = progress.query()
+        session['progress_json'] = jsonpickle.encode(progress)
+        session.modified = True
+        app.logger.debug("progress url:")
+        app.logger.debug(progress.url)
+        return progress
+   
+    # Looks for matching assignment in nb gradebook and canvas gradebook. If match found, then update assignment's
+    # last modified. If no matching assignment, create new matching assignment
+    def _update_matches(self, progress):
+        assignment_match = AssignmentMatch.query.filter_by(nbgrader_assign_name=self._form_nb_assign_name, course_id=self._course_id).first()
+        app.logger.debug("assignment match:")
+        app.logger.debug(assignment_match)
+        if assignment_match:
+            app.logger.debug("Updating assignment in database")
+            assignment_match.progress_url = progress.url
+            assignment_match.last_updated_time = progress.updated_at
+        else:
+            app.logger.debug("Creating new assignment in database")
+            newMatch = AssignmentMatch(course_id=self._course_id, nbgrader_assign_name=self._form_nb_assign_name,
+                        canvas_assign_id=self._canvas_assignment_id, upload_progress_url=progress.url, last_updated_time=progress.updated_at)
+            db.session.add(newMatch)
+        db.session.commit()

@@ -36,9 +36,9 @@ def grade_overview(progress = None):
         if request.method == 'POST':
             progress = upload_grades(course_id, group)
             return redirect(url_for('grade_overview.grade_overview'))
-        app.logger.debug('before')
+        
         db_matches = match_assignments(nb_assignments, course_id)
-        app.logger.debug('here')
+        
 
         return Response(
             render_template('overview.htm.j2', nb_assign=nb_assignments, cv_assign=canvas_assignments,
