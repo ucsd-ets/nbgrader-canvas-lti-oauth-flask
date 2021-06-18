@@ -37,8 +37,7 @@ upload_grades_blueprint = Blueprint('upload_grades', __name__)
 @upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
 def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
-      
-    
+
 
     # TODO: modify below to redirect to status page after POST, see
     # https://stackoverflow.com/questions/31542243/redirect-to-other-view-after-submitting-form
@@ -186,21 +185,38 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
             # instrutor has changed the association, post an error message and bail out
 
             #  if we're creating a new canvas assignment
-            if (form_canvas_assign_id == 'create') :
-                app.logger.debug("upload submissions for non-existing canvas assignment; will be named:")
-                app.logger.debug(form_nb_assign_name)                
+            try:
+                app.logger.debug("upload submissions for existing canvas assignment;")
+                assignment_to_upload = course.get_assignment(form_canvas_assign_id)
+                app.logger.debug("assignment: {}".format(assignment_to_upload))
+                canvas_assignment_id = form_canvas_assign_id     
+            except:
+                app.logger.debug("upload submissions for non-existing canvas assignment; will be named: {}".format(form_nb_assign_name))
+                app.logger.debug("Group: {}".format(group))  
 
                 # create new assignments as published
                 assignment_to_upload = course.create_assignment({'name':form_nb_assign_name, 'published':'true', 'assignment_group_id':group})
                 canvas_assignment_id = assignment_to_upload.id
-
-            #  if we're uploading to an existing canvas assignment
-            else:
-                # get the id of the canvas assignment for the canvas assignment name that was submitted
-                app.logger.debug("upload submissions for existing canvas assignment;")
-                assignment_to_upload = course.get_assignment(form_canvas_assign_id)
                 app.logger.debug("assignment: {}".format(assignment_to_upload))
-                canvas_assignment_id = form_canvas_assign_id           
+                app.logger.debug("id: {}".format(canvas_assignment_id))
+
+            # if (form_canvas_assign_id == 'create') :
+            #     app.logger.debug("upload submissions for non-existing canvas assignment; will be named: {}".format(form_nb_assign_name))
+            #     app.logger.debug("Group: {}".format(group))  
+
+            #     # create new assignments as published
+            #     assignment_to_upload = course.create_assignment({'name':form_nb_assign_name, 'published':'true', 'assignment_group_id':group})
+            #     canvas_assignment_id = assignment_to_upload.id
+            #     app.logger.debug("assignment: {}".format(assignment_to_upload))
+            #     app.logger.debug("id: {}".format(canvas_assignment_id))
+
+            # #  if we're uploading to an existing canvas assignment
+            # else:
+            #     # get the id of the canvas assignment for the canvas assignment name that was submitted
+            #     app.logger.debug("upload submissions for existing canvas assignment;")
+            #     assignment_to_upload = course.get_assignment(form_canvas_assign_id)
+            #     app.logger.debug("assignment: {}".format(assignment_to_upload))
+            #     canvas_assignment_id = form_canvas_assign_id           
 
             # TODO: check if assignment is published, if not, publish?
             # submit assignment
@@ -222,6 +238,7 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
                 app.logger.debug("Creating new assignment in database")
                 newMatch = AssignmentMatch(course_id=course_id, nbgrader_assign_name=form_nb_assign_name,
                             canvas_assign_id=canvas_assignment_id, upload_progress_url=progress.url, last_updated_time=progress.updated_at)
+                app.logger.debug(newMatch)
                 db.session.add(newMatch)
             
             db.session.commit()
@@ -263,17 +280,23 @@ def get_progress():
 
     If no match is in the database, it returns null to JS.
     """
-    
+
+    # temp = AssignmentMatch.query.filter_by(nbgrader_assign_name='Test Assignment 3', course_id=20774).first()
+    # if temp:
+    #     db.session.delete(temp)
+    #     db.session.commit()
+
     # get assignment and course for db query
     assignment = request.args.get('assignment')
     id = request.args.get('course_id')
 
+    #TODO: Check if an assignment was deleted from canvas and remove it from db
     if request.method == 'GET':
         match = AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
 
         # if match found, return db upload url as a json
         if match:
-            app.logger.debug("found match")
+            app.logger.debug("found match: {}, {}, {}".format(match, assignment, id))
             return requests.get(match.upload_progress_url).json()
 
         # if match not found, return null
@@ -430,8 +453,7 @@ class UploadGrades:
         return self._course.get_assignment(self._form_canvas_assign_id)
 
     def _create_assignment(self):
-        app.logger.debug("upload submissions for non-existing canvas assignment; will be named:")
-        app.logger.debug(self._form_nb_assign_name)                
+        app.logger.debug("upload submissions for non-existing canvas assignment; will be named: {}".format(self._form_nb_assign_name))             
 
         # create new assignments as published
         return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group})

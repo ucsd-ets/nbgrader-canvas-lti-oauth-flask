@@ -41,6 +41,9 @@ class TestUploadGrades(unittest.TestCase):
         assert str(assignment) == existing_assignment
     
     def test_create_assignment(self):
+        customUploader = UploadGrades(20774, 92059, 'create', 'Created Assignment 1')
+        customUploader.init_course({'canvas_user_id': '114217'})
+        assignment = customUploader._create_assignment()
         assert False
 
     def test_submit_assignment(self):

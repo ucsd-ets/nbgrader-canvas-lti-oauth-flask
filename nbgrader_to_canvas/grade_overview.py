@@ -4,7 +4,7 @@ from pylti.flask import lti
 import os
 
 
-from . import app
+from . import app, db
 from .utils import get_canvas, return_error, error
 
 from nbgrader.api import Gradebook
@@ -37,7 +37,9 @@ def grade_overview(progress = None):
             progress = upload_grades(course_id, group)
             return redirect(url_for('grade_overview.grade_overview'))
         
+        cleanup_assignment_matches(nb_assignments,course_id,canvas_assignments)
         db_matches = match_assignments(nb_assignments, course_id)
+        
         
 
         return Response(
@@ -124,6 +126,7 @@ def get_canvas_assignments(course_id, group):
     return canvas_assignments
     
 
+#TODO: refactor AssignmentMatch cleanup from matching assignments
 def match_assignments(nb_assignments, course_id):
     """
     Check sqlalchemy table for match with nbgrader assignments from a specified course. Creates a dictionary with nbgrader
@@ -131,9 +134,19 @@ def match_assignments(nb_assignments, course_id):
     If match is found, query the entry from the table and set as the value.
     Else, set the value to None
     """
-    for assignment in nb_assignments:
-        app.logger.debug(assignment.name) 
-
+    # for assignment in nb_assignments:
+    #     app.logger.debug(assignment.name) 
+    
     nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment.name, course_id=course_id).first()
                                                             for assignment in nb_assignments}
     return nb_matches
+
+# Go through matches that correspond to a nb_assignment and verify the corresponding canvas assignment still exists.
+# If canvas assignment no longer exists, remove match from database
+def cleanup_assignment_matches(nb_assignments, course_id, canvas_assignments):
+    for assignment in nb_assignments:
+        match = AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment.name, course_id=course_id).first()
+        if match.canvas_assign_id not in canvas_assignments:
+            app.logger.debug("Assignment Match removed: {}, {}".format(assignment,match.canvas_assign_id))
+            db.session.delete(match)
+            db.session.commit()
