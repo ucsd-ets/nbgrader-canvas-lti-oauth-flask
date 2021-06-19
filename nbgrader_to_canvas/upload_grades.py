@@ -197,7 +197,7 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
                 # create new assignments as published
                 assignment_to_upload = course.create_assignment({'name':form_nb_assign_name, 'published':'true', 'assignment_group_id':group})
                 canvas_assignment_id = assignment_to_upload.id
-                app.logger.debug("assignment: {}".format(assignment_to_upload))
+                app.logger.debug("assignment: {}".format(assignment_to_upload.name))
                 app.logger.debug("id: {}".format(canvas_assignment_id))
 
             # if (form_canvas_assign_id == 'create') :
@@ -226,8 +226,6 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
             session.modified=True
             app.logger.debug("progress url:")
             app.logger.debug(progress.url)
-            # app.logger.debug("progress json:")
-            # app.logger.debug(session['progress_json'])
 
             # check if row exists in assignment match table
             if assignment_match:
@@ -361,7 +359,7 @@ class UploadGrades:
         self._setup_canvasapi_debugging()   
 
     # Returns a course object corresponding to given course_id
-    # TEST: default is for testing
+    # TEST: param is to allow testing
     def init_course(self, flask_session = session):
         nbgrader = NbgraderCanvas(settings.API_URL, flask_session)
         canvas = nbgrader.get_canvas()
@@ -379,8 +377,13 @@ class UploadGrades:
         self.canvas_assignment_id = self.assignment_to_upload.id
     
     def update_database(self):
-        progress = self._submit_assignment()
-        self._update_matches(progress)
+        progress = self._submit_grades()
+        assignment_match = AssignmentMatch.query.filter_by(nbgrader_assign_name=self._form_nb_assign_name, course_id=self._course_id).first()
+        if assignment_match:
+            self._update_match(assignment_match, progress)
+        else:
+            self._add_new_match(progress)
+        db.session.commit()
         return progress
 
     #Sets up debugging for canvasapi.
@@ -448,7 +451,7 @@ class UploadGrades:
                 nb_grade_data[canvas_student_id] = nb_student_and_score
             return nb_grade_data
 
-    def _get_assignment(self, course):
+    def _get_assignment(self):
         app.logger.debug("upload submissions for existing canvas assignment;")
         return self._course.get_assignment(self._form_canvas_assign_id)
 
@@ -459,28 +462,27 @@ class UploadGrades:
         return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group})
 
     # Updates grades for given assignment. Returns progress resulting from upload attempt.
-    def _submit_assignment(self):
+    def _submit_grades(self):
         progress = self.assignment_to_upload.submissions_bulk_update(grade_data=self.student_grades)
         progress = progress.query()
-        session['progress_json'] = jsonpickle.encode(progress)
-        session.modified = True
+        try:
+            session['progress_json'] = jsonpickle.encode(progress)
+            session.modified = True
+        except Exception:
+            app.logger.debug("Error modifying session")
         app.logger.debug("progress url:")
         app.logger.debug(progress.url)
         return progress
-   
-    # Looks for matching assignment in nb gradebook and canvas gradebook. If match found, then update assignment's
-    # last modified. If no matching assignment, create new matching assignment
-    def _update_matches(self, progress):
-        assignment_match = AssignmentMatch.query.filter_by(nbgrader_assign_name=self._form_nb_assign_name, course_id=self._course_id).first()
-        app.logger.debug("assignment match:")
-        app.logger.debug(assignment_match)
-        if assignment_match:
-            app.logger.debug("Updating assignment in database")
-            assignment_match.progress_url = progress.url
-            assignment_match.last_updated_time = progress.updated_at
-        else:
-            app.logger.debug("Creating new assignment in database")
-            newMatch = AssignmentMatch(course_id=self._course_id, nbgrader_assign_name=self._form_nb_assign_name,
-                        canvas_assign_id=self._canvas_assignment_id, upload_progress_url=progress.url, last_updated_time=progress.updated_at)
-            db.session.add(newMatch)
-        db.session.commit()
+
+    # Update existing match in database
+    def _update_match(self, assignment_match, progress):
+        app.logger.debug("Updating assignment in database")
+        assignment_match.progress_url = progress.url
+        assignment_match.last_updated_time = progress.updated_at
+    
+    # Creates and adds new match to database
+    def _add_new_match(self, progress):
+        app.logger.debug("Creating new assignment in database")
+        newMatch = AssignmentMatch(course_id=self._course_id, nbgrader_assign_name=self._form_nb_assign_name,
+                    canvas_assign_id=self.canvas_assignment_id, upload_progress_url=progress.url, last_updated_time=progress.updated_at)
+        db.session.add(newMatch)

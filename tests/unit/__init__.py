@@ -8,4 +8,4 @@ canvas_students = {'testacct111': 114217, 'testacct222': 115752, 'testacct333': 
 
 student_grades = {115752: {'posted_grade': 6.0}, 115753: {'posted_grade': 0.0}}
 
-existing_assignment = 'Test Assignment 2 (326429)'
+existing_assignment = 'Test Assignment 2'

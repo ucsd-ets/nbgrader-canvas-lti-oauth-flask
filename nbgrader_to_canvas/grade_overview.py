@@ -146,7 +146,7 @@ def match_assignments(nb_assignments, course_id):
 def cleanup_assignment_matches(nb_assignments, course_id, canvas_assignments):
     for assignment in nb_assignments:
         match = AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment.name, course_id=course_id).first()
-        if match.canvas_assign_id not in canvas_assignments:
+        if match and match.canvas_assign_id not in canvas_assignments:
             app.logger.debug("Assignment Match removed: {}, {}".format(assignment,match.canvas_assign_id))
             db.session.delete(match)
             db.session.commit()

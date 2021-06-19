@@ -37,11 +37,11 @@ class AssignmentMatch(db.Model):
     nbgrader_assign_name = db.Column(db.String(255))
     canvas_assign_id = db.Column(db.Integer, unique=True)
     upload_progress_url = db.Column(db.String(255))
-    #last_updated_time = db.Column(db.String(255))
+    # last_updated_time = db.Column(db.String(255))
 
     def __init__(self, course_id, nbgrader_assign_name, canvas_assign_id, upload_progress_url, last_updated_time):
         self.course_id = course_id
         self.nbgrader_assign_name = nbgrader_assign_name
         self.canvas_assign_id = canvas_assign_id
         self.upload_progress_url = upload_progress_url
-       # self.last_updated_time = last_updated_time
+        # self.last_updated_time = last_updated_time
