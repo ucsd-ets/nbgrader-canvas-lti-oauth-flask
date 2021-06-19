@@ -1,5 +1,6 @@
+#TODO: Might be better practice to store these as global variables in their respective test files
 
-
+# Test data for test_upload_grades
 canvas_students = {'testacct111': 114217, 'testacct222': 115752, 'testacct333': 115753, 'mdandrad': 
 54, 'matthewf': 53, 'pjamason': 52, 'jdkindley': 139469, 'e7li': 90840, 'shrakibullah': 114262, 'nb2canvas_student1': 139478, 'nb2canvas_student2': 
 139479, 'nb2canvas_student3': 139480, 'nb2canvas_student4': 139481, 'nb2canvas_student5': 139482, 'nb2canvas_student6': 139483, 'nb2canvas_student7': 139484, 'nb2canvas_student8': 139485, 'nb2canvas_student9': 139486, 'nb2canvas_student10': 139487, 'nb2canvas_student11': 139488, 'nb2canvas_student12': 139489, 'nb2canvas_student13': 139490, 'nb2canvas_student14': 139491, 'nb2canvas_student15': 139492, 'nb2canvas_student16': 139493, 'nb2canvas_student17': 139494, 'nb2canvas_student18': 139495, 'nb2canvas_student19': 139496, 'nb2canvas_student20': 139497, 'nb2canvas_student21': 139498, 'nb2canvas_student22': 139499, 'nb2canvas_student23': 139500, 'nb2canvas_student24': 139501, 'nb2canvas_student25': 139502, 'nb2canvas_student26': 139503, 'nb2canvas_student27': 139504, 'nb2canvas_student28': 139505, 'nb2canvas_student29': 139506, 'nb2canvas_student30': 139507, 'nb2canvas_student31': 139508, 'nb2canvas_student32': 139509, 'nb2canvas_student33': 139510, 
@@ -9,3 +10,8 @@ canvas_students = {'testacct111': 114217, 'testacct222': 115752, 'testacct333': 
 student_grades = {115752: {'posted_grade': 6.0}, 115753: {'posted_grade': 0.0}}
 
 existing_assignment = 'Test Assignment 2'
+
+# Test data for test_grade_overview
+expected_nbgrader_assignments = {}
+expected_canvas_assignments = {}
+expected_matches = {}

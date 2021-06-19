@@ -25,34 +25,6 @@ class Token:
         else:
             return False
 
-        # expiration_date = self._user.expires_in
-        # token_ttl = expiration_date - int(time.time())
-
-        # if token_ttl < self.token_refresh_threshold:
-        #     #app.logger.debug('Token Expired')
-        #     return False
-        # elif 'api_key' not in self._flask_session:
-        #     #app.logger.debug('Session missing API key')
-        #     return False
-        #     # TODO: Figure out what to do here
-        #     # Need to know which false is being returned
-        # else:
-        #     auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
-        #     r = requests.get(
-        #         '{}users/{}'.format(settings.API_URL, self._flask_session['canvas_user_id']),
-        #         headers=auth_header
-        #     )
-
-        #     #TODO: Figure out how to spoof this properly
-        #     if True or r.status_code == 200 and 'WWW-Authenticate' not in r.headers :
-        #         return True
-        #     else:
-        #         #app.logger.debug('WWW-Authenticate header present, or issue with request.')
-        #         return False
-        # return True
-
-
-
     # If token expires within threshold return false
     def _unexpired(self):
         expiration_date = self._user.expires_in
@@ -71,7 +43,7 @@ class Token:
 
     def _valid_WWW_Authenticate(self):
         
-        #TODO: requesting from a page that doesn't exist. Fix
+        #TODO: Testing requests from a page that doesn't exist. Fix
         return True
         auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
         r = requests.get(

@@ -4,7 +4,7 @@ from pylti.flask import lti
 import os
 
 
-from . import app, db
+from . import app, db, settings
 from .utils import get_canvas, return_error, error
 
 from nbgrader.api import Gradebook
@@ -12,7 +12,7 @@ from .models import AssignmentMatch
 
 from canvasapi.exceptions import InvalidAccessToken
 from .upload_grades import upload_grades
-
+from .canvas import NbgraderCanvas
 import time
 
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
@@ -126,7 +126,6 @@ def get_canvas_assignments(course_id, group):
     return canvas_assignments
     
 
-#TODO: refactor AssignmentMatch cleanup from matching assignments
 def match_assignments(nb_assignments, course_id):
     """
     Check sqlalchemy table for match with nbgrader assignments from a specified course. Creates a dictionary with nbgrader
@@ -150,3 +149,88 @@ def cleanup_assignment_matches(nb_assignments, course_id, canvas_assignments):
             app.logger.debug("Assignment Match removed: {}, {}".format(assignment,match.canvas_assign_id))
             db.session.delete(match)
             db.session.commit()
+
+
+# Refactor Divider
+
+def future_grade_overview(progress = None):
+    '''
+    Step 1: Init assignments
+    Step 2: Handle POST
+    Step 3: match assignments
+    Step 4: return Response
+    '''
+    grade_overview = GradeOverview()
+    grade_overview.init_assignments()
+
+    if request.method == 'POST':
+        pass
+    db_matches = grade_overview.get_matches()
+    return Response(
+            render_template('overview.htm.j2', nb_assign=grade_overview.nb_assignments, cv_assign=grade_overview.canvas_assignments,
+                             db_matches=db_matches, course_id=grade_overview.course_id, progress = progress)
+        )
+
+
+class GradeOverview:
+
+    def __init__(self):
+        pass
+
+    # Initializes stuff. Move to __init__ after testing
+    def init_assignments(self):
+        self.course_id = get_canvas_id()
+        self._init_canvas(self.course_id)
+        self.nb_assignments = self._get_nbgrader_assignments()
+        group = self._get_assignment_group_id()
+        self.canvas_assignments = self._get_canvas_assignments(group)
+    
+    # Prunes database for deleted assignments then returns valid matches
+    def get_matches(self):
+        self._cleanup_assignment_matches()
+        return self._match_assignments()
+
+    def _init_canvas(self, flask_session = session):
+        self._nbgrader_canvas = NbgraderCanvas(settings.API_URL, flask_session)
+        self._canvas = self.nbgrader_canvas.get_canvas()
+        self._course = self.canvas.get_course(self.course_id)
+
+    # Get the nbgrader_assignments from the course gradebook
+    def _get_nbgrader_assignments(course="TEST_NBGRADER"):
+        with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
+            return gb.assignments
+
+    def _get_assignment_group_id(self):
+        assignment_groups = self._course.get_assignment_groups()
+
+        for ag in assignment_groups:
+            if (ag.name == "Assignments"):
+                # TODO: Check this out
+                # Can't you just do 'return ag.id' instead?
+                return self._course.get_assignment_group(ag.id).id
+
+    # Returns a list of assignments for given course and group as a dict {assignment_id:assignment_name}
+    def _get_canvas_assignments(self, group):
+        assignments = self._course.get_assignments_for_group(group)
+
+        canvas_assignments = {a.id:a.name for a in assignments}
+        return canvas_assignments
+    
+    # Go through matches that correspond to a nb_assignment and verify the corresponding canvas assignment still exists.
+    # If canvas assignment no longer exists, remove match from database
+    def _cleanup_assignment_matches(self):
+        for assignment in self.nb_assignments:
+            match = AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment.name, course_id=self.course_id).first()
+            if match and match.canvas_assign_id not in self.canvas_assignments:
+                app.logger.debug("Assignment Match removed: {}, {}".format(assignment,match.canvas_assign_id))
+                db.session.delete(match)
+                db.session.commit()
+
+    # Finds entries in db that match given nb_assignments to canvas assignments. Returns dict of {assignment_name: AssignmentMatch}.
+    # If no match found, pair name with None.
+    # Note that this queries a db of matches and doesn't directly find matches between canvas and nb_grader.
+    # Can result in unexpected behavior if assignment is deleted without db being updated.
+    def _match_assignments(self):
+        nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment.name, course_id=self.course_id).first()
+                                                                for assignment in self.nb_assignments}
+        return nb_matches

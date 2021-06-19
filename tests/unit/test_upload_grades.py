@@ -25,7 +25,7 @@ class TestUploadGrades(unittest.TestCase):
 
     def test_init_course(self):
         self.uploader.init_course({'canvas_user_id': '114217'})
-        assert str(self.uploader._course) == 'ET-MCC-CCET_FA20 Canvas Caliper Events Testing (20774)'
+        assert self.uploader._course.name == 'ET-MCC-CCET_FA20 Canvas Caliper Events Testing'
 
     def test_get_canvas_students(self):
         self.uploader.init_course({'canvas_user_id': '114217'})
@@ -82,9 +82,11 @@ class TestUploadGrades(unittest.TestCase):
         before = AssignmentMatch.query.filter_by(nbgrader_assign_name=customUploader._form_nb_assign_name, course_id=customUploader._course_id).first()
         customUploader._add_new_match(progress)
         after = AssignmentMatch.query.filter_by(nbgrader_assign_name=customUploader._form_nb_assign_name, course_id=customUploader._course_id).first()
-        assert not before == after
+        passed = after != before
         db.session.delete(after)
         db.session.commit()
         customUploader.assignment_to_upload.delete()
+        assert passed
+        
 
     
