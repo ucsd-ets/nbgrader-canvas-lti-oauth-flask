@@ -2,7 +2,7 @@ from types import GetSetDescriptorType
 from flask import Blueprint, render_template, session, request, redirect, url_for
 from pylti.flask import lti
 
-from .utils import get_canvas, error
+from .utils import error
 from . import app, db
 from . import settings
 from nbgrader.api import Gradebook, MissingEntry
@@ -282,6 +282,8 @@ def get_progress():
     # get assignment and course for db query
     assignment = request.args.get('assignment')
     id = request.args.get('course_id')
+    
+    
 
     #TODO: Check if an assignment was deleted from canvas and remove it from db
     if request.method == 'GET':
@@ -340,11 +342,7 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
 class UploadGrades:
 
     def __init__(self, course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name="TEST_NBGRADER", lti=lti):
-        '''
-        Step 1: Initialize course object
-        Step 2: Parse out the form data
-        Step 3: Modify database?
-        '''
+       
         self._course_id = course_id
         self._group = group
         self._form_canvas_assign_id = form_canvas_assign_id
@@ -360,12 +358,14 @@ class UploadGrades:
         nbgrader = NbgraderCanvas(settings.API_URL, flask_session)
         canvas = nbgrader.get_canvas()
         self._course = canvas.get_course(self._course_id)
+        if self._course is None:
+            raise Exception('Invalid course id')
     
     def parse_form_data(self):
         canvas_students = self._get_canvas_students()
         self.student_grades = self._get_student_grades(canvas_students)
 
-        if (self._form_canvas_assign_id == 'create') :
+        if (self._form_canvas_assign_id == 'create'):
             self.assignment_to_upload = self._create_assignment()
         else: 
             self.assignment_to_upload = self._get_assignment()
@@ -405,7 +405,7 @@ class UploadGrades:
                 canvas_students[user.login_id]=user.id  
         return canvas_students
     
-    #Returns a dict of {id: {'posted_grade':score}} for all students in gradebook
+    #Returns a dict of {id: {'posted_grade':score}} for all students in nb gradebook
     def _get_student_grades(self, canvas_students):
         with Gradebook("sqlite:////mnt/nbgrader/"+self._course_name+"/grader/gradebook.db") as gb:
         
@@ -449,7 +449,10 @@ class UploadGrades:
     # gets existing canvas assignment
     def _get_assignment(self):
         app.logger.debug("upload submissions for existing canvas assignment;")
-        return self._course.get_assignment(self._form_canvas_assign_id)
+        assignment = self._course.get_assignment(self._form_canvas_assign_id)
+        if assignment is None:
+            raise Exception('Invalid form canvas_assign_id')
+        return assignment
 
     # create new assignments as published
     def _create_assignment(self):

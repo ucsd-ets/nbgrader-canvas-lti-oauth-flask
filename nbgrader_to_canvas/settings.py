@@ -36,7 +36,7 @@ else:
 
 oauth2_scopes = " ".join([
     # Uncomment the following line and add your desired scopes to enable token scoping:
-    # "url:GET|/api/v1/users/:user_id/profile",
+    #"url:GET|/api/v1/users/:user_id/profile",
 ])
 
 # config object settings

@@ -11,6 +11,7 @@ RUN groupadd -g 1018 -r nbgrader2canvas && useradd --no-log-init -u 1018 -m -r -
 ENV PYTHONPATH=/app
 ENV FLASK_APP=nbgrader_to_canvas
 
+# might need to remove dos2unix in production
 RUN apt-get update && \
     apt-get install -y lsb-release \
     sqlite3 \

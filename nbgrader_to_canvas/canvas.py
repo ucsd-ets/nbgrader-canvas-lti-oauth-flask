@@ -41,22 +41,21 @@ class Token:
         else:
             return False
 
+    # Only called after _unexpired and _contains_api_key. May error otherwise
     def _valid_WWW_Authenticate(self):
-        
-        #TODO: Testing requests from a page that doesn't exist. Fix
-        return True
-        auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
-        r = requests.get(
-            '{}users/{}'.format(settings.API_URL, self._flask_session['canvas_user_id']),
-            headers = auth_header
-        )
-        print('WWW-Authenticate' not in r.headers)
-        print(r.status_code)
-        print(r.url)
+        r = self._get_WWW_Auth_response()
         if 'WWW-Authenticate' not in r.headers and r.status_code == 200:
             return True
         else:
             return False
+
+    #Only called after _unexpired and _contains_api_key. May error otherwise
+    def _get_WWW_Auth_response(self):
+        auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
+        return requests.get(
+            '{}users/{}'.format(settings.API_URL, self._flask_session['canvas_user_id']),
+            headers = auth_header
+        )
         
     # Combine old refresh function with refresh_access_token
 
@@ -68,7 +67,7 @@ class Token:
         :returns: True if refresh succeeds. False if json response is invalid, 
             or db does not get updated.
         """
-        # TODO: Potentially refactor the response and json segment to make this function more testable
+        
         payload = {
                 'grant_type': 'refresh_token',
                 'client_id': settings.oauth2_id,
@@ -108,16 +107,16 @@ class Token:
         self._flask_session['expires_in'] = new_expiration_date
         return True
 
-    def _update_db_expiration(self, new_expiration_date):
+    def _update_db_expiration(self, new_expiration_date, flask_session = session):
         self._user.expires_in = new_expiration_date
         db.session.commit()
 
         # Confirm that expiration date has been updated
-        updated_user = Users.query.filter_by(user_id=int(self._user.user_id)).first()
-        if updated_user.expires_in != new_expiration_date:
+        db_expiration = self._get_db_expiration()
+        if db_expiration != new_expiration_date:
             readable_expires_in = time.strftime(
                 '%a, %d %b %Y %H:%M:%S',
-                time.localtime(updated_user.expires_in)
+                time.localtime(db_expiration)
             )
             readable_new_expiration = time.strftime(
                 '%a, %d %b %Y %H:%M:%S',
@@ -128,14 +127,20 @@ class Token:
                 'session: {}\n'
                 'DB expires_in: {}\n'
                 'new_expiration_date: {}'
-            ).format(session, readable_expires_in, readable_new_expiration))
+            ).format(flask_session, readable_expires_in, readable_new_expiration))
             return False
         return True
+
+    # This doesn't really need to exist. It is just used to allow mock testing
+    def _get_db_expiration(self):
+        user = Users.query.filter_by(user_id=int(self._user.user_id)).first()
+        return user.expires_in
+
         
-#TODO: consider renaming to something more descriptive
+# Wrapper for getting a canvas object and maintaining a fresh token
 class NbgraderCanvas:
 
-    def __init__(self, api_URL, flask_session = session):
+    def __init__(self, api_URL = settings.API_URL, flask_session = session):
         self._api_URL = api_URL
         self._flask_session = flask_session
     

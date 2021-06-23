@@ -2,7 +2,7 @@ from types import GetSetDescriptorType
 from flask import Blueprint, render_template, session, request
 from pylti.flask import lti
 
-from .utils import get_canvas, error
+from .utils import error
 from . import app
 from . import settings
 from nbgrader.api import Gradebook, MissingEntry
@@ -37,7 +37,7 @@ def upload_status(lti=lti):
     course_id = session['course_id']
 
     # initialize a new canvasapi Canvas object
-    canvas = get_canvas()
+    #canvas = get_canvas()
 
     # canvasapi debugging info https://github.com/ucfopen/canvasapi/blob/master/docs/debugging.rst
     logger = logging.getLogger("canvasapi")

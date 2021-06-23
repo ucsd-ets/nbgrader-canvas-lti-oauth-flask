@@ -1,13 +1,14 @@
+from nbgrader_to_canvas.canvas import NbgraderCanvas
 from flask import session, redirect, url_for, request, Blueprint
 from pylti.flask import lti
 from functools import wraps
 import time
 import requests
 
-from .utils import redirect_to_auth, check_token_freshness, refresh_access_token, error, check_valid_user
+from .utils import redirect_to_auth, error, check_valid_user
 from . import settings
 from .models import Users
-from . import app
+from . import app, db
 
 launch_blueprint = Blueprint('launch', __name__)
 
@@ -19,7 +20,9 @@ launch_blueprint = Blueprint('launch', __name__)
 def launch(lti=lti):
     
     # Try to grab the user
+    
     user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
+    
 
     # Found a user
     if not user:
@@ -29,7 +32,10 @@ def launch(lti=lti):
         )
         return redirect_to_auth()
 
-    if check_token_freshness(user):
+    app.logger.info("Token: {}".format(user.refresh_key))
+    nbgrader = NbgraderCanvas()
+
+    if nbgrader.update_token():
         app.logger.debug("redirecting to grade_overview")
         return redirect(url_for('grade_overview.grade_overview'))
     else:

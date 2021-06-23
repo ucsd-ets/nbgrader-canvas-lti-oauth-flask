@@ -1,8 +1,9 @@
+from nbgrader_to_canvas.canvas import NbgraderCanvas
 from flask import Blueprint, Response, render_template, session, request
 from pylti.flask import lti
 
 from . import app
-from .utils import get_canvas, return_error
+from .utils import return_error
 
 from nbgrader.api import Gradebook
 
@@ -32,6 +33,7 @@ def grade_students():
         )
         return return_error(msg)
 
+
 @lti(request='session', role='staff')
 def get_students(lti=lti):
     """
@@ -41,7 +43,8 @@ def get_students(lti=lti):
     course_id = session['course_id']
 
     # initialize a new canvasapi Canvas object
-    canvas = get_canvas()
+    nbgrader = NbgraderCanvas()
+    canvas = nbgrader.get_canvas()
 
     # get canvas assignments from course
     course = canvas.get_course(course_id)
