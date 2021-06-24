@@ -12,7 +12,7 @@ from .models import AssignmentMatch
 
 from canvasapi.exceptions import InvalidAccessToken
 from .upload_grades import UploadGrades, upload_grades
-from .canvas import NbgraderCanvas
+from .canvas import CanvasWrapper
 import time
 
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
@@ -203,9 +203,6 @@ def grade_overview(progress = None):
 
 class GradeOverview:
 
-    def __init__(self):
-        pass
-
     # Initializes stuff. Move to __init__ after testing. Remove defaults after testing
     def init_assignments(self, flask_session = session):
         self.course_id = get_canvas_id()
@@ -220,8 +217,8 @@ class GradeOverview:
         return self._match_assignments()
 
     def _init_canvas(self, flask_session = session):
-        self._nbgrader_canvas = NbgraderCanvas(settings.API_URL, flask_session)
-        self._canvas = self._nbgrader_canvas.get_canvas()
+        self._canvas_wrapper = CanvasWrapper(settings.API_URL, flask_session)
+        self._canvas = self._canvas_wrapper.get_canvas()
         self._course = self._canvas.get_course(self.course_id)
 
     # Get the nbgrader_assignments from the course gradebook

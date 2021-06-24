@@ -138,7 +138,7 @@ class Token:
 
         
 # Wrapper for getting a canvas object and maintaining a fresh token
-class NbgraderCanvas:
+class CanvasWrapper:
 
     def __init__(self, api_URL = settings.API_URL, flask_session = session):
         self._api_URL = api_URL

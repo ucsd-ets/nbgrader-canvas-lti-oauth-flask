@@ -1,5 +1,5 @@
 from tests.unit import FakeResponse
-from nbgrader_to_canvas.canvas import NbgraderCanvas, Token
+from nbgrader_to_canvas.canvas import CanvasWrapper, Token
 from nbgrader_to_canvas.models import Users
 from canvasapi import Canvas
 from unittest.mock import MagicMock
@@ -20,8 +20,8 @@ def user():
     db.session.commit()
 
 def test_get_canvas(user):
-    canvas = NbgraderCanvas('https://test.ucsd.instructure.com', {'canvas_user_id': '114217'})
-    canvas = canvas.get_canvas()
+    canvas_wrapper = CanvasWrapper('https://test.ucsd.instructure.com', {'canvas_user_id': '114217'})
+    canvas = canvas_wrapper.get_canvas()
     assert isinstance(canvas,Canvas)
 
 

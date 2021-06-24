@@ -7,7 +7,7 @@ from . import app, db
 from . import settings
 from nbgrader.api import Gradebook, MissingEntry
 from .models import AssignmentMatch
-from .canvas import NbgraderCanvas
+from .canvas import CanvasWrapper
 
 import datetime
 import requests
@@ -355,8 +355,8 @@ class UploadGrades:
     # Returns a course object corresponding to given course_id
     # TEST: param is to allow testing
     def init_course(self, flask_session = session):
-        nbgrader = NbgraderCanvas(settings.API_URL, flask_session)
-        canvas = nbgrader.get_canvas()
+        canvas_wrapper = CanvasWrapper(settings.API_URL, flask_session)
+        canvas = canvas_wrapper.get_canvas()
         self._course = canvas.get_course(self._course_id)
         if self._course is None:
             raise Exception('Invalid course id')
@@ -384,7 +384,6 @@ class UploadGrades:
         return progress
 
     #Sets up debugging for canvasapi.
-    #TODO: Figure out why this is necessary
     def _setup_canvasapi_debugging(self):
         canvasapi_logger = logging.getLogger("canvasapi")
         canvasapi_handler = logging.StreamHandler(sys.stdout)
@@ -457,7 +456,9 @@ class UploadGrades:
     # create new assignments as published
     def _create_assignment(self):
         app.logger.debug("upload submissions for non-existing canvas assignment; will be named: {}".format(self._form_nb_assign_name))             
-        return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group})
+        return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group, 'points_possible':10})
+        # when new assignment is created ask user what the point max should be
+        # return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group, 'points_possible':maxpoints})
 
     # Updates grades for given assignment. Returns progress resulting from upload attempt.
     def _submit_grades(self):

@@ -35,7 +35,6 @@ class TestUploadGrades(unittest.TestCase):
     def test_get_nbgrader_assignments(self):
         assignments = self.grade_overview._get_nbgrader_assignments()
         names = {assignment.name for assignment in assignments}
-        print(names)
         assert names == expected_nbgrader_assignments
     
     def test_get_assignment_group_id(self):
@@ -43,11 +42,11 @@ class TestUploadGrades(unittest.TestCase):
         group_id = self.grade_overview._get_assignment_group_id()
         assert group_id == 92059
 
+    # may throw false negatives if you change canvas assignments
     def test_get_canvas_assignments(self):
         self.grade_overview._init_canvas({'canvas_user_id': '114217'})
         assignments = self.grade_overview._get_canvas_assignments()
-        print(assignments)
-        assert assignments == expected_canvas_assignments
+        assert set(assignments.values()) == set(expected_canvas_assignments.values())
 
     
     def test_cleanup_assignment_matches(self):

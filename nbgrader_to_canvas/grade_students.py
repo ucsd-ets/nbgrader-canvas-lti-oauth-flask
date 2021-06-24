@@ -1,4 +1,4 @@
-from nbgrader_to_canvas.canvas import NbgraderCanvas
+from nbgrader_to_canvas.canvas import CanvasWrapper
 from flask import Blueprint, Response, render_template, session, request
 from pylti.flask import lti
 
@@ -43,8 +43,8 @@ def get_students(lti=lti):
     course_id = session['course_id']
 
     # initialize a new canvasapi Canvas object
-    nbgrader = NbgraderCanvas()
-    canvas = nbgrader.get_canvas()
+    canvas_wrapper = CanvasWrapper()
+    canvas = canvas_wrapper.get_canvas()
 
     # get canvas assignments from course
     course = canvas.get_course(course_id)

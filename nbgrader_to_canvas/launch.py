@@ -1,4 +1,5 @@
-from nbgrader_to_canvas.canvas import NbgraderCanvas
+from nbgrader_to_canvas import canvas
+from nbgrader_to_canvas.canvas import CanvasWrapper
 from flask import session, redirect, url_for, request, Blueprint
 from pylti.flask import lti
 from functools import wraps
@@ -18,11 +19,9 @@ launch_blueprint = Blueprint('launch', __name__)
 @lti(error=error, request='initial', role='staff', app=app)
 @check_valid_user
 def launch(lti=lti):
-    
+
     # Try to grab the user
-    
     user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
-    
 
     # Found a user
     if not user:
@@ -33,9 +32,9 @@ def launch(lti=lti):
         return redirect_to_auth()
 
     app.logger.info("Token: {}".format(user.refresh_key))
-    nbgrader = NbgraderCanvas()
+    canvas_wrapper = CanvasWrapper()
 
-    if nbgrader.update_token():
+    if canvas_wrapper.update_token():
         app.logger.debug("redirecting to grade_overview")
         return redirect(url_for('grade_overview.grade_overview'))
     else:

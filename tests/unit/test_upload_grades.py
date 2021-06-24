@@ -70,6 +70,17 @@ class TestUploadGrades(unittest.TestCase):
         assert False
     
     def test_create_assignment(self):
+        try:
+            assignments = self.uploader._course.get_assignments()
+            for a in assignments:
+                if a.name == 'Test Assignment 3':
+                    match = AssignmentMatch.query.filter_by(nbgrader_assign_name=a.name, course_id=20774).first()
+                    if match:
+                        db.session.delete(match)
+                    a.delete()
+            db.session.commit()
+        except Exception as e:
+            print(e)
         custom_uploader = UploadGrades(20774, 92059, 'create', 'Test Assignment 3')
         custom_uploader.init_course({'canvas_user_id': '114217'})
         assignment = custom_uploader._create_assignment()
