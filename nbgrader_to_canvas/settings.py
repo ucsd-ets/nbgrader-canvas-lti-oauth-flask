@@ -24,15 +24,9 @@ LOG_BACKUP_COUNT = 1
 # $oauth2_uri: The "Oauth2 Redirect URI" you provided instructure.
 # $oauth2_scopes: The scopes to request for use by this application.
 
-if os.path.isfile('/app/selenium/on'):
-    oauth2_id = os.getenv('SELENIUM_OAUTH2_ID')
-    oauth2_key = os.getenv('SELENIUM_OAUTH2_KEY')
-    oauth2_uri = os.getenv('SELENIUM_OAUTH2_URI')
-
-else:
-    oauth2_id = os.getenv('OAUTH2_ID')
-    oauth2_key = os.getenv('OAUTH2_KEY')
-    oauth2_uri = os.getenv('OAUTH2_URI')
+oauth2_id = os.getenv('OAUTH2_ID')
+oauth2_key = os.getenv('OAUTH2_KEY')
+oauth2_uri = os.getenv('OAUTH2_URI')
 
 oauth2_scopes = " ".join([
     # Uncomment the following line and add your desired scopes to enable token scoping:

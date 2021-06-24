@@ -16,3 +16,7 @@ src/
 flask_session/
 # postgresql
 pgdata/
+lib/
+include/
+bin/
+*.egg-info
