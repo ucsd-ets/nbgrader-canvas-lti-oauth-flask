@@ -26,10 +26,13 @@ def driver(pytestconfig):
         options = webdriver.ChromeOptions()
         if headless:
             options.headless = True
+        options.add_experimental_option('excludeSwitches', ['enable-logging'])
         driver = webdriver.Chrome(options=options)
 
     else:
         raise Exception(f'No browser option available for {browser}')
+
+    driver.implicitly_wait(10)
 
     yield driver
     if not stayopen:
@@ -37,10 +40,9 @@ def driver(pytestconfig):
 
 @pytest.fixture
 def login(driver):
-    base_url = os.getenv('CANVAS_BASE_URL')
-    canvas_sso_username = os.getenv('CANVAS_SSO_USERNAME')
-    canvas_sso_pw = os.getenv('CANVAS_SSO_PASSWORD')
-
+    base_url = 'https://ucsd.test.instructure.com'
+    canvas_sso_username = 'testacct111'
+    canvas_sso_pw = 'kZChv89xmNbyf3b*'
     driver.get(base_url)
 
     WebDriverWait(driver, SECONDS_WAIT).until(
@@ -61,9 +63,33 @@ def login(driver):
 
     yield driver
 
+@pytest.fixture
+def localhost(login):
+    login.find_element_by_css_selector('#DashboardCard_Container > div > div:nth-child(1) > div > div:nth-child(1) > div').click()
+    login.find_element_by_css_selector('#section-tabs > li:nth-child(4) > a').click()
+    login.find_element_by_css_selector('#context_module_item_903706 > div > div.ig-info > div.module-item-title > span > a').click()
+    login.find_element_by_css_selector('#tool_form > div > div.load_tab > div > button').click()
+    try:
+        print('Attempting to authorize')
+        login.find_element_by_css_selector('#oauth2_accept_form > div > input').click()
+    except:
+        print('Already authorized')
+    login.switch_to.window(login.window_handles[-1])
+    
+    assert login.title == 'Nbgrader to Canvas Grading'
+
+    yield login
+
 def test_selenium_is_working(driver):
     """Check this by querying a known endpoint"""
     
     driver.get('https://www.google.com')
     txt = driver.find_element_by_tag_name('body').text
     assert len(txt) > 0
+
+def test_login(login):
+    logged_in = login.find_element(By.ID, "dashboard_header_container") is not None
+    assert logged_in
+
+def test_localhost(localhost):
+    assert localhost.title == 'Nbgrader to Canvas Grading'

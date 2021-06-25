@@ -16,7 +16,12 @@ src/
 flask_session/
 # postgresql
 pgdata/
+# slenium venv
 lib/
 include/
 bin/
 *.egg-info
+scripts/activate*
+scripts/deactivate.bat
+scripts/pip*
+scripts/py*
