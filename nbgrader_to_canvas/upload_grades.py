@@ -292,6 +292,7 @@ def get_progress():
         # if match found, return db upload url as a json
         if match:
             app.logger.debug("found match: {}, {}, {}".format(match, assignment, id))
+            #app.logger.debug("{}".format(requests.get(match.upload_progress_url).json()))
             return requests.get(match.upload_progress_url).json()
 
         # if match not found, return null
@@ -366,7 +367,8 @@ class UploadGrades:
         self.student_grades = self._get_student_grades(canvas_students)
 
         if (self._form_canvas_assign_id == 'create'):
-            self.assignment_to_upload = self._create_assignment()
+            max_score = self._get_max_score()
+            self.assignment_to_upload = self._create_assignment(max_score)
         else: 
             self.assignment_to_upload = self._get_assignment()
 
@@ -409,6 +411,7 @@ class UploadGrades:
         with Gradebook("sqlite:////mnt/nbgrader/"+self._course_name+"/grader/gradebook.db") as gb:
         
             nb_assignment = gb.find_assignment(self._form_nb_assign_name)
+            self._max_score = nb_assignment.max_score
 
             # TODO: can we change this to just get the students for this assignment?
             nb_students = gb.students            
@@ -453,12 +456,17 @@ class UploadGrades:
             raise Exception('Invalid form canvas_assign_id')
         return assignment
 
+    def _get_max_score(self):
+        with Gradebook("sqlite:////mnt/nbgrader/"+self._course_name+"/grader/gradebook.db") as gb:
+            nb_assignment = gb.find_assignment(self._form_nb_assign_name)
+            return nb_assignment.max_score
+
     # create new assignments as published
-    def _create_assignment(self):
+    def _create_assignment(self, max_score):
         app.logger.debug("upload submissions for non-existing canvas assignment; will be named: {}".format(self._form_nb_assign_name))             
-        return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group, 'points_possible':10})
-        # when new assignment is created ask user what the point max should be
-        # return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group, 'points_possible':maxpoints})
+        return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group, 'points_possible':max_score})
+        
+    
 
     # Updates grades for given assignment. Returns progress resulting from upload attempt.
     def _submit_grades(self):
@@ -469,8 +477,7 @@ class UploadGrades:
             session.modified = True
         except Exception:
             app.logger.debug("Error modifying session")
-        app.logger.debug("progress url:")
-        app.logger.debug(progress.url)
+        app.logger.debug("progress url: {}".format(progress.url))
         return progress
 
     # Update existing match in database
