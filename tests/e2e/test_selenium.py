@@ -69,12 +69,13 @@ def localhost(login):
     login.find_element_by_css_selector('#section-tabs > li:nth-child(4) > a').click()
     login.find_element_by_css_selector('#context_module_item_903706 > div > div.ig-info > div.module-item-title > span > a').click()
     login.find_element_by_css_selector('#tool_form > div > div.load_tab > div > button').click()
+    login.switch_to.window(login.window_handles[-1])
     try:
         print('Attempting to authorize')
         login.find_element_by_css_selector('#oauth2_accept_form > div > input').click()
     except:
         print('Already authorized')
-    login.switch_to.window(login.window_handles[-1])
+    
     
     assert login.title == 'Nbgrader to Canvas Grading'
 
@@ -87,9 +88,21 @@ def test_selenium_is_working(driver):
     txt = driver.find_element_by_tag_name('body').text
     assert len(txt) > 0
 
-def test_login(login):
+def test_login_gets_driver_logged_in(login):
     logged_in = login.find_element(By.ID, "dashboard_header_container") is not None
     assert logged_in
 
-def test_localhost(localhost):
+def test_localhost_gets_driver_to_overview_page(localhost):
     assert localhost.title == 'Nbgrader to Canvas Grading'
+
+def test_create_and_upload_unmatched_assignment(localhost):
+    assert localhost.find_element_by_id('Test Assignment 3').text == 'No match found'
+    localhost.find_element_by_css_selector('#main-table > tr:nth-child(4) > td:nth-child(4) > input.uploadbtn').click()
+    #TODO: make it wait for refresh before checking
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        expected_conditions.text_to_be_present_in_element(
+            (By.ID, "Test Assignment 3"), "completed"
+        )
+    )
+    assert localhost.find_element_by_id('Test Assignment 3').text == 'completed'
+    

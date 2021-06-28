@@ -15,7 +15,7 @@ from .models import Users
 
 # Utility Functions
 def return_error(msg):
-    return render_template('error.htm.j2', msg=msg)
+    return render_template('error.htm.j2', msg=msg, BASE_URL=settings.BASE_URL)
 
 
 def error(exception=None):

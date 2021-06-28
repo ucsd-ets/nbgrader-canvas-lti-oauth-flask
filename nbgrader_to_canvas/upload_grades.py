@@ -21,6 +21,7 @@ import sys
 import os
 import canvasapi
 import pytest
+import time
 #  Import the Canvas class
 from canvasapi.assignment import (
     Assignment,
@@ -291,7 +292,7 @@ def get_progress():
 
         # if match found, return db upload url as a json
         if match:
-            app.logger.debug("found match: {}, {}, {}".format(match, assignment, id))
+            app.logger.debug("found match: {}, {}, {}".format(match.canvas_assign_id, assignment, id))
             #app.logger.debug("{}".format(requests.get(match.upload_progress_url).json()))
             return requests.get(match.upload_progress_url).json()
 
@@ -471,13 +472,16 @@ class UploadGrades:
     # Updates grades for given assignment. Returns progress resulting from upload attempt.
     def _submit_grades(self):
         progress = self.assignment_to_upload.submissions_bulk_update(grade_data=self.student_grades)
-        progress = progress.query()
         try:
             session['progress_json'] = jsonpickle.encode(progress)
             session.modified = True
         except Exception:
             app.logger.debug("Error modifying session")
         app.logger.debug("progress url: {}".format(progress.url))
+        time_out = time.time()+30
+        while not progress.workflow_state == "completed" and time_out > time.time():
+            time.sleep(.1)
+            progress = progress.query()
         return progress
 
     # Update existing match in database

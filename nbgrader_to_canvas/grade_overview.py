@@ -143,7 +143,6 @@ grade_overview_blueprint = Blueprint('grade_overview', __name__)
 #             db.session.commit()
 
 
-# Refactor Divider
 @lti(request='session', role='staff')
 def get_canvas_id(lti=lti):
     """
@@ -155,7 +154,7 @@ def get_canvas_id(lti=lti):
 def grade_overview(progress = None):
 
     try:
-
+        
         grade_overview = GradeOverview()
         grade_overview.init_assignments()
 

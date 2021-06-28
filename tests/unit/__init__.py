@@ -1,5 +1,14 @@
+
+
 #TODO: Might be better practice to store these as global variables in their respective test files
 # Test data for test_canvas
+from nbgrader_to_canvas.canvas import CanvasWrapper
+from nbgrader_to_canvas.grade_overview import grade_overview
+from nbgrader_to_canvas import db
+from nbgrader_to_canvas.models import AssignmentMatch
+from nbgrader_to_canvas import settings
+
+
 class FakeResponse:
     def __init__(self,headers, status_code):
         self.headers = headers
@@ -15,5 +24,19 @@ existing_assignment = 'Test Assignment 2'
 
 # Test data for test_grade_overview
 expected_nbgrader_assignments = {'Test Assignment 1', 'Test Assignment 3', 'Test Assignment 2', 'assign1'}
-expected_canvas_assignments = {192792: 'Week 1: Assignment', 192793: 'Week 2: Assignment', 192794: 'Week 3: Assignment', 192795: 'Week 4: Assignment', 192796: 'Week 5: Assignment [Peer Review]', 320290: 'assign1', 337353: 'Test Assignment 2', 337356: 'Test Assignment 1'}
+expected_canvas_assignments = {192792: 'Week 1: Assignment', 192793: 'Week 2: Assignment', 192794: 'Week 3: Assignment', 192795: 'Week 4: Assignment', 192796: 'Week 5: Assignment [Peer Review]'}
 expected_matches_names = {'Test Assignment 1', 'assign1', 'Test Assignment 3', 'Test Assignment 2'}
+
+# Creates a standard clean slate for all tests to start from
+def wipe_db():
+    # clear AssignmentMatch
+    for match in AssignmentMatch.query.filter_by():
+        db.session.delete(match)
+    # wipe Test Assignment 1-3, and assign1
+    canvas_wrapper = CanvasWrapper('https://ucsd.test.instructure.com', {'canvas_user_id': '114217'})
+    canvas = canvas_wrapper.get_canvas()
+    course = canvas.get_course(20774)
+    for assignment in course.get_assignments_for_group(92059):
+        if 'Test Assignment' in assignment.name or assignment.name == 'assign1':
+            assignment.delete()
+    db.session.commit()

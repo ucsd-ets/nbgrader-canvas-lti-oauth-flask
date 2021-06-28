@@ -1,8 +1,40 @@
-{% extends 'base.htm.j2' %}
-{% block content %}
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset='utf-8'/>
+    <title>Error Page</title>
+    <style> 
+    
+    
+    p {
+        text-align: center;
+        font-size: 2.5vh;
+        width: 50%;
+        margin: auto;
+    }
 
-<div>
-    <p>{{msg}}</p>
-</div>
+    h1 {
+        text-align: center;
+        font: bold 10vh serif;
+    }
 
-{% endblock content %}
+  </style> 
+</head>
+
+<body>
+    <header>
+        <h1>Error</h1>
+    </header>
+
+    
+    {% block content %}
+        <div>
+            <p>{{msg}}</p><br>
+            <p>For assistance with this issue please email <a href="mailto:canvas@ucsd.edu">canvas@ucsd.edu</a></p>
+        </div>
+    {% endblock content %}
+
+    <footer></footer>
+</body>
+</html>

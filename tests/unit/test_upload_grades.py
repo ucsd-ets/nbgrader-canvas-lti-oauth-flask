@@ -1,28 +1,53 @@
 from nbgrader_to_canvas.upload_grades import UploadGrades
 from nbgrader_to_canvas.models import AssignmentMatch, Users
+from nbgrader_to_canvas.canvas import CanvasWrapper
 from canvasapi import Canvas
 from flask import session
-from tests.unit import canvas_students, student_grades, existing_assignment
+from tests.unit import canvas_students, student_grades, existing_assignment, wipe_db
 import unittest
 import pytest
 from nbgrader_to_canvas import db, app
 
 import time
 
+
+
 class TestUploadGrades(unittest.TestCase):
-    @pytest.fixture(autouse = True)
+
+    # Expected setup:
+    # assign1 unused
+    # Test Assignment 1 deleted and matches removed
+    # Test Assignment 2 exists and it's id is given to uploader
+    # Test Assignment 3 deleted and matches removed
+    @pytest.fixture
+    def setup(self):
+        wipe_db()
+        canvas_wrapper = CanvasWrapper('https://ucsd.test.instructure.com', {'canvas_user_id': '114217'})
+        canvas = canvas_wrapper.get_canvas()
+        course = canvas.get_course(20774)
+        assignment2 = course.create_assignment({'name':'Test Assignment 2', 'published':'true', 'assignment_group_id':92059, 'points_possible':6})
+        yield assignment2.id
+
+    # Needed to add user to db before testing
+    @pytest.fixture
     def user(self):
+        old_user = Users.query.filter_by(user_id=114217).first()
+        if old_user:
+            db.session.delete(old_user)
+            db.session.commit()
         self._user = Users(114217,'13171~bngbhxjVx3G7sqnWFC3BFs0r9MgN408enlV3I3uN74pCPpjkQvK2bI3eEcStdPH1',10)
         db.session.add(self._user)
         db.session.commit()
         yield self._user
         db.session.delete(self._user)
         db.session.commit()
-    
-    @pytest.fixture(autouse = True)
-    def uploader(self, user):
-        self.uploader = UploadGrades(20774, 92059, 337353, 'Test Assignment 2')
 
+    @pytest.fixture(autouse = True)
+    def uploader(self, user, setup):
+        self.uploader = UploadGrades(20774, 92059, setup, 'Test Assignment 2')
+        yield self.uploader
+        wipe_db()
+    
     def test_init_course_returns_course_for_valid_course_id(self):
         self.uploader.init_course({'canvas_user_id': '114217'})
         assert self.uploader._course.name == 'Canvas Caliper Events Testing'
@@ -38,7 +63,6 @@ class TestUploadGrades(unittest.TestCase):
     def test_get_canvas_students(self):
         self.uploader.init_course({'canvas_user_id': '114217'})
         students = self.uploader._get_canvas_students()
-        print(students)
         assert students == canvas_students    
 
     def test_get_student_grades_returns_grades_for_valid_course_name(self):
@@ -70,65 +94,31 @@ class TestUploadGrades(unittest.TestCase):
         assert False
     
     def test_create_assignment(self):
-        try:
-            assignments = self.uploader._course.get_assignments()
-            for a in assignments:
-                if a.name == 'Test Assignment 3':
-                    match = AssignmentMatch.query.filter_by(nbgrader_assign_name=a.name, course_id=20774).first()
-                    if match:
-                        db.session.delete(match)
-                    a.delete()
-            db.session.commit()
-        except Exception as e:
-            print(e)
+        
         custom_uploader = UploadGrades(20774, 92059, 'create', 'Test Assignment 3')
         custom_uploader.init_course({'canvas_user_id': '114217'})
-        assignment = custom_uploader._create_assignment()
-        assert assignment.name == 'Test Assignment 3'
+        assignment = custom_uploader._create_assignment(10)
+        name = assignment.name
         assignment.delete()
+        assert name == 'Test Assignment 3'
 
 
     def test_submit_grades(self):
         self.uploader.init_course({'canvas_user_id': '114217'})
         self.uploader.parse_form_data()
         progress = self.uploader._submit_grades()   
-        time_out = time.time()+80
-        while not progress.workflow_state == 'completed' and not progress.workflow_state == 'failed':
-            time.sleep(.1)
-            progress = progress.query()
-            if time.time() > time_out:
-                print("_submit_grades timed out")
-                print(progress.completion)
-                assert False
         assert progress.workflow_state == 'completed'
 
     # Checks the grade of Test Account 333, Test Assignment 1
-    def test_grades_match(self):
+    def test_grades_match_create(self):
         self.uploader.init_course({'canvas_user_id': '114217'})
-        # TODO: Use canvas rest api to check if the uploaded grade matches what is expected from nbgrader.
-        # Step 1: Remove assignment from canvas
-        try:
-            assignments = self.uploader._course.get_assignments()
-            for a in assignments:
-                if a.name == 'Test Assignment 1':
-                    print('here')
-                    match = AssignmentMatch.query.filter_by(nbgrader_assign_name=a.name, course_id=20774).first()
-                    if match:
-                        db.session.delete(match)
-                    a.delete()
-            db.session.commit()
-        except Exception as e:
-            print(e)
-        # Step 2: Call upload grades
+        # Call upload grades
         custom_uploader = UploadGrades(20774, 92059, 'create', 'Test Assignment 1')
         custom_uploader.init_course({'canvas_user_id': '114217'})
         custom_uploader.parse_form_data()
-        progress = custom_uploader.update_database()
-        # Step 3: Check the assignment is what is expected
-        time_out = time.time()+10
-        while not progress.workflow_state == "completed" and time_out>time.time():
-            time.sleep(.1)
-            progress = progress.query()
+        custom_uploader.update_database()
+        # Check the assignment is what is expected
+        
         updated_assignment = custom_uploader.assignment_to_upload
         submission = updated_assignment.get_submission(115753)
         assert submission.score == 2.0
@@ -137,6 +127,7 @@ class TestUploadGrades(unittest.TestCase):
         self.uploader.init_course({'canvas_user_id': '114217'})
         self.uploader.parse_form_data()
         progress = self.uploader._submit_grades()
+        self.uploader._add_new_match(progress)
         assignment_match = AssignmentMatch.query.filter_by(nbgrader_assign_name=self.uploader._form_nb_assign_name, course_id=self.uploader._course_id).first()
         self.uploader._update_match(assignment_match, progress)
         db.session.commit()
@@ -158,5 +149,28 @@ class TestUploadGrades(unittest.TestCase):
         custom_uploader.assignment_to_upload.delete()
         assert passed
         
+    # Tests uploading nbgrader assignment 'Test Assignment 1' with canvas assignment 'Week 2: Assignment'
+    def test_grades_match_different_names(self):
+        custom_uploader = UploadGrades(20774, 92059, 192793, 'Test Assignment 1')
+        custom_uploader.init_course({'canvas_user_id': '114217'})
+        custom_uploader.parse_form_data()
+        custom_uploader.update_database()
+        
+        # Check the assignment is correct on canvas
+        updated_assignment = custom_uploader.assignment_to_upload
+        submission = updated_assignment.get_submission(115753)
+        assert submission.score == 2.0 
+        assert updated_assignment.name == 'Week 2: Assignment'
+
+    # Tests uploading to 'Test Assignment 2' which already is matched to canvas 'Test Assignment 2'
+    def test_grades_match_existing(self):
+        self.uploader.init_course({'canvas_user_id': '114217'})
+        self.uploader.parse_form_data()
+        self.uploader.update_database()
+        # Check the assignment is correct on canvas
+        updated_assignment = self.uploader.assignment_to_upload
+        submission = updated_assignment.get_submission(115752)
+        assert submission.score == 6.0
+
 
     

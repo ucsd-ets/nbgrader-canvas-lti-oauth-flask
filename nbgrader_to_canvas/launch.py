@@ -8,7 +8,7 @@ import requests
 
 from .utils import redirect_to_auth, error, check_valid_user
 from . import settings
-from .models import Users
+from .models import AssignmentMatch, Users
 from . import app, db
 
 launch_blueprint = Blueprint('launch', __name__)
@@ -22,7 +22,7 @@ def launch(lti=lti):
 
     # Try to grab the user
     user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
-
+    app.logger.info("{}".format(user))
     # Found a user
     if not user:
         # User not in database, go go OAuth!!

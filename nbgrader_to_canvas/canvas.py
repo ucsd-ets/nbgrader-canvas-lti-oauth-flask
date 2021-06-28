@@ -145,7 +145,8 @@ class CanvasWrapper:
         self._flask_session = flask_session
     
     def get_canvas(self):
-        self.update_token()
+        if not self.update_token():
+            pass
         return Canvas(self._api_URL, self._flask_session['api_key'])
 
     # Checks if token up to date. If not, try to refresh it. If refresh fails, then return False. Otherwise return True
