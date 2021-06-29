@@ -285,8 +285,6 @@ def get_progress():
     id = request.args.get('course_id')
     
     
-
-    #TODO: Check if an assignment was deleted from canvas and remove it from db
     if request.method == 'GET':
         match = AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
 
@@ -335,7 +333,6 @@ def upload_grades(course_id, group, course_name="TEST_NBGRADER", lti=lti):
     form_nb_assign_name = request.form.get('form_nb_assign_name')
     
     uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, lti)
-    #TODO: When testing is done, can call these three in the UploadGrades __init__ funciton
     uploader.init_course()
     uploader.parse_form_data()
     return uploader.update_database()
@@ -414,7 +411,7 @@ class UploadGrades:
             nb_assignment = gb.find_assignment(self._form_nb_assign_name)
             self._max_score = nb_assignment.max_score
 
-            # TODO: can we change this to just get the students for this assignment?
+            # TODO: can we change this to just get the students for this assignment? Investigate assignment.get_gradeable_students
             nb_students = gb.students            
             nb_grade_data = {}
 
@@ -437,15 +434,15 @@ class UploadGrades:
                 # TEMP HACK: e7li and shrakibullah are instructors; change their ids (after 
                 # submission fetch above) here to students in canvas course
                 # TODO: create submissions for canvas course students
-                temp_nb_student_id = nb_student.id
-                if nb_student.id == 'e7li':
-                    temp_nb_student_id = 'testacct222'
-                if nb_student.id == 'shrakibullah':
-                    temp_nb_student_id = 'testacct333'                    
+                # temp_nb_student_id = nb_student.id
+                # if nb_student.id == 'e7li':
+                #     temp_nb_student_id = 'testacct222'
+                # if nb_student.id == 'shrakibullah':
+                #     temp_nb_student_id = 'testacct333'                    
 
                 # convert nbgrader username to canvas id (integer)
-                #canvas_student_id = canvas_students[nb_student.id]
-                canvas_student_id = canvas_students[temp_nb_student_id]
+                canvas_student_id = canvas_students[nb_student.id]
+                # canvas_student_id = canvas_students[temp_nb_student_id]
                 nb_grade_data[canvas_student_id] = nb_student_and_score
             return nb_grade_data
 
@@ -479,7 +476,7 @@ class UploadGrades:
             app.logger.debug("Error modifying session")
         app.logger.debug("progress url: {}".format(progress.url))
         time_out = time.time()+30
-        while not progress.workflow_state == "completed" and time_out > time.time():
+        while not progress.workflow_state == "completed" and not progress.workflow_state == "failed" and time_out > time.time():
             time.sleep(.1)
             progress = progress.query()
         return progress

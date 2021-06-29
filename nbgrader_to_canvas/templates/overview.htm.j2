@@ -100,10 +100,11 @@ Grading Overview
 
       {# if a match is found, form match and create dropdown menu of unselectable assignments from Canvas #}
       {% if match %}
-          <option value="{{ match.canvas_assign_id }}" selected="selected">{{ match.nbgrader_assign_name }}</option>
+
+          <option value="{{ match.canvas_assign_id }}" selected="selected">{{ cv_assign[match.canvas_assign_id] }}</option>
           {% for id, assignment in cv_assign.items() %}
               {# list the unmatched canvas assignments #}
-              {% if assignment != match.nbgrader_assign_name %}
+              {% if assignment != cv_assign[match.canvas_assign_id] %}
                   <option value="{{ id }}" disabled=True>{{ assignment }}</option>
               {% endif %}
           {% endfor %}

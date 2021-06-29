@@ -5,9 +5,14 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.by import By
+from tests import wipe_db
 import os
 
 SECONDS_WAIT = 10
+
+@pytest.fixture(autouse = True)
+def setup():
+    wipe_db()
 
 @pytest.fixture()
 def driver(pytestconfig):
@@ -98,7 +103,6 @@ def test_localhost_gets_driver_to_overview_page(localhost):
 def test_create_and_upload_unmatched_assignment(localhost):
     assert localhost.find_element_by_id('Test Assignment 3').text == 'No match found'
     localhost.find_element_by_css_selector('#main-table > tr:nth-child(4) > td:nth-child(4) > input.uploadbtn').click()
-    #TODO: make it wait for refresh before checking
     WebDriverWait(localhost, SECONDS_WAIT).until(
         expected_conditions.text_to_be_present_in_element(
             (By.ID, "Test Assignment 3"), "completed"

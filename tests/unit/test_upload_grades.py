@@ -1,12 +1,11 @@
 from nbgrader_to_canvas.upload_grades import UploadGrades
 from nbgrader_to_canvas.models import AssignmentMatch, Users
 from nbgrader_to_canvas.canvas import CanvasWrapper
-from canvasapi import Canvas
-from flask import session
-from tests.unit import canvas_students, student_grades, existing_assignment, wipe_db
+from tests.unit import canvas_students, student_grades, existing_assignment
+from tests import wipe_db
 import unittest
 import pytest
-from nbgrader_to_canvas import db, app
+from nbgrader_to_canvas import db
 
 import time
 
@@ -46,7 +45,6 @@ class TestUploadGrades(unittest.TestCase):
     def uploader(self, user, setup):
         self.uploader = UploadGrades(20774, 92059, setup, 'Test Assignment 2')
         yield self.uploader
-        wipe_db()
     
     def test_init_course_returns_course_for_valid_course_id(self):
         self.uploader.init_course({'canvas_user_id': '114217'})
@@ -120,7 +118,7 @@ class TestUploadGrades(unittest.TestCase):
         # Check the assignment is what is expected
         
         updated_assignment = custom_uploader.assignment_to_upload
-        submission = updated_assignment.get_submission(115753)
+        submission = updated_assignment.get_submission(114262)
         assert submission.score == 2.0
 
     def test_update_match(self):
@@ -169,7 +167,7 @@ class TestUploadGrades(unittest.TestCase):
         self.uploader.update_database()
         # Check the assignment is correct on canvas
         updated_assignment = self.uploader.assignment_to_upload
-        submission = updated_assignment.get_submission(115752)
+        submission = updated_assignment.get_submission(90840)
         assert submission.score == 6.0
 
 

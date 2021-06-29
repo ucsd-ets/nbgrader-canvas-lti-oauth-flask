@@ -1,9 +1,10 @@
 from nbgrader_to_canvas.grade_overview import GradeOverview
 from nbgrader_to_canvas.models import AssignmentMatch, Users
-from tests.unit import expected_nbgrader_assignments, expected_canvas_assignments, expected_matches_names, wipe_db
+from tests.unit import expected_nbgrader_assignments, expected_canvas_assignments, expected_matches_names
+from tests import wipe_db
 import unittest
 import pytest
-from nbgrader_to_canvas import canvas, db, app
+from nbgrader_to_canvas import db
 
 import time
 
@@ -34,8 +35,6 @@ class TestUploadGrades(unittest.TestCase):
         self.grade_overview = GradeOverview()
         self.grade_overview.course_id = 20774
         self.grade_overview.group = 92059
-        yield None
-        wipe_db()
 
     def test_init_canvas(self):
         self.grade_overview._init_canvas({'canvas_user_id': '114217'})
