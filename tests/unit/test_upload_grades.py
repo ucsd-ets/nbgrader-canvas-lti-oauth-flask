@@ -1,13 +1,11 @@
 from nbgrader_to_canvas.upload_grades import UploadGrades
 from nbgrader_to_canvas.models import AssignmentMatch, Users
 from nbgrader_to_canvas.canvas import CanvasWrapper
-from tests.unit import canvas_students, student_grades, existing_assignment
-from tests import wipe_db
+from tests.unit import canvas_students, student_grades, existing_assignment, wipe_db
 import unittest
 import pytest
 from nbgrader_to_canvas import db
 
-import time
 
 
 
@@ -61,7 +59,7 @@ class TestUploadGrades(unittest.TestCase):
     def test_get_canvas_students(self):
         self.uploader.init_course({'canvas_user_id': '114217'})
         students = self.uploader._get_canvas_students()
-        assert students == canvas_students    
+        assert students == canvas_students
 
     def test_get_student_grades_returns_grades_for_valid_course_name(self):
         grades = self.uploader._get_student_grades(canvas_students)
@@ -156,7 +154,7 @@ class TestUploadGrades(unittest.TestCase):
         
         # Check the assignment is correct on canvas
         updated_assignment = custom_uploader.assignment_to_upload
-        submission = updated_assignment.get_submission(115753)
+        submission = updated_assignment.get_submission(114262)
         assert submission.score == 2.0 
         assert updated_assignment.name == 'Week 2: Assignment'
 

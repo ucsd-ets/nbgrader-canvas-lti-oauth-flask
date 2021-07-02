@@ -1,21 +1,66 @@
+from canvasapi import Canvas
 import json
+from attr import s
 import pytest
+import requests
+import psycopg2
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.by import By
-from tests import wipe_db
+
 import os
 
 SECONDS_WAIT = 10
 
-@pytest.fixture(autouse = True)
-def setup():
-    wipe_db()
+@pytest.fixture()
+def course():
+    payload = {
+            'grant_type': 'refresh_token',
+            'client_id': '131710000000000203',
+            'redirect_uri':'http://localhost:5000/oauthlogin',
+            'client_secret': 'jBwYwIHSsUCfHaBnkdN8Ff56o3WpjJfztp5JEe5DUcCKJ6VB7iYZkMTNt1URrTvo',
+            'refresh_token': '13171~bngbhxjVx3G7sqnWFC3BFs0r9MgN408enlV3I3uN74pCPpjkQvK2bI3eEcStdPH1'
+        }
+    response = requests.post(
+        'https://ucsd.test.instructure.com/login/oauth2/token',
+        data=payload
+    )
+    canvas = None
+    try:
+        api_key = response.json()['access_token']
+        canvas = Canvas('https://ucsd.test.instructure.com',api_key)
+        course = canvas.get_course(20774)
+        return course
+    except Exception as ex:
+        print(response,ex)
+
 
 @pytest.fixture()
-def driver(pytestconfig):
+def setup(course):
+    # clear AssignmentMatches
+    conn = psycopg2.connect(
+        host = "localhost",
+        database = "test",
+        user = "dev",
+        password = "mypassword"
+    )
+    with conn.cursor() as curs:
+        curs.execute("DELETE FROM assignment_match;")
+    conn.commit()
+    conn.close()
+
+
+    # remove canvas classes
+
+    for assignment in course.get_assignments_for_group(92059):
+        if 'Test Assignment' in assignment.name or assignment.name == 'assign1':
+            assignment.delete()
+        
+
+@pytest.fixture()
+def driver(pytestconfig, setup):
     browser = pytestconfig.getoption("browser")
     headless = pytestconfig.getoption('headless')
     stayopen = pytestconfig.getoption('stayopen')
@@ -100,7 +145,7 @@ def test_login_gets_driver_logged_in(login):
 def test_localhost_gets_driver_to_overview_page(localhost):
     assert localhost.title == 'Nbgrader to Canvas Grading'
 
-def test_create_and_upload_unmatched_assignment(localhost):
+def test_create_and_upload_unmatched_assignment(localhost, course):
     assert localhost.find_element_by_id('Test Assignment 3').text == 'No match found'
     localhost.find_element_by_css_selector('#main-table > tr:nth-child(4) > td:nth-child(4) > input.uploadbtn').click()
     WebDriverWait(localhost, SECONDS_WAIT).until(
@@ -109,4 +154,38 @@ def test_create_and_upload_unmatched_assignment(localhost):
         )
     )
     assert localhost.find_element_by_id('Test Assignment 3').text == 'completed'
-    
+    # check gradebook is updated accordingly
+    if not course:
+        print('Error creating course')
+        assert False
+    assignments = course.get_assignments()
+    for assignment in assignments:
+        if assignment.name == 'Test Assignment 3':
+            submission = assignment.get_submission(90840)
+            assert submission.score == 2.0
+            return
+
+
+
+
+def test_upload_assignment_to_different_name(localhost, course):
+    assert localhost.find_element_by_id('assign1').text == 'No match found'
+    localhost.find_element_by_xpath('//*[@id="main-table"]/tr[1]/td[2]/select').click() #open dropdown
+    localhost.find_element_by_xpath('//*[@id="main-table"]/tr[1]/td[2]/select/option[4]').click()   #select week 3: assignment
+    localhost.find_element_by_xpath('//*[@id="main-table"]/tr[1]/td[3]/input[1]').click()   #click upload grades
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        expected_conditions.text_to_be_present_in_element(
+            (By.ID, "assign1"), "completed"
+        )
+    )
+    assert localhost.find_element_by_id('assign1').text == 'completed'
+    # check gradebook is updated accordingly
+    if not course:
+        print('Error creating course')
+        assert False
+    assignments = course.get_assignments()
+    for assignment in assignments:
+        if assignment.name == 'Week 3: Assignment':
+            submission = assignment.get_submission(114262)
+            assert submission.score == 6.0
+            return

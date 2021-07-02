@@ -25,3 +25,4 @@ scripts/activate*
 scripts/deactivate.bat
 scripts/pip*
 scripts/py*
+scripts/chardetect.exe

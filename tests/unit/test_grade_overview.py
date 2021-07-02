@@ -1,7 +1,6 @@
 from nbgrader_to_canvas.grade_overview import GradeOverview
 from nbgrader_to_canvas.models import AssignmentMatch, Users
-from tests.unit import expected_nbgrader_assignments, expected_canvas_assignments, expected_matches_names
-from tests import wipe_db
+from tests.unit import expected_nbgrader_assignments, expected_canvas_assignments, expected_matches_names, wipe_db
 import unittest
 import pytest
 from nbgrader_to_canvas import db

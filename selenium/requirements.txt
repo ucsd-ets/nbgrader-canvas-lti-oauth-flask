@@ -1,3 +1,5 @@
 selenium
 pytest
 psutil
+psycopg2
+canvasapi

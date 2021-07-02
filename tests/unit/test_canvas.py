@@ -12,6 +12,10 @@ from nbgrader_to_canvas import db
 # TODO: reconfigure user fixture to cover test_get_canvas
 @pytest.fixture(autouse = True)
 def user():
+    old_user = Users.query.filter_by(user_id=114217).first()
+    if old_user:
+        db.session.delete(old_user)
+        db.session.commit()
     user = Users(114217,'13171~bngbhxjVx3G7sqnWFC3BFs0r9MgN408enlV3I3uN74pCPpjkQvK2bI3eEcStdPH1',10)
     db.session.add(user)
     db.session.commit()
@@ -29,6 +33,10 @@ class TestToken(unittest.TestCase):
 
     @pytest.fixture(autouse = True)
     def user(self):
+        old_user = Users.query.filter_by(user_id=114217).first()
+        if old_user:
+            db.session.delete(old_user)
+            db.session.commit()
         self._user = Users(114217,'13171~bngbhxjVx3G7sqnWFC3BFs0r9MgN408enlV3I3uN74pCPpjkQvK2bI3eEcStdPH1',10)
         db.session.add(self._user)
         db.session.commit()
