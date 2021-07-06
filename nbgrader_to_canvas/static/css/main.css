@@ -31,6 +31,16 @@ select {
     color:green;
 }
 
+/* for yellow color text */
+.yellowText {
+    color: rgb(200, 255, 0);
+}
+
+/* for orange color text */
+.orangeText {
+    color:orange;
+}
+
 /* format a line break */
 .br {
     display: block;

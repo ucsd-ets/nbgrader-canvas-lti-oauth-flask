@@ -157,13 +157,15 @@ def grade_overview(progress = None):
         
         grade_overview = GradeOverview()
         grade_overview.init_assignments()
+        
+        db_matches = grade_overview.get_matches()
+        app.logger.debug('{}'.format(grade_overview.nb_assignments))
 
         if request.method == 'POST':
             progress = upload_grades(grade_overview.course_id, grade_overview.group)
             return redirect(url_for('grade_overview.grade_overview'))
         
-        db_matches = grade_overview.get_matches()
-        app.logger.debug('{}'.format(grade_overview.nb_assignments))
+        
         return Response(
                 render_template('overview.htm.j2', nb_assign=grade_overview.nb_assignments, cv_assign=grade_overview.canvas_assignments,
                                 db_matches=db_matches, course_id=grade_overview.course_id, progress = progress)
@@ -222,7 +224,7 @@ class GradeOverview:
         self._course = self._canvas.get_course(self.course_id)
 
     # Get the nbgrader_assignments from the course gradebook
-    def _get_nbgrader_assignments(self, course="CSE284_SP21_A00"):
+    def _get_nbgrader_assignments(self, course="COGS108_SP21_A00"):
         with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
             return gb.assignments
 
