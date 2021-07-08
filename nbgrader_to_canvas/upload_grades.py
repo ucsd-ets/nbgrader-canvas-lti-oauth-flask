@@ -1,4 +1,5 @@
 from types import GetSetDescriptorType
+from typing import Counter
 from flask import Blueprint, render_template, session, request, redirect, url_for
 from pylti.flask import lti
 
@@ -6,8 +7,9 @@ from .utils import error
 from . import app, db
 from . import settings
 from nbgrader.api import Gradebook, MissingEntry
-from .models import AssignmentMatch
+from .models import AssignmentMatch, AssignmentStatus
 from .canvas import CanvasWrapper
+from threading import Thread
 
 import datetime
 import requests
@@ -271,6 +273,15 @@ upload_grades_blueprint = Blueprint('upload_grades', __name__)
 #     # return render_template('overview.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, db_matches=db_matches,
 #                         #  progress = progress)
 
+@app.route('/reset_progress', methods=['GET'])
+def reset_progress():
+    assignment = request.args.get('assignment')
+    id = request.args.get('course_id')
+    match = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
+    if match:
+        db.session.delete(match)
+        db.session.commit()
+    return json.dumps(None)
 
 @app.route('/get_progress', methods=['GET'])
 def get_progress():
@@ -288,38 +299,65 @@ def get_progress():
     
     
     if request.method == 'GET':
-        match = AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
+        match = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
 
         # if match found, return db upload url as a json
         if match:
-            app.logger.debug("found match: {}, {}, {}".format(match.canvas_assign_id, assignment, id))
+            #app.logger.debug("found match: {}, {}, {}".format(match.canvas_assign_id, assignment, id))
             #app.logger.debug("{}".format(requests.get(match.upload_progress_url).json()))
-            return requests.get(match.upload_progress_url).json()
+            # TODO: figure out how to have completion in the AssignmentStatus model. needs to be float
+            return json.dumps({'status': match.status, 'completion': match.completion})
 
         # if match not found, return null
         else:
-            app.logger.debug("didn't find match")
             return json.dumps(match)
 
 @upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
-def upload_grades(course_id, group, course_name="COGS108_SP21_A00", lti=lti):
+def upload_grades(course_name="CSE284_SP21_A00", lti=lti):
     #If not posting, don't upload anything
     if not request.method == "POST":
         return None
-    app.logger.debug("form_nb_assign_name:")
-    app.logger.debug(request.form.get('form_nb_assign_name'))
-    app.logger.debug("form_canvas_assign_id:")
-    app.logger.debug(request.form.get('form_canvas_assign_id'))
 
+    course_id = request.form.get('course_id')
+    group = request.form.get('group')
     form_canvas_assign_id = request.form.get('form_canvas_assign_id') 
     form_nb_assign_name = request.form.get('form_nb_assign_name')
-    
+
+    # global upload_queue
+    # upload_queue.append(UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, lti))
+    # if len(upload_queue) == 1:
+    #     run_upload_queue()
+    app.logger.debug("Upload Grades api_key: {}".format(session['api_key']))
     uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, lti)
     uploader.init_course()
-    uploader.parse_form_data()
-    return uploader.update_database()
+    Thread(target=threaded_upload, args=(uploader,)).start()
+    return "upload completed"
 
+# def run_upload_queue():
+#     global upload_queue
+#     try:
+#         for uploader in upload_queue:
+#             uploader.init_course()
+#             uploader.parse_form_data()
+#             uploader.update_database()
+#     except:
+#         for uploader in upload_queue:
+#             status = AssignmentStatus.query.filter_by(nbgrader_assign_name=uploader._form_nb_assign_name)
+#             db.session.delete(status)
+#     finally:    
+#         upload_queue = []
+#         app.logger.debug('Upload Queue cleared')
+
+def threaded_upload(uploader):
+    try:
+        uploader.parse_form_data()
+        uploader.update_database()
+    except Exception as ex:
+        app.logger.debug("Attempt to remove invalid status\n{}".format(ex))
+        status = AssignmentStatus.query.filter_by(nbgrader_assign_name=uploader._form_nb_assign_name).first()
+        db.session.delete(status)
+        db.session.commit()
 
 class UploadGrades:
 
@@ -331,9 +369,11 @@ class UploadGrades:
         self._form_nb_assign_name = form_nb_assign_name
         self._course_name = course_name
         self._lti = lti
-        self.lookup_table = {'a1le':141753, 'a1ramos':141754, 'a1valdez':141755, 'a2singh':141756, 'a3ng':141757, 'a3villeg':141758, 'a5deleon':141759, 'a7torres':141760, 'a8gomez':141761, 'aadahman':141762, 'aalona':141763, 'aandreiu':141764, 'abastoms':141765, 'abchin':141766, 'abrashea':141767, 'achapman':141768, 'adimopou':141769, 'adn004':141770, 'adunning':141771, 'aecabrer':141772, 'aeofarre':141773, 'afrakes':141774, 'agapte':141775, 'agarias':141776, 'ajc075':141777, 'akhom':141778, 'aks037':141779, 'albhavsa':141780, 'alw001':141781, 'amendoza':141782, 'amharavu':141783, 'amilad':141784, 'anc232':141785, 'ando':141786, 'anh005':141787, 'anh190':141788, 'anraha':141789, 'apatankar':141790, 'apfriend':141791, 'armansou':141792, 'asaid':141793, 'astepany':141794, 'atelang':141795, 'avn001':141796, 'aziyar':141797, 'bbecze':141798, 'bborn':141799, 'bbrower':141800, 'began':141801, 'bgfang':141802, 'bphimmas':141803, 'brocchio':141804, 'brtalave':141805, 'c1flores':141806, 'c4wei':141807, 'c7tang':141808, 'cadinh':141809, 'cama':141810, 'cbvincen':141811, 'ccha':141812, 'ccl064':141813, 'cdinh':141814, 'cdm004':141815, 'cdryder':141816, 'cduong':141817, 'celbo':141818, 'cerpeldi':141819, 'chl406':141820, 'chn012':141821, 'chy002':141822, 'cmastrangelo':141823, 'crjarqui':141824, 'crsong':141825, 'csk001':141826, 'd1liu':141827, 'd3liu':141828, 'd6marque':141829, 'daminifa':141830, 'dcoy':141831, 'dec001':141832, 'dimusa':141833, 'dmerchan':141834, 'dpai':141835, 'dsc001':141836, 'e1serran':141837, 'e1tao':141838, 'e2li':141839, 'eanam':141840, 'eayala':141841, 'edinh':141842, 'eho':141843, 'ethaenra':141844, 'euaguila':141845, 'evchen':141846, 'f1zhang':141847, 'facampos':141848, 'famancil':141849, 'fayuan':141850, 'fhuynh':141851, 'fmramos':141852, 'ftjuacal':143120, 'gbulacan':143121, 'gdeandaa':143122, 'glapeyro':143123, 'gramiro':143124, 'gschwart':143125, 'gwarner':143126, 'h1chen':143127, 'h1guo':143128, 'h2yun':143129, 'hal016':143130, 'haw030':143131, 'haz001':143132, 'hcavale':143133, 'hcchang':143134, 'hechan':143135, 'hhliou':143136, 'hhwang':143137, 'hkhalil':143138, 'hlhong':143139, 'hluu':143140, 'hmw005':143141, 'hmy002':143142, 'hpanchal':143143, 'hphamtra':143144, 'hramaswamy':143145, 'huchai':143146, 'hvaid':143147, 'hwaleh':143148, 'hyick':143149, 'izendeja':143150, 'j1chahal':143151, 'j2hang':143152, 'j2vo':143153, 'j3chang':143154, 'j3mendez':143155, 'j9feng':143156, 'jal001':143157, 'jarora':143158, 'jbowman':143159, 'jcl011':143160, 'jdnguyen':143161, 'jdvachha':143162, 'jejarvis':143163, 'jfierro':143164, 'jfong':143165, 'jhan':143166, 'jhkuo':143167, 'jibian':143168, 'jil019':143169, 'jil1007':143170, 'jil1045':143171, 'jiwei':143172, 'jklee':143173, 'jmr002':143174, 'jol067':143175, 'jop010':143176, 'jot002':143177, 'jovasque':143178, 'jpusteln':143179, 'jrein':143180, 'jtdoan':143181, 'jtrang':143182, 'juc005':143183, 'jwaldorf':143184, 'jyvelasq':143185, 'k1ingham':143186, 'k5lin':143187, 'k7pham':143188, 'kbcorpuz':143189, 'kcm004':143190, 'keli':143191, 'kguruvay':143192, 'khk004':143193, 'khoshart':143194, 'kialonzo':143195, 'kisevill':143196, 'kleonmar':143197, 'klwong':143198, 'knl018':143199, 'kpream':143200, 'ksc003':143201, 'kschriek':143202, 'ksdesilv':143203, 'l1gomez':143204, 'l8smith':143205, 'ldinh':143206, 'likuwaha':143207, 'lizhao':143208, 'lnghiem':143209, 'lpellon':143210, 'lsztajnk':143211, 'm1manzan':143212, 'magondal':143213, 'mborsch':143214, 'mbussard':143215, 'mchau':143216, 'mebharga':143217, 'meschult':143218, 'mglee':143219, 'mgrenion':143220, 'mgustafs':143221, 'mik005':143222, 'mjacobo':143223, 'mleechoi':143224, 'mlyu':143225, 'mmjiang':143226, 'mml053':143227, 'mmorocho':143228, 'mottur':143229, 'mpardin':143230, 'mzhe':143231, 'mzkhan':143232, 'n2nakamu':143233, 'nagnihot':143234, 'nfithen':143235, 'nichen':143236, 'nkwong':143237, 'nmccutch':143238, 'nml015':143239, 'nqnguyen':143240, 'nsumner':143241, 'nsupangk':143242, 'ntbeileh':143243, 'omiguel':143244, 'pcarlip':143245, 'pcdoan':143246, 'pglynn':143247, 'phalder':143248, 'pinelson':143249, 'pjromero':143250, 'psyeh':143251, 'ptchang':143252, 'qramaswa':143253, 'r1li':143254, 'r1mishra':143255, 'r2vargas':143256, 'r3zhang':143257, 'raopena':143258, 'rdestaci':143259, 'rjc016':143260, 'rmanea':143261, 'rmuinos':143262, 'rosawa':143263, 'rpei':143264, 'rtvo':143265, 'rubriaco':143266, 's3kuo':143267, 's3xie':143268, 's4jin':143269, 'sasuther':143270, 'sboussar':143271, 'sebaker':143272, 'sehuh':143273, 'sgollamu':143274, 'sgomos':143275, 'shh025':143276, 'shkuk':143277, 'sie':143278, 'sjdu':143279, 'sjk002':143280, 'sjl003':143281, 'sjli':143282, 'smunukutla':143283, 'snrose':143284, 'ssantosh':143285, 'ssl104':143286, 'ssreepat':143287, 'stl005':143288, 'svanaki':143289, 'szakeri':143290, 't4ho':143291, 'taizawa':143292, 'tlu':143293, 'tmt030':143294, 'tnn050':143295, 'toh008':143296, 'tpatel':143297, 'tsidawi':143298, 'tsobocin':143299, 'ttn208':143300, 'tzfeng':143301, 'ubhattac':143302, 'ukazi':143303, 'v2le':143304, 'vkomar':143305, 'vvthai':143306, 'w3chow':143307, 'way001':143308, 'wezeng':143309, 'x1hong':143310, 'x1zhu':143311, 'x5zuo':143312, 'xih017':143313, 'xil012':143314, 'y2hua':143315, 'y3xu':143316, 'yal023':143317, 'yil031':143318, 'ymmei':143319, 'yux024':143320, 'yuz884':143321, 'z2chen':143322, 'z3xu':143323, 'z5liu':143324, 'zanguyen':143325, 'zcalini':143326, 'zhl411':143327, 'zhpi':143328, 'ziz012':143329, 'a2patel':143330, 'atsedenb':143331, 'dmngo':143332, 'ivcervan':143333, 'jwilmore':143334, 'kharris':143335, 'lgiumarr':143336, 'msinclai':143337, 'ssusanto':143338, 'yml003':143339, 'ffeng':143340, 'adrapkin':143341} 
-        #self.lookup_table = {'aasehgal':141753, 'abegzati':141754, 'adilmore':141755, 'amassara':141756, 'armiano':141757, 'baxu':141758, 'bdamerac':141759, 'cguccion':141760, 'ckulkarn':141761, 'cleung':141762, 'croy':141763, 'dkoohmar':141764, 'dschenon':141765, 'dtv004':141766, 'eulee':141767, 'gul012':141768, 'hal040':141769, 'haz233':141770, 'hmummey':141771, 'hziaeija':141772, 'j1tiboch':141773, 'j7lam':141774, 'jaz001':141775, 'jiw449':141776, 'jjauregu':141777, 'jop002':141778, 'jpnguyen':141779, 'jrainton':141780, 'kpgodine':141781, 'laxu':141782, 'lbruce':141783, 'lmshea':141784, 'mcuoco':141785, 'mgaltier':141786, 'mlamkin':141787, 'ndoumbal':141788, 'ppandit':141789, 'q5yu':141790, 'r2feng':141791, 'rdevito':141792, 'rmayes':141793, 'sasafa':141794, 'snwright':141795, 'ssatyadh':141796, 'tarthur':141797, 'vktiwari':141798, 'vraghven':141799, 'vyeliset':141800, 'xid032':141801, 'yid010':141802, 'yiw078':141803, 'yul579':141804, 'z3fan':141805, 'z4ding':141806, 'zhw002':141807, 'xil104':141808}
-        self._setup_canvasapi_debugging()   
+        #self.lookup_table = {'a1le':141753, 'a1ramos':141754, 'a1valdez':141755, 'a2singh':141756, 'a3ng':141757, 'a3villeg':141758, 'a5deleon':141759, 'a7torres':141760, 'a8gomez':141761, 'aadahman':141762, 'aalona':141763, 'aandreiu':141764, 'abastoms':141765, 'abchin':141766, 'abrashea':141767, 'achapman':141768, 'adimopou':141769, 'adn004':141770, 'adunning':141771, 'aecabrer':141772, 'aeofarre':141773, 'afrakes':141774, 'agapte':141775, 'agarias':141776, 'ajc075':141777, 'akhom':141778, 'aks037':141779, 'albhavsa':141780, 'alw001':141781, 'amendoza':141782, 'amharavu':141783, 'amilad':141784, 'anc232':141785, 'ando':141786, 'anh005':141787, 'anh190':141788, 'anraha':141789, 'apatankar':141790, 'apfriend':141791, 'armansou':141792, 'asaid':141793, 'astepany':141794, 'atelang':141795, 'avn001':141796, 'aziyar':141797, 'bbecze':141798, 'bborn':141799, 'bbrower':141800, 'began':141801, 'bgfang':141802, 'bphimmas':141803, 'brocchio':141804, 'brtalave':141805, 'c1flores':141806, 'c4wei':141807, 'c7tang':141808, 'cadinh':141809, 'cama':141810, 'cbvincen':141811, 'ccha':141812, 'ccl064':141813, 'cdinh':141814, 'cdm004':141815, 'cdryder':141816, 'cduong':141817, 'celbo':141818, 'cerpeldi':141819, 'chl406':141820, 'chn012':141821, 'chy002':141822, 'cmastrangelo':141823, 'crjarqui':141824, 'crsong':141825, 'csk001':141826, 'd1liu':141827, 'd3liu':141828, 'd6marque':141829, 'daminifa':141830, 'dcoy':141831, 'dec001':141832, 'dimusa':141833, 'dmerchan':141834, 'dpai':141835, 'dsc001':141836, 'e1serran':141837, 'e1tao':141838, 'e2li':141839, 'eanam':141840, 'eayala':141841, 'edinh':141842, 'eho':141843, 'ethaenra':141844, 'euaguila':141845, 'evchen':141846, 'f1zhang':141847, 'facampos':141848, 'famancil':141849, 'fayuan':141850, 'fhuynh':141851, 'fmramos':141852, 'ftjuacal':143120, 'gbulacan':143121, 'gdeandaa':143122, 'glapeyro':143123, 'gramiro':143124, 'gschwart':143125, 'gwarner':143126, 'h1chen':143127, 'h1guo':143128, 'h2yun':143129, 'hal016':143130, 'haw030':143131, 'haz001':143132, 'hcavale':143133, 'hcchang':143134, 'hechan':143135, 'hhliou':143136, 'hhwang':143137, 'hkhalil':143138, 'hlhong':143139, 'hluu':143140, 'hmw005':143141, 'hmy002':143142, 'hpanchal':143143, 'hphamtra':143144, 'hramaswamy':143145, 'huchai':143146, 'hvaid':143147, 'hwaleh':143148, 'hyick':143149, 'izendeja':143150, 'j1chahal':143151, 'j2hang':143152, 'j2vo':143153, 'j3chang':143154, 'j3mendez':143155, 'j9feng':143156, 'jal001':143157, 'jarora':143158, 'jbowman':143159, 'jcl011':143160, 'jdnguyen':143161, 'jdvachha':143162, 'jejarvis':143163, 'jfierro':143164, 'jfong':143165, 'jhan':143166, 'jhkuo':143167, 'jibian':143168, 'jil019':143169, 'jil1007':143170, 'jil1045':143171, 'jiwei':143172, 'jklee':143173, 'jmr002':143174, 'jol067':143175, 'jop010':143176, 'jot002':143177, 'jovasque':143178, 'jpusteln':143179, 'jrein':143180, 'jtdoan':143181, 'jtrang':143182, 'juc005':143183, 'jwaldorf':143184, 'jyvelasq':143185, 'k1ingham':143186, 'k5lin':143187, 'k7pham':143188, 'kbcorpuz':143189, 'kcm004':143190, 'keli':143191, 'kguruvay':143192, 'khk004':143193, 'khoshart':143194, 'kialonzo':143195, 'kisevill':143196, 'kleonmar':143197, 'klwong':143198, 'knl018':143199, 'kpream':143200, 'ksc003':143201, 'kschriek':143202, 'ksdesilv':143203, 'l1gomez':143204, 'l8smith':143205, 'ldinh':143206, 'likuwaha':143207, 'lizhao':143208, 'lnghiem':143209, 'lpellon':143210, 'lsztajnk':143211, 'm1manzan':143212, 'magondal':143213, 'mborsch':143214, 'mbussard':143215, 'mchau':143216, 'mebharga':143217, 'meschult':143218, 'mglee':143219, 'mgrenion':143220, 'mgustafs':143221, 'mik005':143222, 'mjacobo':143223, 'mleechoi':143224, 'mlyu':143225, 'mmjiang':143226, 'mml053':143227, 'mmorocho':143228, 'mottur':143229, 'mpardin':143230, 'mzhe':143231, 'mzkhan':143232, 'n2nakamu':143233, 'nagnihot':143234, 'nfithen':143235, 'nichen':143236, 'nkwong':143237, 'nmccutch':143238, 'nml015':143239, 'nqnguyen':143240, 'nsumner':143241, 'nsupangk':143242, 'ntbeileh':143243, 'omiguel':143244, 'pcarlip':143245, 'pcdoan':143246, 'pglynn':143247, 'phalder':143248, 'pinelson':143249, 'pjromero':143250, 'psyeh':143251, 'ptchang':143252, 'qramaswa':143253, 'r1li':143254, 'r1mishra':143255, 'r2vargas':143256, 'r3zhang':143257, 'raopena':143258, 'rdestaci':143259, 'rjc016':143260, 'rmanea':143261, 'rmuinos':143262, 'rosawa':143263, 'rpei':143264, 'rtvo':143265, 'rubriaco':143266, 's3kuo':143267, 's3xie':143268, 's4jin':143269, 'sasuther':143270, 'sboussar':143271, 'sebaker':143272, 'sehuh':143273, 'sgollamu':143274, 'sgomos':143275, 'shh025':143276, 'shkuk':143277, 'sie':143278, 'sjdu':143279, 'sjk002':143280, 'sjl003':143281, 'sjli':143282, 'smunukutla':143283, 'snrose':143284, 'ssantosh':143285, 'ssl104':143286, 'ssreepat':143287, 'stl005':143288, 'svanaki':143289, 'szakeri':143290, 't4ho':143291, 'taizawa':143292, 'tlu':143293, 'tmt030':143294, 'tnn050':143295, 'toh008':143296, 'tpatel':143297, 'tsidawi':143298, 'tsobocin':143299, 'ttn208':143300, 'tzfeng':143301, 'ubhattac':143302, 'ukazi':143303, 'v2le':143304, 'vkomar':143305, 'vvthai':143306, 'w3chow':143307, 'way001':143308, 'wezeng':143309, 'x1hong':143310, 'x1zhu':143311, 'x5zuo':143312, 'xih017':143313, 'xil012':143314, 'y2hua':143315, 'y3xu':143316, 'yal023':143317, 'yil031':143318, 'ymmei':143319, 'yux024':143320, 'yuz884':143321, 'z2chen':143322, 'z3xu':143323, 'z5liu':143324, 'zanguyen':143325, 'zcalini':143326, 'zhl411':143327, 'zhpi':143328, 'ziz012':143329, 'a2patel':143330, 'atsedenb':143331, 'dmngo':143332, 'ivcervan':143333, 'jwilmore':143334, 'kharris':143335, 'lgiumarr':143336, 'msinclai':143337, 'ssusanto':143338, 'yml003':143339, 'ffeng':143340, 'adrapkin':143341} 
+        self.lookup_table = {'aasehgal':141753, 'abegzati':141754, 'adilmore':141755, 'amassara':141756, 'armiano':141757, 'baxu':141758, 'bdamerac':141759, 'cguccion':141760, 'ckulkarn':141761, 'cleung':141762, 'croy':141763, 'dkoohmar':141764, 'dschenon':141765, 'dtv004':141766, 'eulee':141767, 'gul012':141768, 'hal040':141769, 'haz233':141770, 'hmummey':141771, 'hziaeija':141772, 'j1tiboch':141773, 'j7lam':141774, 'jaz001':141775, 'jiw449':141776, 'jjauregu':141777, 'jop002':141778, 'jpnguyen':141779, 'jrainton':141780, 'kpgodine':141781, 'laxu':141782, 'lbruce':141783, 'lmshea':141784, 'mcuoco':141785, 'mgaltier':141786, 'mlamkin':141787, 'ndoumbal':141788, 'ppandit':141789, 'q5yu':141790, 'r2feng':141791, 'rdevito':141792, 'rmayes':141793, 'sasafa':141794, 'snwright':141795, 'ssatyadh':141796, 'tarthur':141797, 'vktiwari':141798, 'vraghven':141799, 'vyeliset':141800, 'xid032':141801, 'yid010':141802, 'yiw078':141803, 'yul579':141804, 'z3fan':141805, 'z4ding':141806, 'zhw002':141807, 'xil104':141808}
+        self._setup_canvasapi_debugging()
+        self._num_students = self._get_num_students()
+        
 
     # Returns a course object corresponding to given course_id
     # TEST: param is to allow testing
@@ -345,6 +385,7 @@ class UploadGrades:
             raise Exception('Invalid course id')
     
     def parse_form_data(self):
+        self._setup_status()
         if (self._form_canvas_assign_id == 'create'):
             app.logger.debug('get max score')
             max_score = self._get_max_score()
@@ -369,7 +410,10 @@ class UploadGrades:
     # Submits grades to canvas, and creates/updates the AssignmentMatch database for the assignment
     def update_database(self):
         app.logger.debug('submit grades')
+        time_start = time.time()
         progress = self._submit_grades()
+        app.logger.debug('time for subimt: {}'.format(time.time()-time_start))
+        
         assignment_match = AssignmentMatch.query.filter_by(nbgrader_assign_name=self._form_nb_assign_name, course_id=self._course_id).first()
         if assignment_match:
             app.logger.debug('update match')
@@ -377,10 +421,29 @@ class UploadGrades:
         else:
             app.logger.debug('add match')
             self._add_new_match(progress)
+        self.assignment_status.status = 'Uploaded'
+        self.assignment_status.completion = 100
         db.session.commit()
         return progress
 
-    #Sets up debugging for canvasapi.
+    def _setup_status(self):
+        self.assignment_status = AssignmentStatus.query.filter_by(course_id = self._course_id, nbgrader_assign_name = self._form_nb_assign_name).first()
+        if self.assignment_status:
+            self._refresh_assignment_status()
+        else:
+            self._create_assignment_status()
+
+    def _create_assignment_status(self):
+        self.assignment_status = AssignmentStatus(course_id=self._course_id, nbgrader_assign_name=self._form_nb_assign_name ,status = 'Initializing', completion = 0)
+        db.session.add(self.assignment_status)
+        db.session.commit()
+
+    def _refresh_assignment_status(self):
+        self.assignment_status.status = 'Initializing'
+        self.assignment_status.completion = 0
+        db.session.commit()
+
+    #Sets up debugging for canvasapi
     def _setup_canvasapi_debugging(self):
         canvasapi_logger = logging.getLogger("canvasapi")
         canvasapi_handler = logging.StreamHandler(sys.stdout)
@@ -392,25 +455,34 @@ class UploadGrades:
         canvasapi_logger.setLevel(logging.ERROR)
 
     #Returns a dict of student {login_id:id} corresponding to a canvas course object. Ex: {jsmith:13342}
+    # The counter on this is only accurate if num_students is the number of students in the class
     def _get_canvas_students(self):
-        student_pages = self.assignment_to_upload.get_gradeable_students()
+        self.assignment_status.status = 'Fetching Students'
+        canvas_users = self._course.get_users()        
         canvas_students = {}
-        for student in student_pages:
-            if hasattr(student, "login_id") and student.login_id is not None:
-                canvas_students[student.login_id]=student.id  
+        counter=0
+        for user in canvas_users:
+            if hasattr(user, "login_id") and user.login_id is not None and user.login_id not in canvas_students:
+                canvas_students[user.login_id]=user.id  
+                if counter < self._num_students:
+                    counter += 1
+                    self.assignment_status.completion = 10*counter/self._num_students
+                    db.session.commit()
         return canvas_students
     
     #Returns a dict of {id: {'posted_grade':score}} for all students in nb gradebook
     def _get_student_grades(self, canvas_students):
+        self.assignment_status.status = 'Fetching Grades'
+        db.session.commit()
         with Gradebook("sqlite:////mnt/nbgrader/"+self._course_name+"/grader/gradebook.db") as gb:
             nb_assignment = gb.find_assignment(self._form_nb_assign_name)
-            #max_score = nb_assignment.max_score
 
             # TODO: can we change this to just get the students for this assignment?
             
             nb_students = gb.students            
             nb_grade_data = {}
-            
+
+            counter = 0            
             for nb_student in nb_students:
 
                 nb_student_and_score = {}            
@@ -427,7 +499,7 @@ class UploadGrades:
                     #     # could also get high score here and then check against canvas max score later
                     #     pass
                 except MissingEntry:
-                    pass
+                    nb_student_and_score['posted_grade'] = ''
 
                 
                     
@@ -446,10 +518,13 @@ class UploadGrades:
 
                 # convert nbgrader username to canvas id (integer)
                 # TEMP CHANGE
-                # canvas_student_id = canvas_students[nb_student.id]
-                # # canvas_student_id = canvas_students[temp_nb_student_id]
-                # nb_grade_data[canvas_student_id] = nb_student_and_score
-                nb_grade_data[self.lookup_table[nb_student.id]] = nb_student_and_score
+                #canvas_student_id = canvas_students[nb_student.id]
+                canvas_student_id = self.lookup_table[nb_student.id]
+                # canvas_student_id = canvas_students[temp_nb_student_id]
+                nb_grade_data[canvas_student_id] = nb_student_and_score
+                counter += 1
+                self.assignment_status.completion = 10+45*counter/self._num_students
+                db.session.commit()
             return nb_grade_data
 
     # gets existing canvas assignment
@@ -465,6 +540,10 @@ class UploadGrades:
             nb_assignment = gb.find_assignment(self._form_nb_assign_name)
             return nb_assignment.max_score
 
+    def _get_num_students(self):
+        with Gradebook("sqlite:////mnt/nbgrader/"+self._course_name+"/grader/gradebook.db") as gb:
+            return len(gb.students)
+
     # create new assignments as published
     def _create_assignment(self, max_score):
         app.logger.debug("upload submissions for non-existing canvas assignment; will be named: {}".format(self._form_nb_assign_name))             
@@ -474,6 +553,8 @@ class UploadGrades:
 
     # Updates grades for given assignment. Returns progress resulting from upload attempt.
     def _submit_grades(self):
+        self.assignment_status.status = 'Uploading Grades'
+        db.session.commit()
         progress = self.assignment_to_upload.submissions_bulk_update(grade_data=self.student_grades)
         try:
             session['progress_json'] = jsonpickle.encode(progress)
@@ -481,6 +562,15 @@ class UploadGrades:
         except Exception:
             app.logger.debug("Error modifying session")
         app.logger.debug("progress url: {}".format(progress.url))
+        counter = 0
+        while not progress.workflow_state == "completed" and not progress.workflow_state == "failed":
+            time.sleep(.5)
+            # The status bar progression is based on the assumption of linear time with 323 students taking around 75 seconds
+            counter +=.5
+            if self.assignment_status.completion < 95:
+                self.assignment_status.completion = 55 + 40*counter*4/self._num_students
+                db.session.commit()
+            progress = progress.query()
         return progress
 
     # Update existing match in database
