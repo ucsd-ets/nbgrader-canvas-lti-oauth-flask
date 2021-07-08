@@ -89,14 +89,14 @@ Grading Overview
   {% for name,match in db_matches.items() %}
   <tr>
     {# create a submit form to upload grades for each row #}
-    <form action="" method="POST"> {# {{ url_for('upload_grades.upload_grades') }} #}
+    <form action="" method="POST" id="form_{{ name }}"> {# {{ url_for('upload_grades.upload_grades') }} #}
 
     {# display the nbgrader assignment names #}
     <td class="text-center" style="vertical-align: middle">{{ name }}</td>
 
     {# create dropdown of canvas assignments #}
     <td class="text-center" style="vertical-align: middle">
-    <select name="form_canvas_assign_id" class="canvas_assign"> 
+    <select name="form_canvas_assign_id" class="canvas_assign" id="select_{{ name }}"> 
 
       {# if a match is found, form match and create dropdown menu of unselectable assignments from Canvas #}
       {% if match %}
@@ -127,7 +127,7 @@ Grading Overview
 
     {# display the upload button, which store the name for each nbgrader assignment  #}
     <td class="text-center" style="vertical-align: middle">
-    <input type="submit" class="uploadbtn" name="{{ name }}" value="Upload Grades" onclick="displayFetch('{{name}}')"/>
+    <input type="submit" class="uploadbtn" name="{{ name }}" value="Upload Grades" id = "submit_{{ name }}"/>
     <input type="hidden" name="form_nb_assign_name" value="{{ name }}" />
     
     </form>
@@ -140,13 +140,13 @@ Grading Overview
     {# {% endif %} #}
     
       {# TO DO == Need to implement status bar #}    
-      {# <span class="blackText">Status:</span>
+      <span class="blackText"></span>
       <div class="text-center">
         <div class="progress center-block" style="width:25%" >
-          <div class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar" aria-valuenow="90" aria-valuemin="0" aria-valuemax="100" style="width:40%">
+          <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width:0%" id= "status_bar_{{ name }}">
           </div>
         </div>
-      </div> #}
+      </div>
     </td>
   </tr>
   {% endfor %}
@@ -166,12 +166,6 @@ Grading Overview
     {# loop through the rows, add nb name to array, and use ajax to call url and display #}
     <script> 
 
-      function displayFetch(name){
-        var status = document.getElementById(name)
-        status.innerHTML = 'Fetching Grades'
-        status.className = "orangeText"
-      }
-
       var assignments = new Array();
       var intervalIDs = new Array();
       var counter = 0;
@@ -185,34 +179,78 @@ Grading Overview
       console.log("enter loop");
 
       while (counter < assignments.length) {
-        intervalIDs.push(window.setInterval(updateStatus, 1500, assignments[counter], counter));
+        let current_assignment = assignments[counter]
+        form = document.getElementById('form_'+current_assignment);
+        form.addEventListener( 'submit', function(event) {
+          event.preventDefault();
+          $.getJSON(
+            "{{url_for('reset_progress') }}",
+            { assignment: current_assignment,
+              course_id: {{ course_id}} },
+            function(data){}
+          );
+          
+          canvas_id = document.getElementById('select_'+current_assignment).value
+          $.ajax({
+            type: "POST",
+            url: "/upload_grades",
+            data: {
+              course_id: {{ course_id }},
+              group: {{ group }},
+              form_canvas_assign_id: canvas_id,
+              form_nb_assign_name:current_assignment
+            },
+            success: function(result){
+              console.log(result);
+            },
+            error: function(result){
+              console.log(result);
+            }
+          });
+          intervalIDs.push(window.setInterval(updateStatus, 500, current_assignment, counter, false));
+          counter++;
+          document.getElementById('submit_'+current_assignment).disabled = true;
+          document.getElementById(current_assignment).innerHTML = "Queued";
+        });
+        intervalIDs.push(window.setInterval(updateStatus, 1000, current_assignment, counter, true));
         counter++;
       }
 
-      function updateStatus(current_assignment, counter){
+      function updateStatus(current_assignment, counter, removeNull, statusBar){
         $.getJSON(
           "{{url_for('get_progress') }}",
           { assignment: current_assignment,
             course_id: {{ course_id}} },
           function(data){
             if (data == null) {
-              console.log("Nothing to update");
-              window.clearInterval(intervalIDs[counter]);
-              return;
+              if (removeNull) {
+                console.log("Nothing to update");
+                window.clearInterval(intervalIDs[counter]);
+                return;
+              }
             } else{
-              console.log('data: ' + data);
-              console.log('data.workflow_state: ' + data.workflow_state);
+              console.log('data.status: ' + data.status);
               console.log('data.completion: ' + data.completion);
               console.log(current_assignment);
 
-              $('#' + current_assignment + '_status').text(data.workflow_state);
+              $('#' + current_assignment + '_status').text(data.status);
               var change_value = document.getElementById(current_assignment)
-              if (data.workflow_state == 'running') {
+              var status_bar = document.getElementById('status_bar_' + current_assignment)
+              status_bar.style = "width:"+data.completion+"%"
+              change_value.innerHTML = data.status;
+              document.getElementById('submit_'+current_assignment).disabled = true;
+
+              if (data.status == 'Initializing'){
+                change_value.className = "redText";
+              } else if (data.status == 'Fetching Students'){
+                change_value.className = "orangeText";
+              } else if (data.status == 'Fetching Grades'){
+                change_value.className = "orangeText";
+              } else if (data.status == 'Uploading Grades') {
                 change_value.className = "yellowText";
-                change_value.innerHTML = 'Submitting to Canvas';
-              } else if (data.workflow_state == 'completed') {
+              } else if (data.status == 'Uploaded') {
                 change_value.className = "greenText";
-                change_value.innerHTML = data.workflow_state;
+                document.getElementById('submit_'+current_assignment).disabled = false;
                 window.clearInterval(intervalIDs[counter]);
                 return;
               }

@@ -31,6 +31,7 @@ class Token:
         token_ttl = expiration_date - int(time.time())
 
         if token_ttl < self.token_refresh_threshold:
+            app.logger.debug('Expired Token')
             return False
         else:
             return True
@@ -39,6 +40,7 @@ class Token:
         if('api_key' in self._flask_session):
             return True
         else:
+            app.logger.debug('Invalid API key')
             return False
 
     # Only called after _unexpired and _contains_api_key. May error otherwise
@@ -47,13 +49,14 @@ class Token:
         if 'WWW-Authenticate' not in r.headers and r.status_code == 200:
             return True
         else:
+            app.logger.debug('WWW-Authenticate present')
             return False
 
     #Only called after _unexpired and _contains_api_key. May error otherwise
     def _get_WWW_Auth_response(self):
         auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
         return requests.get(
-            '{}users/{}'.format(settings.API_URL, self._flask_session['canvas_user_id']),
+            '{}courses/{}/users/{}'.format(settings.API_URL, self._flask_session['course_id'], self._flask_session['canvas_user_id']),
             headers = auth_header
         )
         
@@ -135,7 +138,6 @@ class Token:
     def _get_db_expiration(self):
         user = Users.query.filter_by(user_id=int(self._user.user_id)).first()
         return user.expires_in
-
         
 # Wrapper for getting a canvas object and maintaining a fresh token
 class CanvasWrapper:
@@ -151,8 +153,13 @@ class CanvasWrapper:
 
     # Checks if token up to date. If not, try to refresh it. If refresh fails, then return False. Otherwise return True
     def update_token(self):
-        user = Users.query.filter_by(user_id=int(self._flask_session['canvas_user_id'])).first()
-        token = Token(self._flask_session, user)
+        token = self.get_token()
         if not token.check():
-            return token.refresh()
+            app.logger.debug("Refreshing token")
+            token.refresh()
+            return False
         return True
+    
+    def get_token(self):
+        user = Users.query.filter_by(user_id=int(self._flask_session['canvas_user_id'])).first()
+        return Token(self._flask_session, user)

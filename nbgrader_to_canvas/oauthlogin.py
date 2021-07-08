@@ -87,11 +87,11 @@ def oauth_login(lti=lti):
                 db.session.commit()
 
                 # check that the expires_in time got updated
-                check_expiration = Users.query.filter_by(user_id=int(session['canvas_user_id']))
+                check_expiration = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
 
                 # compare what was saved to the old session
                 # if it didn't update, error
-                if check_expiration.expires_in == long(session['expires_in']):
+                if check_expiration.expires_in == int(session['expires_in']):
                     course_id = session['course_id']
                     user_id = session['canvas_user_id']
                     print (course_id)

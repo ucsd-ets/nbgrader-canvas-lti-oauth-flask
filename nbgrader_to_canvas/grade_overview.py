@@ -8,7 +8,7 @@ from . import app, db, settings
 from .utils import return_error, error
 
 from nbgrader.api import Gradebook
-from .models import AssignmentMatch
+from .models import AssignmentMatch, AssignmentStatus
 
 from canvasapi.exceptions import InvalidAccessToken
 from .upload_grades import UploadGrades, upload_grades
@@ -150,6 +150,8 @@ def get_canvas_id(lti=lti):
     """
     return session['course_id']
 
+
+
 @grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'])
 def grade_overview(progress = None):
 
@@ -162,13 +164,13 @@ def grade_overview(progress = None):
         app.logger.debug('{}'.format(grade_overview.nb_assignments))
 
         if request.method == 'POST':
-            progress = upload_grades(grade_overview.course_id, grade_overview.group)
+            #progress = upload_grades(grade_overview.course_id, grade_overview.group)
             return redirect(url_for('grade_overview.grade_overview'))
         
         
         return Response(
                 render_template('overview.htm.j2', nb_assign=grade_overview.nb_assignments, cv_assign=grade_overview.canvas_assignments,
-                                db_matches=db_matches, course_id=grade_overview.course_id, progress = progress)
+                                db_matches=db_matches, course_id=grade_overview.course_id, group=grade_overview.group, progress = progress)
             )
     except KeyError as keyE:
         app.logger.error("KeyError: " + str(keyE))
@@ -224,7 +226,7 @@ class GradeOverview:
         self._course = self._canvas.get_course(self.course_id)
 
     # Get the nbgrader_assignments from the course gradebook
-    def _get_nbgrader_assignments(self, course="COGS108_SP21_A00"):
+    def _get_nbgrader_assignments(self, course="CSE284_SP21_A00"):
         with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
             return gb.assignments
 
@@ -251,6 +253,9 @@ class GradeOverview:
             if match and match.canvas_assign_id not in self.canvas_assignments:
                 app.logger.debug("Assignment Match removed: {}, {}".format(assignment,match.canvas_assign_id))
                 db.session.delete(match)
+                status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment.name, course_id=self.course_id).first()
+                if status:
+                    db.session.delete(status)
         db.session.commit()
 
     # Finds entries in db that match given nb_assignments to canvas assignments. Returns dict of {assignment_name: AssignmentMatch}.

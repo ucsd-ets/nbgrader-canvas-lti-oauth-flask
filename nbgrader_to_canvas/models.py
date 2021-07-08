@@ -45,3 +45,18 @@ class AssignmentMatch(db.Model):
         self.canvas_assign_id = canvas_assign_id
         self.upload_progress_url = upload_progress_url
         # self.last_updated_time = last_updated_time
+
+class AssignmentStatus(db.Model):
+    #__tablename__ = table
+
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer)
+    nbgrader_assign_name = db.Column(db.String(255))
+    status = db.Column(db.String(255))
+    completion = db.Column(db.Integer)
+
+    def __init__(self, course_id, nbgrader_assign_name, status, completion):
+        self.course_id = course_id
+        self.nbgrader_assign_name = nbgrader_assign_name
+        self.status = status
+        self.completion = completion
