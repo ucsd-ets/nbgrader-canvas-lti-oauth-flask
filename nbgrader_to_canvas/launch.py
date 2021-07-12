@@ -31,10 +31,12 @@ def launch(lti=lti):
         )
         return redirect_to_auth()
 
-    app.logger.info("Token: {}".format(user.refresh_key))
+    app.logger.info("Refreh Token: {}".format(user.refresh_key))
     canvas_wrapper = CanvasWrapper()
+    session['api_key'] = user.api_key
 
     if canvas_wrapper.update_token():
+        app.logger.info("API Key: {}".format(session['api_key']))
         app.logger.debug("redirecting to grade_overview")
         return redirect(url_for('grade_overview.grade_overview'))
     else:

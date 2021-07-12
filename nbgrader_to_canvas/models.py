@@ -7,11 +7,13 @@ class Users(db.Model):
     user_id = db.Column(db.Integer, unique=True)
     refresh_key = db.Column(db.String(255))
     expires_in = db.Column(db.BigInteger)
+    api_key = db.Column(db.String(255))
 
-    def __init__(self, user_id, refresh_key, expires_in):
+    def __init__(self, user_id, refresh_key, expires_in, api_key):
         self.user_id = user_id
         self.refresh_key = refresh_key
         self.expires_in = expires_in
+        self.api_key = api_key
 
     def __repr__(self):
         return '<User %r>' % self.user_id

@@ -22,7 +22,7 @@ class TestUploadGrades(unittest.TestCase):
         if old_user:
             db.session.delete(old_user)
             db.session.commit()
-        self._user = Users(114217,'13171~bngbhxjVx3G7sqnWFC3BFs0r9MgN408enlV3I3uN74pCPpjkQvK2bI3eEcStdPH1',10)
+        self._user = Users(114217,'13171~bngbhxjVx3G7sqnWFC3BFs0r9MgN408enlV3I3uN74pCPpjkQvK2bI3eEcStdPH1',10,'')
         db.session.add(self._user)
         db.session.commit()
         yield self._user

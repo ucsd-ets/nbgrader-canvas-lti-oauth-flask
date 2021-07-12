@@ -40,7 +40,7 @@ class Token:
         if('api_key' in self._flask_session):
             return True
         else:
-            app.logger.debug('Invalid API key')
+            app.logger.debug('Missing API key')
             return False
 
     # Only called after _unexpired and _contains_api_key. May error otherwise
@@ -102,13 +102,22 @@ class Token:
             ).format(response.url, response.status_code, payload, self._flask_session, ex))
             return False         
 
-        # Update expiration date in db
+        # Update expiration date in db. Would this ever return false?
         if not self._update_db_expiration(new_expiration_date):
+            return False
+
+        # Update api key in db
+        if not self._update_db_api_key(api_key):
             return False
 
         self._flask_session['api_key'] = api_key
         self._flask_session['expires_in'] = new_expiration_date
         return True
+
+    # This doesn't really need to exist. It is just used to allow mock testing
+    def _get_db_expiration(self):
+        user = Users.query.filter_by(user_id=int(self._user.user_id)).first()
+        return user.expires_in
 
     def _update_db_expiration(self, new_expiration_date, flask_session = session):
         self._user.expires_in = new_expiration_date
@@ -133,11 +142,22 @@ class Token:
             ).format(flask_session, readable_expires_in, readable_new_expiration))
             return False
         return True
+    def _update_db_api_key(self, new_api_key):
+        self._user.api_key = new_api_key
+        db.session.commit()
 
+        db_api_key = self._get_db_api_key()
+        if db_api_key != new_api_key:
+            app.logger.error("API Key not updated.\nNew API Key: {}\nOld API Key:".format(new_api_key, db_api_key))
+            return False
+        return True
+    
     # This doesn't really need to exist. It is just used to allow mock testing
-    def _get_db_expiration(self):
+    def _get_db_api_key(self):
         user = Users.query.filter_by(user_id=int(self._user.user_id)).first()
-        return user.expires_in
+        return user.api_key
+
+    
         
 # Wrapper for getting a canvas object and maintaining a fresh token
 class CanvasWrapper:
@@ -156,8 +176,7 @@ class CanvasWrapper:
         token = self.get_token()
         if not token.check():
             app.logger.debug("Refreshing token")
-            token.refresh()
-            return False
+            return token.refresh()
         return True
     
     def get_token(self):

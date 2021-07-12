@@ -185,6 +185,7 @@ def grade_overview(progress = None):
 
     except InvalidAccessToken as eTok:
         app.logger.error("InvalidAccessToken: " + str(eTok))
+        app.logger.error(session['api_key'])
         app.logger.error(os.getcwd())
 
         msg = (
@@ -226,7 +227,7 @@ class GradeOverview:
         self._course = self._canvas.get_course(self.course_id)
 
     # Get the nbgrader_assignments from the course gradebook
-    def _get_nbgrader_assignments(self, course="CSE284_SP21_A00"):
+    def _get_nbgrader_assignments(self, course="TEST_NBGRADER"):
         with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
             return gb.assignments
 
@@ -241,7 +242,6 @@ class GradeOverview:
     # Returns a list of assignments for given course and group as a dict {assignment_id:assignment_name}
     def _get_canvas_assignments(self):
         assignments = self._course.get_assignments_for_group(self.group)
-
         canvas_assignments = {a.id:a.name for a in assignments}
         return canvas_assignments
     

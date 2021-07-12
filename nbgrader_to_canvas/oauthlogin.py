@@ -109,7 +109,8 @@ def oauth_login(lti=lti):
                 new_user = Users(
                     session['canvas_user_id'],
                     refresh_token,
-                    session['expires_in']
+                    session['expires_in'],
+                    session['api_key']
                 )
                 db.session.add(new_user)
                 db.session.commit()
