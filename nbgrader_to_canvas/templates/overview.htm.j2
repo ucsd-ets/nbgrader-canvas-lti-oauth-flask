@@ -198,10 +198,10 @@ Grading Overview
             assignment: current_assignment
           },
           success: function(result){
-            console.log(result);
+            console.log(result + " complete");
           },
           error: function(result){
-            console.log(result);
+            console.log(result + " failed");
           }
         });
         canvas_id = document.getElementById('select_'+current_assignment).value
@@ -225,6 +225,7 @@ Grading Overview
         counter++;
         document.getElementById('select_'+current_assignment).disabled = true;
         document.getElementById('submit_'+current_assignment).disabled = true;
+        remove
         status_label = document.getElementById(current_assignment);
         status_label.innerHTML = "Queued"
         status_label.className = "redText"
@@ -274,7 +275,6 @@ Grading Overview
                 status_label.className = "redText";
                 document.getElementById('select_'+current_assignment).disabled = false;
                 document.getElementById('submit_'+current_assignment).disabled = false;
-                updateCanvasDropdown(current_assignment, data.canvas_assign_id)
                 window.clearInterval(intervalIDs[counter]);
                 return;
               }
@@ -287,12 +287,12 @@ Grading Overview
       // potential re-uploads
       function updateCanvasDropdown(current_assignment, canvas_assign_id) {
         selector = document.getElementById('select_'+current_assignment);
-        if (selector.value == 'create') {
-          for(let option of selector.options) {
-            if(!option.selected) {
-              option.disabled = true;
-            }
+        for(let option of selector.options) {
+          if(!option.selected) {
+            option.disabled = true;
           }
+        }
+        if (selector.value == 'create') {
           selector.options[selector.selectedIndex].text = current_assignment;
           selector.options[selector.selectedIndex].value = canvas_assign_id;
         }

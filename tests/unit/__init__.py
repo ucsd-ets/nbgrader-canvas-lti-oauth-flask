@@ -2,6 +2,7 @@
 from nbgrader_to_canvas.canvas import CanvasWrapper
 from nbgrader_to_canvas import db
 from nbgrader_to_canvas.models import AssignmentMatch
+import time
 
 # Test data for test_canvas
 
@@ -46,7 +47,7 @@ def clear_grades():
     canvas_wrapper = CanvasWrapper('https://ucsd.test.instructure.com', {'canvas_user_id': '114217'})
     canvas = canvas_wrapper.get_canvas()
     course = canvas.get_course(20774)
-    users = course.get_users()
+    users = course.get_recent_students()
     clear_grades = {user.id: {'posted_grade':''} for user in users}
     for assignment in course.get_assignments_for_group(92059):
         if assignment.published:

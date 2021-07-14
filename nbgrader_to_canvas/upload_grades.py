@@ -282,7 +282,7 @@ def reset_progress():
     if match:
         db.session.delete(match)
         db.session.commit()
-    return json.dumps(None)
+    return 'Reset'
 
 @app.route('/get_progress', methods=['GET'])
 def get_progress():
@@ -444,8 +444,8 @@ class UploadGrades:
     # The counter on this is only accurate if num_students is the number of students in the class
     def _get_canvas_students(self):
         self.assignment_status.status = 'Fetching Students'
-        canvas_users = self._course.get_users()        
         canvas_students = {}
+        canvas_users = self._course.get_users()  
         counter=0
         for user in canvas_users:
             if hasattr(user, "login_id") and user.login_id is not None:

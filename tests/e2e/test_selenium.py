@@ -1,18 +1,40 @@
+from json import load
 from canvasapi import Canvas
-import json
+import time
 from attr import s
 import pytest
 import requests
 import psycopg2
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.by import By
 
 import os
 
-SECONDS_WAIT = 10
+SECONDS_WAIT = 30
+
+def clear_grades(course):
+    users = course.get_recent_students()
+    clear_grades = {user.id: {'posted_grade':''} for user in users}
+    for assignment in course.get_assignments_for_group(92059):
+        if assignment.published:
+            try:
+                progress = assignment.submissions_bulk_update(grade_data=clear_grades)
+                timeout = time.time()+10
+                while not progress.workflow_state == 'completed' and timeout > time.time():
+                    progress = progress.query()
+                    time.sleep(.2)
+                    if progress.workflow_state == 'failed':
+                        print('failed')
+                        break
+                print(assignment.name, progress.workflow_state)
+                print(progress.url)
+            except:
+                print(assignment.name)
+                print(progress.url)
+
 
 @pytest.fixture()
 def course():
@@ -48,6 +70,7 @@ def setup(course):
     )
     with conn.cursor() as curs:
         curs.execute("DELETE FROM assignment_match;")
+        curs.execute("DELETE FROM assignment_status;")
     conn.commit()
     conn.close()
 
@@ -55,7 +78,7 @@ def setup(course):
     # remove canvas classes
 
     for assignment in course.get_assignments_for_group(92059):
-        if 'Test Assignment' in assignment.name or assignment.name == 'assign1':
+        if not 'Week' in assignment.name:
             assignment.delete()
         
 
@@ -96,7 +119,7 @@ def login(driver):
     driver.get(base_url)
 
     WebDriverWait(driver, SECONDS_WAIT).until(
-        expected_conditions.presence_of_element_located(
+        EC.presence_of_element_located(
             (By.ID, "ssousername"))
     )
     driver.find_element(By.ID, "ssousername").send_keys(canvas_sso_username)
@@ -105,7 +128,7 @@ def login(driver):
 
     driver.find_element(By.NAME, "_eventId_proceed").click()
     WebDriverWait(driver, SECONDS_WAIT).until(
-        expected_conditions.visibility_of_element_located(
+        EC.visibility_of_element_located(
             (By.ID, "footer"))
     )
     elements = driver.find_elements(By.ID, "application")
@@ -147,13 +170,13 @@ def test_localhost_gets_driver_to_overview_page(localhost):
 
 def test_create_and_upload_unmatched_assignment(localhost, course):
     assert localhost.find_element_by_id('Test Assignment 3').text == 'No match found'
-    localhost.find_element_by_css_selector('#main-table > tr:nth-child(4) > td:nth-child(4) > input.uploadbtn').click()
+    localhost.find_element_by_id('submit_Test Assignment 3').click()
     WebDriverWait(localhost, SECONDS_WAIT).until(
-        expected_conditions.text_to_be_present_in_element(
-            (By.ID, "Test Assignment 3"), "completed"
+        EC.text_to_be_present_in_element(
+            (By.ID, "Test Assignment 3"), "Uploaded"
         )
     )
-    assert localhost.find_element_by_id('Test Assignment 3').text == 'completed'
+    assert localhost.find_element_by_id('Test Assignment 3').text == 'Uploaded'
     # check gradebook is updated accordingly
     if not course:
         print('Error creating course')
@@ -170,15 +193,17 @@ def test_create_and_upload_unmatched_assignment(localhost, course):
 
 def test_upload_assignment_to_different_name(localhost, course):
     assert localhost.find_element_by_id('assign1').text == 'No match found'
-    localhost.find_element_by_xpath('//*[@id="main-table"]/tr[1]/td[2]/select').click() #open dropdown
-    localhost.find_element_by_xpath('//*[@id="main-table"]/tr[1]/td[2]/select/option[4]').click()   #select week 3: assignment
-    localhost.find_element_by_xpath('//*[@id="main-table"]/tr[1]/td[3]/input[1]').click()   #click upload grades
+    #clear_grades(course)
+    localhost.find_element_by_id('select_assign1').click() #open dropdown
+    localhost.find_element_by_xpath('//*[@id="select_assign1"]/option[4]').click()   #select week 3: assignment
+    localhost.find_element_by_id('submit_assign1').click()   #click upload grades
     WebDriverWait(localhost, SECONDS_WAIT).until(
-        expected_conditions.text_to_be_present_in_element(
-            (By.ID, "assign1"), "completed"
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Uploaded"
         )
     )
-    assert localhost.find_element_by_id('assign1').text == 'completed'
+    assert localhost.find_element_by_id('assign1').text == 'Uploaded'
+    time.sleep(2)
     # check gradebook is updated accordingly
     if not course:
         print('Error creating course')
@@ -189,3 +214,83 @@ def test_upload_assignment_to_different_name(localhost, course):
             submission = assignment.get_submission(114262)
             assert submission.score == 6.0
             return
+
+def test_multiple_uploads(localhost):
+    localhost.find_element_by_id('submit_assign1').click()
+    localhost.find_element_by_id('submit_Test Assignment 1').click()
+    localhost.find_element_by_id('submit_Test Assignment 2').click()
+    localhost.find_element_by_id('submit_Test Assignment 3').click()
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "Test Assignment 3"), "Fetching Students"
+        )
+    )
+    time.sleep(2)
+    assert localhost.find_element_by_id('assign1').get_attribute("class") == 'orangeText'
+    assert localhost.find_element_by_id('Test Assignment 1').get_attribute("class") == 'orangeText'
+    assert localhost.find_element_by_id('Test Assignment 2').get_attribute("class") == 'orangeText'
+    assert localhost.find_element_by_id('Test Assignment 3').get_attribute("class") == 'orangeText'
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Uploaded"
+        )
+    )
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "Test Assignment 1"), "Uploaded"
+        )
+    )
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "Test Assignment 2"), "Uploaded"
+        )
+    )
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "Test Assignment 3"), "Uploaded"
+        )
+    )    
+    
+    assert localhost.find_element_by_id('assign1').text == 'Uploaded'
+    assert localhost.find_element_by_id('Test Assignment 1').text == 'Uploaded'
+    assert localhost.find_element_by_id('Test Assignment 2').text == 'Uploaded'
+    assert localhost.find_element_by_id('Test Assignment 3').text == 'Uploaded'
+
+def test_delete_assignment_updates_db(localhost):
+    assert localhost.find_element_by_id('Test Assignment 3').text == 'No match found'
+    localhost.find_element_by_id('submit_Test Assignment 3').click()
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "Test Assignment 3"), "Uploaded"
+        )
+    )
+    time.sleep(1)
+    assign_id = localhost.find_element_by_id('select_Test Assignment 3').get_attribute("value")
+    localhost.switch_to.window(localhost.window_handles[0])
+    localhost.find_element_by_xpath('//*[@id="section-tabs"]/li[5]/a').click()
+    time.sleep(2)
+    localhost.find_element_by_xpath('//*[@id="element_toggler_0"]/div/button/i').click()
+    localhost.find_element_by_xpath('//*[@id="assign_'+assign_id+'_manage_link"]').click()
+    localhost.find_element_by_id('assignment_'+assign_id+'_settings_delete_item').click()
+    WebDriverWait(localhost, SECONDS_WAIT).until(EC.alert_is_present())
+    localhost.switch_to.alert.accept()
+    localhost.switch_to.window(localhost.window_handles[1])
+    localhost.refresh()
+    time.sleep(3)
+    assert localhost.find_element_by_id('Test Assignment 3').text == 'No match found'
+
+def test_correct_number_of_assignments(localhost):
+    assert localhost.find_element_by_id('assign1').text == 'No match found'
+    assert localhost.find_element_by_id('Test Assignment 1').text == 'No match found'
+    assert localhost.find_element_by_id('Test Assignment 2').text == 'No match found'
+    assert localhost.find_element_by_id('Test Assignment 3').text == 'No match found'
+    
+def test_upload_button_disables_during_upload(localhost):
+    submit = localhost.find_element_by_id('submit_assign1')
+    submit.click()
+    assert submit.get_attribute("disabled") == 'true'
+
+def test_dropdown_disables_during_upload(localhost):
+    localhost.find_element_by_id('submit_assign1').click()
+    assert localhost.find_element_by_id('select_assign1').get_attribute("disabled") == 'true'
+    
