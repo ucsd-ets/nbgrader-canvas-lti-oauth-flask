@@ -103,12 +103,13 @@ Grading Overview
           {% if match.canvas_assign_id == 'create' %}
             <option value="{{ match.canvas_assign_id }}" selected="selected">{{ name }}</option>
           {% else %}
+            <option value="create">Create Canvas Assignment</option>
             <option value="{{ match.canvas_assign_id }}" selected="selected">{{ cv_assign[match.canvas_assign_id | int] }}</option>
           {% endif %}
           
           {% for id, assignment in cv_assign.items() %}
               {# list the unmatched canvas assignments #}
-              {% if not cv_matches[assignment] or cv_matches[assignment].status == 'Failed' and assignment != cv_assign[match.canvas_assign_id | int] %}
+              {% if not cv_matches[assignment] or cv_matches[assignment].status == 'Failed' and id != match.canvas_assign_id %}
                   <option value="{{ id }}" disabled=True>{{ assignment }}</option>
               {% endif %}
           {% endfor %}
@@ -154,7 +155,9 @@ Grading Overview
         </div>
       </div>
     </td>
-    
+    <td class="text-center" style="vertical-align: middle">
+      <input type="button" class="cancelbtn" name="{{ name }}" value="Cancel" id="cancel_{{ name }}" disabled=true>
+    </td>
   </tr>
   {% endfor %}
 {%- endblock -%}
@@ -189,7 +192,8 @@ Grading Overview
         let current_assignment = assignments[counter]
         form = document.getElementById('form_'+current_assignment);
         form.addEventListener( 'submit', function(){submitUpload(event,current_assignment)});
-        
+        cancel = document.getElementById('cancel_'+current_assignment);
+        cancel.addEventListener( 'click', function(){cancelUpload(current_assignment)});
         intervalIDs.push(window.setInterval(updateStatus, 1000, current_assignment, counter, true));
         counter++;
       }
@@ -229,17 +233,48 @@ Grading Overview
             console.log(result);
           }
         });
-        intervalIDs.push(window.setInterval(updateStatus, 1000, current_assignment, counter, false));
-        counter++;
+        
         document.getElementById('select_'+current_assignment).disabled = true;
         document.getElementById('submit_'+current_assignment).disabled = true;
+        document.getElementById('cancel_'+current_assignment).disabled = true;
         removeAssignmentFromDropdowns(current_assignment);
         status_label = document.getElementById(current_assignment);
+        intervalIDs.push(window.setInterval(updateStatus, 1000, current_assignment, counter, false));
+        counter++;
         status_label.innerHTML = "Queued"
         status_label.className = "redText"
       }
 
-      function updateStatus(current_assignment, counter, removeNull, statusBar){
+      // Signals to remove status and match in db.
+      // Does not remove grades uploaded to canvas.
+      function cancelUpload(current_assignment) {
+        canvas_id = document.getElementById('select_'+current_assignment).value
+        console.log('test');
+        $.ajax({
+          type: "POST",
+          url: "/remove_upload",
+          data: {
+            course_id: {{ course_id }},
+            group: {{ group }},
+            form_canvas_assign_id: canvas_id,
+            form_nb_assign_name: current_assignment
+          },
+          success: function(result){
+            console.log(result);
+          },
+          error: function(result){
+            console.log(result);
+          }
+        });
+        document.getElementById('select_'+current_assignment).disabled = true;
+        document.getElementById('submit_'+current_assignment).disabled = true;
+        document.getElementById('cancel_'+current_assignment).disabled = true;
+        enableCanvasDropdown(current_assignment);
+        intervalIDs.push(window.setInterval(updateStatus, 1000, current_assignment, counter, true));
+        counter++;
+      }
+
+      function updateStatus(current_assignment, counter, removeNull){
         $.getJSON(
           "{{url_for('get_progress') }}",
           { assignment: current_assignment,
@@ -247,10 +282,13 @@ Grading Overview
           function(data){
             if (data == null) {
               if (removeNull) {
-              document.getElementById('select_'+current_assignment).disabled = false;
+                document.getElementById('select_'+current_assignment).disabled = false;
                 document.getElementById('submit_'+current_assignment).disabled = false;
                 console.log("Nothing to update");
                 window.clearInterval(intervalIDs[counter]);
+                document.getElementById(current_assignment).innerHTML = 'No match found';
+                document.getElementById(current_assignment).className = 'redText';
+                document.getElementById('status_bar_' + current_assignment).style = "width:0%"
                 return;
               }
             } else{
@@ -276,6 +314,7 @@ Grading Overview
                 status_label.className = "greenText";
                 document.getElementById('select_'+current_assignment).disabled = false;
                 document.getElementById('submit_'+current_assignment).disabled = false;
+                document.getElementById('cancel_'+current_assignment).disabled = false;
                 updateCanvasDropdown(current_assignment, data.canvas_assign_id)
                 window.clearInterval(intervalIDs[counter]);
                 return;
@@ -301,8 +340,33 @@ Grading Overview
           }
         }
         if (selector.value == 'create') {
-          selector.options[selector.selectedIndex].text = current_assignment;
-          selector.options[selector.selectedIndex].value = canvas_assign_id;
+          selector.options[selector.selectedIndex].disabled = true;
+           selector.options[selector.selectedIndex].innerHTML = "Create Canvas Assignment";
+          selector.options[selector.selectedIndex].selected = false;
+          var opt = document.createElement('option');
+          opt.text = current_assignment;
+          opt.value = canvas_assign_id;
+          opt.selected = 'selected';
+          selector.append(opt);
+        }
+      }
+
+      // enables unselected options in dropdown
+      // adds selected back to other dropdowns
+      function enableCanvasDropdown(current_assignment) {
+        selector = document.getElementById('select_'+current_assignment);
+        for(let option of selector.options) {
+          option.disabled = false;
+        }
+        selectors = document.getElementsByTagName("select")
+        for(let sel of selectors) {
+          if (sel != selector) {
+            var opt = document.createElement('option');
+            opt.value = selector.options[selector.selectedIndex].value;
+            opt.text = selector.options[selector.selectedIndex].text;
+            if (document.getElementById(sel.id.substring(7)).innerHTML == 'Uploaded') opt.disabled=true;
+            sel.append(opt);
+          }
         }
       }
 

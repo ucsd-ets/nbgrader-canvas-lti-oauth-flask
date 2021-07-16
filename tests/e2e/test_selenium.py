@@ -179,9 +179,6 @@ def test_create_and_upload_unmatched_assignment(localhost, course):
     )
     assert localhost.find_element_by_id('Test Assignment 3').text == 'Uploaded'
     # check gradebook is updated accordingly
-    if not course:
-        print('Error creating course')
-        assert False
     assignments = course.get_assignments()
     for assignment in assignments:
         if assignment.name == 'Test Assignment 3':
@@ -350,4 +347,36 @@ def test_different_name_persists_during_upload(localhost, course):
     localhost.refresh()
     time.sleep(.4)
     assert localhost.find_element_by_xpath('//*[@id="select_assign1"]/option[1]').text == 'Test Assignment 1'
-    
+
+# Tests that uploading an assignment then 
+def test_cancel_removes_entries_from_db(localhost):
+    localhost.find_element_by_id('submit_assign1').click()
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Uploaded"
+        )
+    )
+    localhost.find_element_by_id('cancel_assign1').click()
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "No match found"
+        )
+    )
+    status_length = 10
+    match_length = 10
+    conn = psycopg2.connect(
+        host = "localhost",
+        database = "test",
+        user = "dev",
+        password = "mypassword"
+    )
+    with conn.cursor() as curs:
+        curs.execute("SELECT * FROM assignment_status;")
+        status_length = curs.rowcount
+        curs.execute("SELECT * FROM assignment_match;")
+        match_length = curs.rowcount
+    conn.commit()
+    conn.close()
+
+    assert status_length == 0
+    assert match_length == 0

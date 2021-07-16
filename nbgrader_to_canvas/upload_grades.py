@@ -273,6 +273,23 @@ upload_grades_blueprint = Blueprint('upload_grades', __name__)
 #     #     upload_progress_url=upload_progress_url,upload_progress_assignment=upload_progress_assignment)
 #     # return render_template('overview.htm.j2', nb_assign=nb_assign, cv_assign=cv_assign, db_matches=db_matches,
 #                         #  progress = progress)
+@app.route('/remove_upload', methods=['POST'])
+def remove_upload():
+    assignment = request.form.get('form_nb_assign_name')
+    id = request.form.get('course_id')
+    match = AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
+    status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
+    out = ""
+    if match:
+        db.session.delete(match)
+        out+="Match removed.\n"
+    if status:
+        db.session.delete(status)
+        out+="Status removed."
+    db.session.commit()
+    return out
+
+
 
 @app.route('/reset_progress', methods=['GET', 'POST'])
 def reset_progress():
@@ -377,6 +394,8 @@ class UploadGrades:
             max_score = self._get_max_score()
             app.logger.debug('create assignment')
             self.assignment_to_upload = self._create_assignment(max_score)
+            self.assignment_status.canvas_assign_id = self.assignment_to_upload.id
+            db.session.commit()
         else: 
             self.assignment_to_upload = self._get_assignment()
 
@@ -397,7 +416,6 @@ class UploadGrades:
     # Submits grades to canvas, and creates/updates the AssignmentMatch database for the assignment
     def update_database(self):
         app.logger.debug('submit grades')
-        self.assignment_status.canvas_assign_id = self.canvas_assignment_id
         time_start = time.time()
         progress = self._submit_grades()
         app.logger.debug('time for subimt: {}'.format(time.time()-time_start))

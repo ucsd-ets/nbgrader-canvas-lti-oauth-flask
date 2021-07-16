@@ -4,13 +4,13 @@ select {
 }
 
 /* round the upload button */
-.uploadbtn {
+.uploadbtn, .cancelbtn {
     border-radius: 7px;
     border: 0.75px solid;
 }
 
 /* disabled button */
-.uploadbtn:disabled{
+.uploadbtn:disabled, .cancelbtn:disabled {
     color: lightgray;
 }
 
