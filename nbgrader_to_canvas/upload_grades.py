@@ -339,7 +339,7 @@ async def threaded_upload(uploader):
         uploader.parse_form_data()
         uploader.update_database()
     except Exception as ex:
-        app.logger.debug("Attempt to remove invalid status\n{}".format(ex))
+        app.logger.debug("Upload Failed:\n{}".format(ex))
         status = AssignmentStatus.query.filter_by(nbgrader_assign_name=uploader._form_nb_assign_name).first()
         status.status = 'Failed'
         status.completion = 0
@@ -364,6 +364,7 @@ class UploadGrades:
     # Returns a course object corresponding to given course_id
     # TEST: param is to allow testing
     def init_course(self, flask_session = session):
+        self._setup_status()
         canvas_wrapper = CanvasWrapper(settings.API_URL, flask_session)
         canvas = canvas_wrapper.get_canvas()
         self._course = canvas.get_course(self._course_id)
@@ -371,7 +372,6 @@ class UploadGrades:
             raise Exception('Invalid course id')
     
     def parse_form_data(self):
-        self._setup_status()
         if (self._form_canvas_assign_id == 'create'):
             app.logger.debug('get max score')
             max_score = self._get_max_score()
@@ -392,15 +392,18 @@ class UploadGrades:
         
 
         self.canvas_assignment_id = self.assignment_to_upload.id
+        
     
     # Submits grades to canvas, and creates/updates the AssignmentMatch database for the assignment
     def update_database(self):
         app.logger.debug('submit grades')
+        self.assignment_status.canvas_assign_id = self.canvas_assignment_id
         time_start = time.time()
         progress = self._submit_grades()
         app.logger.debug('time for subimt: {}'.format(time.time()-time_start))
         
         assignment_match = AssignmentMatch.query.filter_by(nbgrader_assign_name=self._form_nb_assign_name, course_id=self._course_id).first()
+        
         if assignment_match:
             app.logger.debug('update match')
             self._update_match(assignment_match, progress)
@@ -420,7 +423,7 @@ class UploadGrades:
             self._create_assignment_status()
 
     def _create_assignment_status(self):
-        self.assignment_status = AssignmentStatus(course_id=self._course_id, nbgrader_assign_name=self._form_nb_assign_name ,status = 'Initializing', completion = 0)
+        self.assignment_status = AssignmentStatus(course_id=self._course_id, nbgrader_assign_name=self._form_nb_assign_name , canvas_assign_id=self._form_canvas_assign_id, status = 'Initializing', completion = 0)
         db.session.add(self.assignment_status)
         db.session.commit()
 
@@ -546,13 +549,16 @@ class UploadGrades:
     # Updates grades for given assignment. Returns progress resulting from upload attempt.
     def _submit_grades(self):
         self.assignment_status.status = 'Uploading Grades'
+        app.logger.debug(self.assignment_to_upload)
         db.session.commit()
+        self.assignment_to_upload.edit(assignment={'published':True})
+        app.logger.debug(self.assignment_to_upload.published)
         progress = self.assignment_to_upload.submissions_bulk_update(grade_data=self.student_grades)
-        try:
-            session['progress_json'] = jsonpickle.encode(progress)
-            session.modified = True
-        except Exception:
-            app.logger.debug("Error modifying session")
+        # try:
+        #     session['progress_json'] = jsonpickle.encode(progress)
+        #     session.modified = True
+        # except Exception:
+        #     app.logger.debug("Error modifying session")
         app.logger.debug("progress url: {}".format(progress.url))
         counter = 0
         while not progress.workflow_state == "completed" and not progress.workflow_state == "failed":

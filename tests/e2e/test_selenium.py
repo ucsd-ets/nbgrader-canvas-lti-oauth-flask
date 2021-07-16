@@ -153,21 +153,22 @@ def localhost(login):
     assert login.title == 'Nbgrader to Canvas Grading'
 
     yield login
-
+# Check this by querying a known endpoint
 def test_selenium_is_working(driver):
-    """Check this by querying a known endpoint"""
-    
     driver.get('https://www.google.com')
     txt = driver.find_element_by_tag_name('body').text
     assert len(txt) > 0
 
+# Tests that driver can login to testacct111
 def test_login_gets_driver_logged_in(login):
     logged_in = login.find_element(By.ID, "dashboard_header_container") is not None
     assert logged_in
 
+# Tests that driver opens up the program properly
 def test_localhost_gets_driver_to_overview_page(localhost):
     assert localhost.title == 'Nbgrader to Canvas Grading'
 
+# Tests that you can upload an assignment using the create canvas assignment feature
 def test_create_and_upload_unmatched_assignment(localhost, course):
     assert localhost.find_element_by_id('Test Assignment 3').text == 'No match found'
     localhost.find_element_by_id('submit_Test Assignment 3').click()
@@ -188,12 +189,10 @@ def test_create_and_upload_unmatched_assignment(localhost, course):
             assert submission.score == 2.0
             return
 
-
-
-
+# Tests uploading to assignment with different name
 def test_upload_assignment_to_different_name(localhost, course):
     assert localhost.find_element_by_id('assign1').text == 'No match found'
-    #clear_grades(course)
+    clear_grades(course)
     localhost.find_element_by_id('select_assign1').click() #open dropdown
     localhost.find_element_by_xpath('//*[@id="select_assign1"]/option[4]').click()   #select week 3: assignment
     localhost.find_element_by_id('submit_assign1').click()   #click upload grades
@@ -215,6 +214,7 @@ def test_upload_assignment_to_different_name(localhost, course):
             assert submission.score == 6.0
             return
 
+# Tests uploading 4 assignments at once
 def test_multiple_uploads(localhost):
     localhost.find_element_by_id('submit_assign1').click()
     localhost.find_element_by_id('submit_Test Assignment 1').click()
@@ -256,6 +256,7 @@ def test_multiple_uploads(localhost):
     assert localhost.find_element_by_id('Test Assignment 2').text == 'Uploaded'
     assert localhost.find_element_by_id('Test Assignment 3').text == 'Uploaded'
 
+# Tests deleting an assignment through Canvas will remove corresponding Status and Match
 def test_delete_assignment_updates_db(localhost):
     assert localhost.find_element_by_id('Test Assignment 3').text == 'No match found'
     localhost.find_element_by_id('submit_Test Assignment 3').click()
@@ -279,18 +280,74 @@ def test_delete_assignment_updates_db(localhost):
     time.sleep(3)
     assert localhost.find_element_by_id('Test Assignment 3').text == 'No match found'
 
+# Test that the expected Nbgrader assignments are being displayed
 def test_correct_number_of_assignments(localhost):
     assert localhost.find_element_by_id('assign1').text == 'No match found'
     assert localhost.find_element_by_id('Test Assignment 1').text == 'No match found'
     assert localhost.find_element_by_id('Test Assignment 2').text == 'No match found'
     assert localhost.find_element_by_id('Test Assignment 3').text == 'No match found'
     
+# Tests that the correct buttons disable during uploads
 def test_upload_button_disables_during_upload(localhost):
     submit = localhost.find_element_by_id('submit_assign1')
     submit.click()
     assert submit.get_attribute("disabled") == 'true'
 
+# Tests that correct dropdowns disable during uploads
 def test_dropdown_disables_during_upload(localhost):
     localhost.find_element_by_id('submit_assign1').click()
     assert localhost.find_element_by_id('select_assign1').get_attribute("disabled") == 'true'
+
+# Tests uploading nbgrader assignments to canvas assignments that share a name with a different Nbgrader assignment
+def test_assignments_to_each_others_names(localhost, course):
+    assignment_groups = course.get_assignment_groups()
+    group = None
+    for ag in assignment_groups:
+        if (ag.name == "Assignments"):
+            group= ag.id
+    course.create_assignment({'name':'Test Assignment 1', 'published':'true', 'assignment_group_id':group})
+    course.create_assignment({'name':'assign1', 'published':'true', 'assignment_group_id':group})
+    localhost.refresh()
+    time.sleep(2)
+    localhost.find_element_by_id('select_assign1').click() #open dropdown
+    localhost.find_element_by_xpath('//*[@id="select_assign1"]/option[7]').click()   #select Test Assignment 1
+    localhost.find_element_by_id('submit_assign1').click()   #click upload grades
+    localhost.find_element_by_id('select_Test Assignment 1').click() #open dropdown
+    localhost.find_element_by_xpath('//*[@id="select_Test Assignment 1"]/option[7]').click()   #select assign1
+    localhost.find_element_by_id('submit_Test Assignment 1').click()   #click upload grades
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Uploaded"
+        )
+    )
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "Test Assignment 1"), "Uploaded"
+        )
+    )
+    assignments = course.get_assignments()
+    for assignment in assignments:
+        if assignment.name == 'Test Assignment 1':
+            submission = assignment.get_submission(114262)
+            assert submission.score == 6.0
+        elif assignment.name == 'assign1':
+            submission = assignment.get_submission(114262)
+            assert submission.score == 2.0
+
+# Tests that the correct name persists upon refreshing during upload
+def test_different_name_persists_during_upload(localhost, course):
+    assignment_groups = course.get_assignment_groups()
+    group = None
+    for ag in assignment_groups:
+        if (ag.name == "Assignments"):
+            group= ag.id
+    course.create_assignment({'name':'Test Assignment 1', 'published':'true', 'assignment_group_id':group})
+    localhost.refresh()
+    time.sleep(2)
+    localhost.find_element_by_id('select_assign1').click() #open dropdown
+    localhost.find_element_by_xpath('//*[@id="select_assign1"]/option[7]').click()   #select Test Assignment 1
+    localhost.find_element_by_id('submit_assign1').click()   #click upload grades
+    localhost.refresh()
+    time.sleep(.4)
+    assert localhost.find_element_by_xpath('//*[@id="select_assign1"]/option[1]').text == 'Test Assignment 1'
     

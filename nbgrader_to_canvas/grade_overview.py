@@ -159,9 +159,8 @@ def grade_overview(progress = None):
         
         grade_overview = GradeOverview()
         grade_overview.init_assignments()
-        
-        db_matches = grade_overview.get_matches()
-        app.logger.debug('{}'.format(grade_overview.nb_assignments))
+        grade_overview.setup_matches()
+        app.logger.debug('{}\n{}'.format(grade_overview.canvas_assignments,grade_overview.nb_matches))
 
         if request.method == 'POST':
             #progress = upload_grades(grade_overview.course_id, grade_overview.group)
@@ -170,7 +169,8 @@ def grade_overview(progress = None):
         
         return Response(
                 render_template('overview.htm.j2', nb_assign=grade_overview.nb_assignments, cv_assign=grade_overview.canvas_assignments,
-                                db_matches=db_matches, course_id=grade_overview.course_id, group=grade_overview.group, progress = progress)
+                                nb_matches=grade_overview.nb_matches, cv_matches=grade_overview.cv_matches,
+                                course_id=grade_overview.course_id, group=grade_overview.group, progress = progress)
             )
     except KeyError as keyE:
         app.logger.error("KeyError: " + str(keyE))
@@ -217,9 +217,10 @@ class GradeOverview:
         self.canvas_assignments = self._get_canvas_assignments()
     
     # Prunes database for deleted assignments then returns valid matches
-    def get_matches(self):
+    def setup_matches(self):
         self._cleanup_assignment_matches()
-        return self._match_assignments()
+        self.nb_matches = self._match_nb_assignments()
+        self.cv_matches = self._match_cv_assignments()
 
     def _init_canvas(self, flask_session = session):
         self._canvas_wrapper = CanvasWrapper(settings.API_URL, flask_session)
@@ -262,7 +263,12 @@ class GradeOverview:
     # If no match found, pair name with None.
     # Note that this queries a db of matches and doesn't directly find matches between canvas and nb_grader.
     # Can result in unexpected behavior if assignment is deleted without db being updated.
-    def _match_assignments(self):
-        nb_matches = {assignment.name:AssignmentMatch.query.filter_by(nbgrader_assign_name=assignment.name, course_id=self.course_id).first()
+    def _match_nb_assignments(self):
+        nb_matches = {assignment.name:AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment.name, course_id=self.course_id).first()
                                                                 for assignment in self.nb_assignments}
         return nb_matches
+
+    def _match_cv_assignments(self):
+        cv_matches = {self.canvas_assignments[id]:AssignmentStatus.query.filter_by(canvas_assign_id=str(id), course_id=self.course_id).first()
+                                                                for id in self.canvas_assignments}
+        return cv_matches

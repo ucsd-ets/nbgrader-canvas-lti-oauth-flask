@@ -86,7 +86,7 @@ Grading Overview
 #}
 {%- block table_body -%}
 
-  {% for name,match in db_matches.items() %}
+  {% for name,match in nb_matches.items() %}
   <tr>
     {# create a submit form to upload grades for each row #}
     <form action="" method="POST" id="form_{{ name }}"> {# {{ url_for('upload_grades.upload_grades') }} #}
@@ -99,12 +99,16 @@ Grading Overview
     <select name="form_canvas_assign_id" class="canvas_assign" id="select_{{ name }}" disabled=true> 
 
       {# if a match is found, form match and create dropdown menu of unselectable assignments from Canvas #}
-      {% if match %}
-
-          <option value="{{ match.canvas_assign_id }}" selected="selected">{{ cv_assign[match.canvas_assign_id] }}</option>
+      {% if match and not match.status == 'Failed' %}
+          {% if match.canvas_assign_id == 'create' %}
+            <option value="{{ match.canvas_assign_id }}" selected="selected">{{ name }}</option>
+          {% else %}
+            <option value="{{ match.canvas_assign_id }}" selected="selected">{{ cv_assign[match.canvas_assign_id | int] }}</option>
+          {% endif %}
+          
           {% for id, assignment in cv_assign.items() %}
               {# list the unmatched canvas assignments #}
-              {% if assignment != cv_assign[match.canvas_assign_id] %}
+              {% if not cv_matches[assignment] or cv_matches[assignment].status == 'Failed' and assignment != cv_assign[match.canvas_assign_id | int] %}
                   <option value="{{ id }}" disabled=True>{{ assignment }}</option>
               {% endif %}
           {% endfor %}
@@ -114,11 +118,13 @@ Grading Overview
           <option value="create" selected="selected">Create Canvas Assignment</option>
           {% for id, assignment in cv_assign.items() %}
               {# make a match if similar nbgrader assignment exists in Canvas #}
-              {% if assignment == name %}
-                  <option value="{{ id }}" selected="selected">{{ assignment }}</option>
-              {# list the canvas assignments #}
-              {% else %}
-                  <option value="{{ id }}">{{ assignment }}</option>
+              {% if not cv_matches[assignment] or cv_matches[assignment].status == 'Failed' %}
+                {% if assignment == name %}
+                    <option value="{{ id }}" selected="selected">{{ assignment }}</option>
+                {# list the canvas assignments #}
+                {% else %}
+                    <option value="{{ id }}">{{ assignment }}</option>
+                {% endif %}
               {% endif %}
           {% endfor %}
       {% endif %}
@@ -148,6 +154,7 @@ Grading Overview
         </div>
       </div>
     </td>
+    
   </tr>
   {% endfor %}
 {%- endblock -%}
@@ -182,6 +189,7 @@ Grading Overview
         let current_assignment = assignments[counter]
         form = document.getElementById('form_'+current_assignment);
         form.addEventListener( 'submit', function(){submitUpload(event,current_assignment)});
+        
         intervalIDs.push(window.setInterval(updateStatus, 1000, current_assignment, counter, true));
         counter++;
       }
@@ -225,7 +233,7 @@ Grading Overview
         counter++;
         document.getElementById('select_'+current_assignment).disabled = true;
         document.getElementById('submit_'+current_assignment).disabled = true;
-        remove
+        removeAssignmentFromDropdowns(current_assignment);
         status_label = document.getElementById(current_assignment);
         status_label.innerHTML = "Queued"
         status_label.className = "redText"
@@ -283,8 +291,8 @@ Grading Overview
         );
       }
 
-      // if canvas create is selected, then change it to be the new assignment for
-      // potential re-uploads
+      // disable unselected options and if canvas create is selected, then change 
+      // it to be the new assignment for potential re-uploads
       function updateCanvasDropdown(current_assignment, canvas_assign_id) {
         selector = document.getElementById('select_'+current_assignment);
         for(let option of selector.options) {
@@ -295,6 +303,24 @@ Grading Overview
         if (selector.value == 'create') {
           selector.options[selector.selectedIndex].text = current_assignment;
           selector.options[selector.selectedIndex].value = canvas_assign_id;
+        }
+      }
+
+      // when uploading assignment, remove it from other lists to prevent double uploads
+      function removeAssignmentFromDropdowns(current_assignment) {
+        selector = document.getElementById('select_'+current_assignment);
+        assignment = selector.options[selector.selectedIndex].text;
+        if (assignment == 'Create Canvas Assignment') return;
+        selectors = document.getElementsByTagName("select")
+        for(let sel of selectors) {
+          if (sel != selector) {
+            for(let i = 0; i < sel.options.length; i++) {
+              if (sel.options[i].text == assignment) {
+                sel.remove(i);
+                break;
+              }
+            }
+          }
         }
       }
 

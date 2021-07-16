@@ -9,10 +9,16 @@ select {
     border: 0.75px solid;
 }
 
+/* disabled button */
+.uploadbtn:disabled{
+    color: lightgray;
+}
+
 /* round the dropdown menu */
 .canvas_assign {
     border-radius: 7px;
     border: 0.75px solid;
+    width: 32ch;
 }
 
 /* styling for text color */
@@ -29,11 +35,6 @@ select {
 /* for green color text */
 .greenText {
     color:green;
-}
-
-/* for yellow color text */
-.yellowText {
-    color: rgb(200, 255, 0);
 }
 
 /* for orange color text */

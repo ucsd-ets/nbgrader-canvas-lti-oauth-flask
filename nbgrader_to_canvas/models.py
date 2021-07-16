@@ -54,11 +54,13 @@ class AssignmentStatus(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer)
     nbgrader_assign_name = db.Column(db.String(255))
+    canvas_assign_id = db.Column(db.String(255))
     status = db.Column(db.String(255))
     completion = db.Column(db.Integer)
 
-    def __init__(self, course_id, nbgrader_assign_name, status, completion):
+    def __init__(self, course_id, nbgrader_assign_name, canvas_assign_id, status, completion):
         self.course_id = course_id
         self.nbgrader_assign_name = nbgrader_assign_name
+        self.canvas_assign_id = canvas_assign_id
         self.status = status
         self.completion = completion
