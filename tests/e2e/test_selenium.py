@@ -43,7 +43,8 @@ def course():
             'client_id': '131710000000000203',
             'redirect_uri':'http://localhost:5000/oauthlogin',
             'client_secret': 'jBwYwIHSsUCfHaBnkdN8Ff56o3WpjJfztp5JEe5DUcCKJ6VB7iYZkMTNt1URrTvo',
-            'refresh_token': '13171~bngbhxjVx3G7sqnWFC3BFs0r9MgN408enlV3I3uN74pCPpjkQvK2bI3eEcStdPH1'
+            # refresh token has to be updated if no user in users db has this token
+            'refresh_token': '13171~9pf0z5kSrxSK8fH2Glbb2zWHzmeTUW46Z2QNhIudi7J3vq4UvYznRckNYzZz3JVs'
         }
     response = requests.post(
         'https://ucsd.test.instructure.com/login/oauth2/token',
@@ -52,7 +53,7 @@ def course():
     canvas = None
     try:
         api_key = response.json()['access_token']
-        canvas = Canvas('https://ucsd.test.instructure.com',api_key)
+        canvas = Canvas(os.getenv('CANVAS_BASE_URL'),api_key)
         course = canvas.get_course(20774)
         return course
     except Exception as ex:
@@ -113,9 +114,9 @@ def driver(pytestconfig, setup):
 
 @pytest.fixture
 def login(driver):
-    base_url = 'https://ucsd.test.instructure.com'
-    canvas_sso_username = 'testacct111'
-    canvas_sso_pw = 'kZChv89xmNbyf3b*'
+    base_url = os.getenv('CANVAS_BASE_URL')
+    canvas_sso_username = os.getenv('CANVAS_SSO_USERNAME')
+    canvas_sso_pw = os.getenv('CANVAS_SSO_PASSWORD')
     driver.get(base_url)
 
     WebDriverWait(driver, SECONDS_WAIT).until(
@@ -148,6 +149,8 @@ def localhost(login):
         login.find_element_by_css_selector('#oauth2_accept_form > div > input').click()
     except:
         print('Already authorized')
+    login.refresh()
+    time.sleep(3)
     
     
     assert login.title == 'Nbgrader to Canvas Grading'
@@ -380,3 +383,37 @@ def test_cancel_removes_entries_from_db(localhost):
 
     assert status_length == 0
     assert match_length == 0
+
+# Tests that while an assignment is being reuploaded the cancel button disables again
+def test_cancel_disabled_during_upload(localhost):
+    localhost.find_element_by_id('submit_assign1').click()
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Fetching Students"
+        )
+    )
+    assert localhost.find_element_by_id('cancel_assign1').get_attribute('disabled') == 'true'
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Uploading Grades"
+        )
+    )
+    assert localhost.find_element_by_id('cancel_assign1').get_attribute('disabled') == 'true'
+
+    
+# Tests that cancel button disables after being used
+def test_cancel_disabled_after_canceling(localhost):
+    localhost.find_element_by_id('submit_assign1').click()
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Uploaded"
+        )
+    )
+    assert not localhost.find_element_by_id('cancel_assign1').get_attribute('disabled')
+    localhost.find_element_by_id('cancel_assign1').click()
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "No match found"
+        )
+    )
+    assert localhost.find_element_by_id('cancel_assign1').get_attribute('disabled') == 'true' 

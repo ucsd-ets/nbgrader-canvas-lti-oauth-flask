@@ -16,7 +16,7 @@ def user():
     if old_user:
         db.session.delete(old_user)
         db.session.commit()
-    user = Users(114217,'13171~bngbhxjVx3G7sqnWFC3BFs0r9MgN408enlV3I3uN74pCPpjkQvK2bI3eEcStdPH1',10,'')
+    user = Users(114217,'13171~EbhqmjsNUmp8M1zLZsMouZtGoZKQTg9KQsUNEIKexBXQRXf13MSFolcWC9VrH0mN',10,'')
     db.session.add(user)
     db.session.commit()
     yield user
@@ -37,7 +37,7 @@ class TestToken(unittest.TestCase):
         if old_user:
             db.session.delete(old_user)
             db.session.commit()
-        self._user = Users(114217,'13171~bngbhxjVx3G7sqnWFC3BFs0r9MgN408enlV3I3uN74pCPpjkQvK2bI3eEcStdPH1',10,'')
+        self._user = Users(114217,'13171~EbhqmjsNUmp8M1zLZsMouZtGoZKQTg9KQsUNEIKexBXQRXf13MSFolcWC9VrH0mN',10,'')
         db.session.add(self._user)
         db.session.commit()
         yield self._user
@@ -48,7 +48,7 @@ class TestToken(unittest.TestCase):
     @pytest.fixture(autouse = True)
     def token(self, user):
         self._token= Token({'api_key':'1234', 
-            'canvas_user_id':'114217'}, self._user)
+            'canvas_user_id':'114217'}, 114217)
 
     def test_check_returns_true_if_valid(self):
         expires_in = int(time.time())+61
@@ -65,7 +65,7 @@ class TestToken(unittest.TestCase):
         expires_in = int(time.time())+61
         self._user.expires_in=expires_in
         self._token = Token({'missing_key':'key', 
-            'canvas_user_id':'114217'}, self._user)
+            'canvas_user_id':'114217'}, 114217)
         assert not self._token.check()
 
     def test_check_returns_false_if_WWW_Authenticate_present(self):
@@ -85,7 +85,7 @@ class TestToken(unittest.TestCase):
         assert self._token._unexpired()
     
     def test_contains_api_key_returns_false_if_no_api_key_exists(self):
-        self._token = Token({'missing_api_key':'string'}, self._user)
+        self._token = Token({'missing_api_key':'string'}, 114217)
         assert not self._token._contains_api_key()
 
     def test_contains_api_key_returns_true_if_api_key_exists(self):
@@ -100,7 +100,6 @@ class TestToken(unittest.TestCase):
         assert self._token._valid_WWW_Authenticate()
 
     def test_update_db_expiration_returns_false_if_db_is_not_updated(self):
-        #TODO: is there any way I can cause it to fail without using mock
         self._token._get_db_expiration = MagicMock(return_value = 10)
         
         assert not self._token._update_db_expiration(13,{'mock session':'string'})

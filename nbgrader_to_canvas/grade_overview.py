@@ -12,7 +12,7 @@ from .models import AssignmentMatch, AssignmentStatus
 
 from canvasapi.exceptions import InvalidAccessToken
 from .upload_grades import UploadGrades, upload_grades
-from .canvas import CanvasWrapper
+from .canvas import CanvasWrapper, Token
 import time
 
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
@@ -188,8 +188,11 @@ def grade_overview(progress = None):
         app.logger.error(session['api_key'])
         app.logger.error(os.getcwd())
 
+        token = Token(session,session['canvas_user_id'])
+        token.refresh()
         msg = (
             'Issues with access token.'
+            'Please refresh the page.'
         )
         return return_error(msg)
 
@@ -211,7 +214,9 @@ class GradeOverview:
     # Initializes stuff. Move to __init__ after testing. Remove defaults after testing
     def init_assignments(self, flask_session = session):
         self.course_id = get_canvas_id()
+        
         self._init_canvas(flask_session)
+        
         self.nb_assignments = self._get_nbgrader_assignments()
         self.group = self._get_assignment_group_id()
         self.canvas_assignments = self._get_canvas_assignments()
@@ -228,7 +233,7 @@ class GradeOverview:
         self._course = self._canvas.get_course(self.course_id)
 
     # Get the nbgrader_assignments from the course gradebook
-    def _get_nbgrader_assignments(self, course="TEST_NBGRADER"):
+    def _get_nbgrader_assignments(self, course="CSE284_SP21_A00"):
         with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
             return gb.assignments
 

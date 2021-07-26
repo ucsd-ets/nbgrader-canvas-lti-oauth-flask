@@ -20,9 +20,7 @@ def return_error(msg):
 
 def error(exception=None):
     app.logger.error("PyLTI error: {}".format(exception))
-    return return_error('''Authentication error,
-        please refresh and try again. If this error persists,
-        please contact support.''')
+    return return_error('Authentication error, please refresh and try again. If this error persists, please contact support.')
 
 
 def redirect_to_auth():

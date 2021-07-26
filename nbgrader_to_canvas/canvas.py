@@ -15,7 +15,7 @@ class Token:
 
     def __init__(self, flask_session, user):
         self._flask_session = flask_session
-        self._user = user
+        self._user = Users.query.filter_by(user_id=int(user)).first()
         self.token_refresh_threshold = 60
 
     #Is the token valid
@@ -46,6 +46,7 @@ class Token:
     # Only called after _unexpired and _contains_api_key. May error otherwise
     def _valid_WWW_Authenticate(self):
         r = self._get_WWW_Auth_response()
+        app.logger.debug('response headers:\n{}'.format(r.headers))
         if 'WWW-Authenticate' not in r.headers and r.status_code == 200:
             return True
         else:
@@ -169,6 +170,7 @@ class CanvasWrapper:
     def get_canvas(self):
         if not self.update_token():
             pass
+        app.logger.debug('test\n{}'.format(self._flask_session['api_key']))
         return Canvas(self._api_URL, self._flask_session['api_key'])
 
     # Checks if token up to date. If not, try to refresh it. If refresh fails, then return False. Otherwise return True
@@ -180,5 +182,4 @@ class CanvasWrapper:
         return True
     
     def get_token(self):
-        user = Users.query.filter_by(user_id=int(self._flask_session['canvas_user_id'])).first()
-        return Token(self._flask_session, user)
+        return Token(self._flask_session, self._flask_session['canvas_user_id'])

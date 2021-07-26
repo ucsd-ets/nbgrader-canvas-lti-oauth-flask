@@ -22,7 +22,7 @@ class TestUploadGrades(unittest.TestCase):
         if old_user:
             db.session.delete(old_user)
             db.session.commit()
-        self._user = Users(114217,'13171~bngbhxjVx3G7sqnWFC3BFs0r9MgN408enlV3I3uN74pCPpjkQvK2bI3eEcStdPH1',10,'')
+        self._user = Users(114217,'13171~EbhqmjsNUmp8M1zLZsMouZtGoZKQTg9KQsUNEIKexBXQRXf13MSFolcWC9VrH0mN',10,'')
         db.session.add(self._user)
         db.session.commit()
         yield self._user
@@ -40,7 +40,7 @@ class TestUploadGrades(unittest.TestCase):
         assert self.grade_overview._course.name == 'Canvas Caliper Events Testing'
 
     def test_get_nbgrader_assignments(self):
-        assignments = self.grade_overview._get_nbgrader_assignments()
+        assignments = self.grade_overview._get_nbgrader_assignments('TEST_NBGRADER')
         names = {assignment.name for assignment in assignments}
         assert names == expected_nbgrader_assignments
     
@@ -57,7 +57,7 @@ class TestUploadGrades(unittest.TestCase):
     
     def test_cleanup_assignment_matches(self):
         self.grade_overview._init_canvas({'canvas_user_id': '114217'})
-        self.grade_overview.nb_assignments = self.grade_overview._get_nbgrader_assignments()
+        self.grade_overview.nb_assignments = self.grade_overview._get_nbgrader_assignments('TEST_NBGRADER')
         self.grade_overview.canvas_assignments = self.grade_overview._get_canvas_assignments()
         fakeMatch = AssignmentMatch(course_id=20774, nbgrader_assign_name='Test Assignment 3',
                     canvas_assign_id=10, upload_progress_url='fake progress', last_updated_time=10)
@@ -67,9 +67,9 @@ class TestUploadGrades(unittest.TestCase):
         match = AssignmentMatch.query.filter_by(nbgrader_assign_name='Test Assignment 3').first()
         assert match == None
 
-    def test_match_assignments(self):
-        self.grade_overview.nb_assignments = self.grade_overview._get_nbgrader_assignments()
-        matches = self.grade_overview._match_assignments()
+    def test_match_nb_assignments(self):
+        self.grade_overview.nb_assignments = self.grade_overview._get_nbgrader_assignments('TEST_NBGRADER')
+        matches = self.grade_overview._match_nb_assignments()
         names = {m for m in matches}
         print(names)
         assert names == expected_matches_names
