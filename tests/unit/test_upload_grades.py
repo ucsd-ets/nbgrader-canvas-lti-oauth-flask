@@ -1,7 +1,8 @@
 from nbgrader_to_canvas.upload_grades import UploadGrades
-from nbgrader_to_canvas.models import AssignmentMatch, Users
+from nbgrader_to_canvas.models import AssignmentStatus, Users
 from nbgrader_to_canvas.canvas import CanvasWrapper
 from tests.unit import canvas_students, student_grades, existing_assignment, wipe_db, clear_grades
+from tests.unit import FakeProgress
 import unittest
 import pytest
 from nbgrader_to_canvas import db
@@ -95,7 +96,6 @@ class TestUploadGrades(unittest.TestCase):
         assert False
     
     def test_create_assignment(self):
-        
         custom_uploader = UploadGrades(20774, 92059, 'create', 'Test Assignment 3', 'TEST_NBGRADER')
         custom_uploader.init_course({'canvas_user_id': '114217'})
         assignment = custom_uploader._create_assignment(10)
@@ -123,34 +123,30 @@ class TestUploadGrades(unittest.TestCase):
         
         updated_assignment = custom_uploader.assignment_to_upload
         submission = updated_assignment.get_submission(114262)
-        assert submission.score == 2.0
+        assert submission.score == 2.0    
 
-    def test_update_match(self):
-        self.uploader.init_course({'canvas_user_id': '114217'})
-        self.uploader.parse_form_data()
-        progress = self.uploader._submit_grades()
-        self.uploader._add_new_match(progress)
-        assignment_match = AssignmentMatch.query.filter_by(nbgrader_assign_name=self.uploader._form_nb_assign_name, course_id=self.uploader._course_id).first()
-        self.uploader._update_match(assignment_match, progress)
-        db.session.commit()
-        match = AssignmentMatch.query.filter_by(nbgrader_assign_name=self.uploader._form_nb_assign_name, course_id=self.uploader._course_id).first()
-        assert match.progress_url == progress.url
-
+    # Tests that status is created with proper initial values
+    def test_create_status(self):
+        self.uploader._create_assignment_status()
+        status = AssignmentStatus.query.filter_by(nbgrader_assign_name='Test Assignment 2').first()
+        assert status.status == 'Initializing'
     
-    def test_add_new_match(self):
-        custom_uploader = UploadGrades(20774, 92059, 'create', 'Test Assignment 3', 'TEST_NBGRADER')
-        custom_uploader.init_course({'canvas_user_id': '114217'})
-        custom_uploader.parse_form_data()
-        progress = custom_uploader._submit_grades()
-        before = AssignmentMatch.query.filter_by(nbgrader_assign_name=custom_uploader._form_nb_assign_name, course_id=custom_uploader._course_id).first()
-        custom_uploader._add_new_match(progress)
-        after = AssignmentMatch.query.filter_by(nbgrader_assign_name=custom_uploader._form_nb_assign_name, course_id=custom_uploader._course_id).first()
-        passed = after != before
-        db.session.delete(after)
+    # Tests that status is refreshed properly. Uses _setup_status and _refresh_assignment_status
+    def test_refresh_status(self):
+        test_status = AssignmentStatus(course_id=20774, nbgrader_assign_name='Test Assignment 2', canvas_assign_id='test', status = 'Bad Status', completion = 150)
+        db.session.add(test_status)
         db.session.commit()
-        custom_uploader.assignment_to_upload.delete()
-        assert passed
-        
+        self.uploader._setup_status()
+        status = AssignmentStatus.query.filter_by(nbgrader_assign_name='Test Assignment 2').first()
+        assert status.status == 'Initializing'
+
+    # Tests that progress url in db is updated when _update_status is called
+    def test_update_status(self):
+        self.uploader._create_assignment_status()
+        self.uploader._update_status(FakeProgress('Fake Progress Url'))
+        status = AssignmentStatus.query.filter_by(nbgrader_assign_name='Test Assignment 2').first()
+        assert status.upload_progress_url == 'Fake Progress Url'
+
     # Tests uploading nbgrader assignment 'Test Assignment 1' with canvas assignment 'Week 2: Assignment'
     def test_grades_match_different_names(self):
         custom_uploader = UploadGrades(20774, 92059, 192793, 'Test Assignment 1', 'TEST_NBGRADER')

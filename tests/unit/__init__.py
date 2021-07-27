@@ -1,8 +1,8 @@
 
 from nbgrader_to_canvas.canvas import CanvasWrapper
 from nbgrader_to_canvas import db
-from nbgrader_to_canvas.models import AssignmentMatch
 import time
+from nbgrader_to_canvas.models import AssignmentStatus
 
 # Test data for test_canvas
 
@@ -11,6 +11,9 @@ class FakeResponse:
     def __init__(self,headers, status_code):
         self.headers = headers
         self.status_code = status_code
+class FakeProgress:
+    def __init__(self, url):
+        self.url = url
 
 
 # Test data for test_upload_grades
@@ -27,8 +30,8 @@ expected_matches_names = {'Test Assignment 1', 'assign1', 'Test Assignment 3', '
 
 
 def wipe_db():
-    # clear AssignmentMatch
-    for match in AssignmentMatch.query.filter_by():
+    # clear AssignmentStatus
+    for match in AssignmentStatus.query.filter_by():
         db.session.delete(match)
     # wipe Test Assignment 1-3, and assign1
     canvas_wrapper = CanvasWrapper('https://ucsd.test.instructure.com', {'canvas_user_id': '114217'})

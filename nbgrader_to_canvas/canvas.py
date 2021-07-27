@@ -46,7 +46,7 @@ class Token:
     # Only called after _unexpired and _contains_api_key. May error otherwise
     def _valid_WWW_Authenticate(self):
         r = self._get_WWW_Auth_response()
-        app.logger.debug('response headers:\n{}'.format(r.headers))
+        #app.logger.debug('response headers:\n{}'.format(r.headers))
         if 'WWW-Authenticate' not in r.headers and r.status_code == 200:
             return True
         else:

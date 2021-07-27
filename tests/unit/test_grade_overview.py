@@ -1,5 +1,5 @@
 from nbgrader_to_canvas.grade_overview import GradeOverview
-from nbgrader_to_canvas.models import AssignmentMatch, Users
+from nbgrader_to_canvas.models import Users
 from tests.unit import expected_nbgrader_assignments, expected_canvas_assignments, expected_matches_names, wipe_db
 import unittest
 import pytest
@@ -53,19 +53,6 @@ class TestUploadGrades(unittest.TestCase):
         self.grade_overview._init_canvas({'canvas_user_id': '114217'})
         assignments = self.grade_overview._get_canvas_assignments()
         assert set(assignments.values()) == set(expected_canvas_assignments.values())
-
-    
-    def test_cleanup_assignment_matches(self):
-        self.grade_overview._init_canvas({'canvas_user_id': '114217'})
-        self.grade_overview.nb_assignments = self.grade_overview._get_nbgrader_assignments('TEST_NBGRADER')
-        self.grade_overview.canvas_assignments = self.grade_overview._get_canvas_assignments()
-        fakeMatch = AssignmentMatch(course_id=20774, nbgrader_assign_name='Test Assignment 3',
-                    canvas_assign_id=10, upload_progress_url='fake progress', last_updated_time=10)
-        db.session.add(fakeMatch)
-        db.session.commit()
-        self.grade_overview._cleanup_assignment_matches()
-        match = AssignmentMatch.query.filter_by(nbgrader_assign_name='Test Assignment 3').first()
-        assert match == None
 
     def test_match_nb_assignments(self):
         self.grade_overview.nb_assignments = self.grade_overview._get_nbgrader_assignments('TEST_NBGRADER')

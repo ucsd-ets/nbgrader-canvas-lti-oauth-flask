@@ -31,23 +31,6 @@ class Sessions(db.Model):
         self.data = data
         self.expiry = expiry
 
-class AssignmentMatch(db.Model):
-    #__tablename__ = table
-
-    id = db.Column(db.Integer, primary_key=True)
-    course_id = db.Column(db.Integer)
-    nbgrader_assign_name = db.Column(db.String(255))
-    canvas_assign_id = db.Column(db.Integer, unique=True)
-    upload_progress_url = db.Column(db.String(255))
-    # last_updated_time = db.Column(db.String(255))
-
-    def __init__(self, course_id, nbgrader_assign_name, canvas_assign_id, upload_progress_url, last_updated_time):
-        self.course_id = course_id
-        self.nbgrader_assign_name = nbgrader_assign_name
-        self.canvas_assign_id = canvas_assign_id
-        self.upload_progress_url = upload_progress_url
-        # self.last_updated_time = last_updated_time
-
 class AssignmentStatus(db.Model):
     #__tablename__ = table
 
@@ -55,6 +38,7 @@ class AssignmentStatus(db.Model):
     course_id = db.Column(db.Integer)
     nbgrader_assign_name = db.Column(db.String(255))
     canvas_assign_id = db.Column(db.String(255))
+    upload_progress_url = db.Column(db.String(255))
     status = db.Column(db.String(255))
     completion = db.Column(db.Integer)
 

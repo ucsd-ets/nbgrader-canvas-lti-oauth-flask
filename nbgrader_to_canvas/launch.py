@@ -8,7 +8,7 @@ import requests
 
 from .utils import redirect_to_auth, error, check_valid_user
 from . import settings
-from .models import AssignmentMatch, Users
+from .models import Users
 from . import app, db
 
 launch_blueprint = Blueprint('launch', __name__)
