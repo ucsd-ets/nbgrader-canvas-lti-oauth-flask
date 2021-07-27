@@ -70,7 +70,6 @@ def setup(course):
         password = "mypassword"
     )
     with conn.cursor() as curs:
-        curs.execute("DELETE FROM assignment_match;")
         curs.execute("DELETE FROM assignment_status;")
     conn.commit()
     conn.close()
