@@ -97,7 +97,7 @@ def get_progress():
 
 @upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
-def upload_grades(course_name="CSE284_SP21_A00", lti=lti):
+def upload_grades(course_name="TEST_NBGRADER", lti=lti):
     #If not posting, don't upload anything
     if not request.method == "POST":
         return None

@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  labels:
+    app: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: jdkindley/web_image:1.0
+        ports:
+        - containerPort: 5000
+        env:
+        - name: FLASK_DEBUG
+          value: "1"
+        - name: FLASK_ENV
+          value: "development"
+        - name: DEBUG_METRICS
+          value: "1" # https://github.com/rycus86/prometheus_flask_exporter/blob/master/README.md#debug-mode
+        - name: CANVAS_SSO_USERNAME
+          value: "${CANVAS_SSO_USERNAME}"
+        - name: CANVAS_SSO_PASSWORD
+          value: "${CANVAS_SSO_PASSWORD}"
+        - name: CANVAS_BASE_URL
+          value: "${CANVAS_BASE_URL}"
+        - name: LTI_CONSUMER_KEY
+          value: "${LTI_CONSUMER_KEY}"
+        - name: LTI_SHARED_SECRET
+          value: "${LTI_SHARED_SECRET}"
+        - name: OAUTH2_ID
+          value: "${OAUTH2_ID}"
+        - name: OAUTH2_KEY
+          value: "${OAUTH2_KEY}"
+        - name: OAUTH2_URI
+          value: "${OAUTH2_URI}"
+        - name: SELENIUM_OAUTH2_ID
+          value: "${SELENIUM_OAUTH2_ID}"
+        - name: SELENIUM_OAUTH2_KEY
+          value: "${SELENIUM_OAUTH2_KEY}"
+        - name: SELENIUM_OAUTH2_URI
+          value: "${SELENIUM_OAUTH2_URI}"
+        - name: SECRET_KEY
+          value: "${SECRET_KEY}"
+        - name: DATABASE_URI
+          value: ${DATABASE_URI}

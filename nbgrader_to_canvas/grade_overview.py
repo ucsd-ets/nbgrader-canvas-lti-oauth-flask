@@ -106,7 +106,7 @@ class GradeOverview:
         self._course = self._canvas.get_course(self.course_id)
 
     # Get the nbgrader_assignments from the course gradebook
-    def _get_nbgrader_assignments(self, course="CSE284_SP21_A00"):
+    def _get_nbgrader_assignments(self, course="TEST_NBGRADER"):
         with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
             return gb.assignments
 
