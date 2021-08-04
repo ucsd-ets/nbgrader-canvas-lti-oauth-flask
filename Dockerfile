@@ -37,4 +37,4 @@ RUN chmod +x /*.sh && \
 
 USER nbgrader2canvas
 
-CMD /start-flask.sh
+CMD /start-flask.sh "postgres-service"

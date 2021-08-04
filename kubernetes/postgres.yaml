@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: db
+        image: jdkindley/db_image:1.0.1
+        ports:
+        - containerPort: 5432
+        envFrom:
+          - secretRef:
+              name: postgres-secret
+        volumeMounts:
+        - mountPath: /docker-entrypoint-initdb.d/start-db.sql
+          name: start-db
+        - mountPath: /var/lib/postgresql/data/pgdata
+          name: test
+      volumes:
+      - name: test
+        persistentVolumeClaim:
+          claimName: postgres-pv-claim
+      - name: start-db
+        nfs:
+          server: its-dsmlpdev-fs01.ucsd.edu
+          path: /export/apps/nbgrader-canvas-lti-oauth-flask/scripts/start-db.sql
+          type: File
+      
