@@ -27,5 +27,4 @@ scripts/pip*
 scripts/py*
 scripts/chardetect.exe
 # kubernetes
-kubernetes/nbgrader2canvas-secret.yaml
-kubernetes/postgres-secret.yaml
+kubernetes/values.yaml

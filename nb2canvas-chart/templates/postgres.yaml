@@ -2,23 +2,24 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres
+  namespace: {{ .Values.namespace }}
   labels:
-    app: db
+    app: {{ .Values.postgres.name }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.postgres.replicaCount }}
   selector:
     matchLabels:
-      app: db
+      app: {{ .Values.postgres.name }}
   template:
     metadata:
       labels:
-        app: db
+        app: {{ .Values.postgres.name }}
     spec:
       containers:
-      - name: db
-        image: jdkindley/db_image:1.0.1
+      - name: {{ .Values.postgres.name }}
+        image: {{ .Values.postgres.image.repo }}:{{ .Values.postgres.image.tag }}
         ports:
-        - containerPort: 5432
+        - containerPort: {{ .Values.postgres.port }}
         envFrom:
           - secretRef:
               name: postgres-secret
@@ -33,5 +34,5 @@ spec:
           claimName: postgres-pv-claim
       - name: start-db
         nfs:
-          server: its-dsmlpdev-fs01.ucsd.edu
-          path: /export/apps/nbgrader-canvas-lti-oauth-flask/scripts
+          server: {{ .Values.nfs.server }}
+          path: {{ .Values.nfs.path }}nbgrader-canvas-lti-oauth-flask/scripts   

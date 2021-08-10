@@ -15,8 +15,9 @@ oauth_login_blueprint = Blueprint('oauthlogin', __name__)
 @lti(error=error, role='staff', app=app)
 @check_valid_user
 def oauth_login(lti=lti):
+    app.logger.debug("test1")
     code = request.args.get('code')
-
+    app.logger.debug("test 2")
     
     if not code:
         error = request.args.get('error', 'None given')

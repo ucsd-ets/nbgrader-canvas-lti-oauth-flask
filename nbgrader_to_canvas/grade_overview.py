@@ -11,7 +11,7 @@ from nbgrader.api import Gradebook
 from .models import AssignmentStatus
 
 from canvasapi.exceptions import InvalidAccessToken
-from .upload_grades import UploadGrades, upload_grades
+from .upload_grades import current_uploads
 from .canvas import CanvasWrapper, Token
 import time
 
@@ -32,6 +32,7 @@ def grade_overview(progress = None):
     try:
         
         grade_overview = GradeOverview()
+        app.logger.debug(current_uploads)
         grade_overview.init_assignments()
         grade_overview.setup_matches()
 
@@ -106,7 +107,7 @@ class GradeOverview:
         self._course = self._canvas.get_course(self.course_id)
 
     # Get the nbgrader_assignments from the course gradebook
-    def _get_nbgrader_assignments(self, course="TEST_NBGRADER"):
+    def _get_nbgrader_assignments(self, course="COGS108_SP21_A00"):
         with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
             return gb.assignments
 
@@ -127,10 +128,16 @@ class GradeOverview:
     # Go through matches that correspond to a nb_assignment and verify the corresponding canvas assignment still exists.
     # If canvas assignment no longer exists, remove match from database
     def _cleanup_assignment_matches(self):
-        app.logger.debug(self.canvas_assignments)
         for assignment in self.nb_assignments:
             match = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment.name, course_id=self.course_id).first()
-            if match and not match.canvas_assign_id == 'create' and int(match.canvas_assign_id) not in self.canvas_assignments:
+            """
+            Check if there's a thread running uploading grades with the assignment.name. If it is then leave the match.
+            If not and it isn't uploaded, then delete match.
+            If it is uploaded, check if match.canvas_assign_id matches to an assignment. If it doesn't, delete match.
+            """
+            if not match or assignment.name in current_uploads or match.status == "Failed":
+                continue
+            if not match.status == "Uploaded" or int(match.canvas_assign_id) not in self.canvas_assignments:
                 app.logger.debug("Assignment Match removed: {}, {}".format(assignment,match.canvas_assign_id))
                 db.session.delete(match)
         db.session.commit()

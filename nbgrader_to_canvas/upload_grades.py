@@ -95,9 +95,11 @@ def get_progress():
         else:
             return json.dumps(status)
 
+current_uploads = []
+
 @upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
-def upload_grades(course_name="TEST_NBGRADER", lti=lti):
+def upload_grades(course_name="COGS108_SP21_A00", lti=lti):
     #If not posting, don't upload anything
     if not request.method == "POST":
         return None
@@ -108,12 +110,15 @@ def upload_grades(course_name="TEST_NBGRADER", lti=lti):
     form_nb_assign_name = request.form.get('form_nb_assign_name')
 
     uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, lti)
+    global current_uploads
+    current_uploads.append(form_nb_assign_name)
     uploader.init_course()
     asyncio.run(threaded_upload(uploader))
     return "upload complete"
 
 
 async def threaded_upload(uploader):
+    global current_uploads
     try:
         uploader.parse_form_data()
         uploader.update_database()
@@ -123,6 +128,8 @@ async def threaded_upload(uploader):
         status.status = 'Failed'
         status.completion = 0
         db.session.commit()
+    
+    current_uploads.remove(uploader._form_nb_assign_name)
 
 class UploadGrades:
 

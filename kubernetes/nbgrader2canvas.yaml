@@ -32,9 +32,7 @@ spec:
         nfs:
           server: its-dsmlpdev-fs01.ucsd.edu
           path: /export/apps/nbgrader-canvas-lti-oauth-flask
-          type: Directory
       - name: nbgrader
         nfs:
           server: its-dsmlpdev-fs01.ucsd.edu
           path: /export/apps/nbgrader-canvas-lti-oauth-flask/mocks
-          type: Directory

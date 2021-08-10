@@ -1,0 +1,40 @@
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1
+{{- else -}}
+apiVersion: networking.k8s.io/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: nbgrader2canvas-ingress
+  namespace: {{ .Values.namespace }}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  tls:
+  - secretName: tls-dev-secret
+  - secretName: tls-secret
+  rules:
+  - host: nb2canvas-dev.ucsd.edu
+    http:
+      paths:
+      - path: /
+        # pathType: Prefix
+        backend:
+          serviceName: nbgrader2canvas-service
+          servicePort: {{ .Values.nb2canvas.port }}
+          # service:
+          #   name: nbgrader2canvas-service
+          #   port:
+          #     number: {{ .Values.nb2canvas.port }}
+  - host: nb2canvas.ucsd.edu
+    http:
+      paths:
+      - path: /
+        # pathType: Prefix
+        backend:
+          serviceName: nbgrader2canvas-service
+          servicePort: {{ .Values.nb2canvas.port }}
+          # service:
+          #   name: nbgrader2canvas-service
+          #   port:
+          #     number: {{ .Values.nb2canvas.port }}

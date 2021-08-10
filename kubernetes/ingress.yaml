@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nbgrader2canvas-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  tls:
+  - secretName: tls-dev-secret
+  - secretName: tls-secret
+  rules:
+  - host: nb2canvas-dev.ucsd.edu
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nbgrader2canvas-service
+            port:
+              number: 5000
+  - host: nb2canvas.ucsd.edu
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nbgrader2canvas-service
+            port:
+              number: 5000

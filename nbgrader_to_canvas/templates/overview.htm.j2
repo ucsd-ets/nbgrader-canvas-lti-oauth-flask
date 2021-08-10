@@ -233,6 +233,10 @@ Grading Overview
           },
           error: function(result){
             console.log(result);
+            document.getElementsByTagName("body")[0].innerHTML = errorMessage()
+            for (let id of intervalIDs) {
+              window.clearInterval(id);
+            }
           }
         });
         
@@ -293,7 +297,7 @@ Grading Overview
                 document.getElementById('status_bar_' + current_assignment).style = "width:0%"
                 return;
               }
-            } else{
+            } else {
               console.log('data.status: ' + data.status);
               console.log('data.completion: ' + data.completion);
               console.log(current_assignment);
@@ -388,6 +392,29 @@ Grading Overview
             }
           }
         }
+      }
+
+      // Page to display if upload fails
+      function errorMessage(){
+      return "" +
+      "<style> \n" + 
+      "  p { \n" +
+      "      text-align: center; \n" +
+      "      width: 50%; \n" +
+      "      margin: auto; \n" +
+      "  } \n" +
+      "  h1 { \n" +
+      "      text-align: center; \n" +
+      "      font: bold serif; \n" +
+      "  } \n" +
+      "</style> \n" +
+      "<header> \n" +
+      "    <h1>Error</h1><br> \n" +
+      "</header> \n" +
+      "<div> \n" +
+      "    <p>Connection with web service lost unexpectedly. Please check back in a few minutes.</p><br> \n" +
+      "    <p>For assistance with this issue please email <a href='mailto:canvas@ucsd.edu'>canvas@ucsd.edu</a></p> \n" +
+      "</div>";
       }
 
     </script>
