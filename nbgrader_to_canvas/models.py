@@ -41,10 +41,12 @@ class AssignmentStatus(db.Model):
     upload_progress_url = db.Column(db.String(255))
     status = db.Column(db.String(255))
     completion = db.Column(db.Integer)
+    late_penalty = db.Column(db.Integer)
 
-    def __init__(self, course_id, nbgrader_assign_name, canvas_assign_id, status, completion):
+    def __init__(self, course_id, nbgrader_assign_name, canvas_assign_id, status, completion, late_penalty):
         self.course_id = course_id
         self.nbgrader_assign_name = nbgrader_assign_name
         self.canvas_assign_id = canvas_assign_id
         self.status = status
         self.completion = completion
+        self.late_penalty=late_penalty

@@ -15,3 +15,4 @@ nbgrader
 jsonpickle
 flask-session
 python-dotenv
+pybreaker

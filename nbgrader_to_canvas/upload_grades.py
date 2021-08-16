@@ -1,10 +1,12 @@
+import threading
 from types import GetSetDescriptorType
 from typing import Counter
 from flask import Blueprint, render_template, session, request, redirect, url_for
+from pybreaker import CircuitBreakerError
 from pylti.flask import lti
 
 from .utils import error
-from . import app, db
+from . import app, db, db_breaker
 from . import settings
 from nbgrader.api import Gradebook, MissingEntry
 from .models import AssignmentStatus
@@ -45,25 +47,29 @@ upload_grades_blueprint = Blueprint('upload_grades', __name__)
 def remove_upload():
     assignment = request.form.get('form_nb_assign_name')
     id = request.form.get('course_id')
-    status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
-    out = ""
-    if status:
-        db.session.delete(status)
-        out+="Status removed."
-    db.session.commit()
-    return out
+    try:
+        status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
+        out = ""
+        if status:
+            db.session.delete(status)
+            out+="Status removed."
+        db.session.commit()
+        return out
+    except Exception as ex:
+        app.logger.debug(ex)    
 
-
-
-@app.route('/reset_progress', methods=['GET', 'POST'])
-def reset_progress():
+@app.route('/get_late_penalty', methods=['GET', 'POST'])
+def get_late_penalty():
     assignment = request.form.get('assignment')
     id = request.form.get('course_id')
-    status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
-    if status:
-        db.session.delete(status)
-        db.session.commit()
-    return 'Reset'
+    try:
+        status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
+        if status:
+            return str(status.late_penalty)
+        return '0'
+    except Exception as ex:
+        app.logger.debug(ex)
+   
 
 @app.route('/get_progress', methods=['GET'])
 def get_progress():
@@ -79,8 +85,7 @@ def get_progress():
     assignment = request.args.get('assignment')
     id = request.args.get('course_id')
     
-    
-    if request.method == 'GET':
+    try:
         status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
 
         # if match found, return db upload url as a json
@@ -94,12 +99,14 @@ def get_progress():
         # if match not found, return null
         else:
             return json.dumps(status)
+    except Exception as ex:
+        app.logger.debug(ex)
+        return json.dumps({'error' : str(ex)})  
 
-current_uploads = []
 
 @upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
 @lti(error=error, request='session', role='staff', app=app)
-def upload_grades(course_name="COGS108_SP21_A00", lti=lti):
+def upload_grades(course_name="TEST_NBGRADER", lti=lti):
     #If not posting, don't upload anything
     if not request.method == "POST":
         return None
@@ -108,14 +115,32 @@ def upload_grades(course_name="COGS108_SP21_A00", lti=lti):
     group = request.form.get('group')
     form_canvas_assign_id = request.form.get('form_canvas_assign_id') 
     form_nb_assign_name = request.form.get('form_nb_assign_name')
+    late_penalty = request.form.get('late_penalty')
 
-    uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, lti)
-    global current_uploads
-    current_uploads.append(form_nb_assign_name)
-    uploader.init_course()
-    asyncio.run(threaded_upload(uploader))
+    try:
+        try:
+            status = AssignmentStatus.query.filter_by(nbgrader_assign_name=form_nb_assign_name, course_id=int(course_id)).first()
+            if status:
+                status.completion=0
+                status.status='Initializing'
+                db.session.commit()
+                app.logger.debug("status updated")
+        except Exception as ex:
+            app.logger.debug(ex)
+        uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti)
+        global current_uploads
+        current_uploads.append(form_nb_assign_name)
+        uploader.init_course()
+        asyncio.run(threaded_upload(uploader))
+        #upload_grades_internal(course_id,group, form_canvas_assign_id, form_nb_assign_name, late_penalty)
+    except Exception as ex:
+        return "error uploading grades"
     return "upload complete"
 
+current_uploads = []    
+
+# @db_breaker
+# def upload_grades_internal(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, course_name="TEST_NBGRADER",lti=lti):
 
 async def threaded_upload(uploader):
     global current_uploads
@@ -133,13 +158,14 @@ async def threaded_upload(uploader):
 
 class UploadGrades:
 
-    def __init__(self, course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, lti=lti):
+    def __init__(self, course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti=lti):
        
         self._course_id = course_id
         self._group = group
         self._form_canvas_assign_id = form_canvas_assign_id
         self._form_nb_assign_name = form_nb_assign_name
         self._course_name = course_name
+        self._late_penalty=late_penalty
         self._lti = lti
         self._setup_canvasapi_debugging()
         self._num_students = self._get_num_students()
@@ -199,13 +225,14 @@ class UploadGrades:
             self._create_assignment_status()
 
     def _create_assignment_status(self):
-        self.assignment_status = AssignmentStatus(course_id=self._course_id, nbgrader_assign_name=self._form_nb_assign_name , canvas_assign_id=self._form_canvas_assign_id, status = 'Initializing', completion = 0)
+        self.assignment_status = AssignmentStatus(course_id=self._course_id, nbgrader_assign_name=self._form_nb_assign_name , canvas_assign_id=self._form_canvas_assign_id, status = 'Initializing', completion = 0, late_penalty=self._late_penalty)
         db.session.add(self.assignment_status)
         db.session.commit()
 
     def _refresh_assignment_status(self):
         self.assignment_status.status = 'Initializing'
         self.assignment_status.completion = 0
+        self.assignment_status.late_penalty=self._late_penalty
         db.session.commit()
 
     #Sets up debugging for canvasapi
@@ -248,7 +275,8 @@ class UploadGrades:
             counter = 0            
             for nb_student in nb_students:
 
-                nb_student_and_score = {}            
+                nb_student_and_score = {} 
+                      
 
                 # Try to find the submission in the nbgrader database. If it doesn't exist, the
                 # MissingEntry exception will be raised and we assign them a score of None.
@@ -256,7 +284,10 @@ class UploadGrades:
                 try:
                     
                     nb_submission = gb.find_submission(nb_assignment.name, nb_student.id)
-                    nb_student_and_score['posted_grade'] = nb_submission.score
+                    if nb_submission.total_seconds_late > 0:
+                        nb_student_and_score['posted_grade'] = nb_submission.score*(100-int(self._late_penalty))/100
+                    else:
+                        nb_student_and_score['posted_grade'] = nb_submission.score
                 except MissingEntry:
                     nb_student_and_score['posted_grade'] = ''
 

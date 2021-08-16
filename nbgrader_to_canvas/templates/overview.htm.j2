@@ -77,6 +77,7 @@ Grading Overview
 <tr>
   <th class="text-center">Nbgrader Assignment</th>
   <th class="text-center">Canvas Assignment</th>
+  <th class="text-center">Late Penalty</th>
   <th class="text-center">Upload Grades to Canvas</th>
 </tr>
 {%- endblock -%}
@@ -131,6 +132,18 @@ Grading Overview
               {% endif %}
           {% endfor %}
       {% endif %}
+    </select>
+    </td>
+
+    {# display the late penalty dropdown. Eventually probably turn this to text field #}
+    <td class="text-center" style="vertical-align: middle">
+    <select name="late_penalty_{{ name }}" id="late_penalty_{{ name }}">
+      <option value="0">0%</option>
+      <option value="10">10%</option>
+      <option value="20">20%</option>
+      <option value="30">30%</option>
+      <option value="40">40%</option>
+      <option value="50">50%</option>
     </select>
     </td>
 
@@ -192,10 +205,26 @@ Grading Overview
 
       while (counter < assignments.length) {
         let current_assignment = assignments[counter]
-        form = document.getElementById('form_'+current_assignment);
+        let form = document.getElementById('form_'+current_assignment);
         form.addEventListener( 'submit', function(){submitUpload(event,current_assignment)});
-        cancel = document.getElementById('cancel_'+current_assignment);
+        let cancel = document.getElementById('cancel_'+current_assignment);
         cancel.addEventListener( 'click', function(){cancelUpload(current_assignment)});
+        let late_dropdown = document.getElementById('late_penalty_'+current_assignment);
+        $.ajax({
+          type: "POST",
+          url: "/get_late_penalty",
+          data: {
+            course_id: {{ course_id }},
+            assignment: current_assignment
+          },
+          success: function(result){
+            late_dropdown.value = result
+          },
+          error: function(result){
+            console.log("Error getting late penalty: " + result);
+            errorMessage("Error occured while getting late penalty for "+current_assignment+".");
+          }
+        });
         intervalIDs.push(window.setInterval(updateStatus, 1000, current_assignment, counter, true));
         counter++;
       }
@@ -204,21 +233,8 @@ Grading Overview
       // to background process that updates assignment row during upload
       function submitUpload(event, current_assignment){
         event.preventDefault();
-        $.ajax({
-          type: "POST",
-          url: "/reset_progress",
-          data: {
-            course_id: {{ course_id }},
-            assignment: current_assignment
-          },
-          success: function(result){
-            console.log(result + " complete");
-          },
-          error: function(result){
-            console.log(result + " failed");
-          }
-        });
         canvas_id = document.getElementById('select_'+current_assignment).value
+        late_penalty = document.getElementById('late_penalty_'+current_assignment).value
         $.ajax({
           type: "POST",
           url: "/upload_grades",
@@ -226,23 +242,21 @@ Grading Overview
             course_id: {{ course_id }},
             group: {{ group }},
             form_canvas_assign_id: canvas_id,
-            form_nb_assign_name:current_assignment
+            form_nb_assign_name:current_assignment,
+            late_penalty:late_penalty
           },
           success: function(result){
             console.log(result);
           },
           error: function(result){
             console.log(result);
-            document.getElementsByTagName("body")[0].innerHTML = errorMessage()
-            for (let id of intervalIDs) {
-              window.clearInterval(id);
-            }
           }
         });
         
         document.getElementById('select_'+current_assignment).disabled = true;
         document.getElementById('submit_'+current_assignment).disabled = true;
         document.getElementById('cancel_'+current_assignment).disabled = true;
+        document.getElementById('late_penalty_'+current_assignment).disabled = true;
         removeAssignmentFromDropdowns(current_assignment);
         status_label = document.getElementById(current_assignment);
         intervalIDs.push(window.setInterval(updateStatus, 1000, current_assignment, counter, false));
@@ -267,31 +281,36 @@ Grading Overview
           },
           success: function(result){
             console.log(result);
+            document.getElementById('select_'+current_assignment).disabled = true;
+            document.getElementById('submit_'+current_assignment).disabled = true;
+            document.getElementById('cancel_'+current_assignment).disabled = true;
+            document.getElementById('late_penalty_'+current_assignment).disabled = true;
+            enableCanvasDropdown(current_assignment);
+            intervalIDs.push(window.setInterval(updateStatus, 1000, current_assignment, counter, true));
+            counter++;
           },
           error: function(result){
             console.log(result);
+            errorMessage("Error occured while removing upload for "+current_assignment+".");
           }
         });
-        document.getElementById('select_'+current_assignment).disabled = true;
-        document.getElementById('submit_'+current_assignment).disabled = true;
-        document.getElementById('cancel_'+current_assignment).disabled = true;
-        enableCanvasDropdown(current_assignment);
-        intervalIDs.push(window.setInterval(updateStatus, 1000, current_assignment, counter, true));
-        counter++;
+        
       }
 
       function updateStatus(current_assignment, counter, removeNull){
+        console.log("test")
         $.getJSON(
           "{{url_for('get_progress') }}",
           { assignment: current_assignment,
             course_id: {{ course_id}} },
           function(data){
+            console.log(data)
             if (data == null) {
               if (removeNull) {
+                window.clearInterval(intervalIDs[counter]);
                 document.getElementById('select_'+current_assignment).disabled = false;
                 document.getElementById('submit_'+current_assignment).disabled = false;
-                console.log("Nothing to update");
-                window.clearInterval(intervalIDs[counter]);
+                document.getElementById('late_penalty_'+current_assignment).disabled = false;
                 document.getElementById(current_assignment).innerHTML = 'No match found';
                 document.getElementById(current_assignment).className = 'redText';
                 document.getElementById('status_bar_' + current_assignment).style = "width:0%"
@@ -321,6 +340,7 @@ Grading Overview
                 document.getElementById('select_'+current_assignment).disabled = false;
                 document.getElementById('submit_'+current_assignment).disabled = false;
                 document.getElementById('cancel_'+current_assignment).disabled = false;
+                document.getElementById('late_penalty_'+current_assignment).disabled = false;
                 updateCanvasDropdown(current_assignment, data.canvas_assign_id)
                 window.clearInterval(intervalIDs[counter]);
                 return;
@@ -328,12 +348,20 @@ Grading Overview
                 status_label.className = "redText";
                 document.getElementById('select_'+current_assignment).disabled = false;
                 document.getElementById('submit_'+current_assignment).disabled = false;
+                document.getElementById('late_penalty_'+current_assignment).disabled = false;
                 window.clearInterval(intervalIDs[counter]);
                 return;
               }
             }
           }
-        );
+        )
+        .fail(function() {
+          errorMessage("Error uploading "+current_assignment+".");
+          for (let id of intervalIDs) {
+            window.clearInterval(id);
+          }
+          return
+        });
       }
 
       // disable unselected options and if canvas create is selected, then change 
@@ -366,7 +394,7 @@ Grading Overview
         }
         selectors = document.getElementsByTagName("select")
         for(let sel of selectors) {
-          if (sel != selector) {
+          if (sel != selector && sel.id.substring(0,7)=="select_") {
             var opt = document.createElement('option');
             opt.value = selector.options[selector.selectedIndex].value;
             opt.text = selector.options[selector.selectedIndex].text;
@@ -395,8 +423,8 @@ Grading Overview
       }
 
       // Page to display if upload fails
-      function errorMessage(){
-      return "" +
+      function errorMessage(msg){
+      document.getElementsByTagName("body")[0].innerHTML = "" +
       "<style> \n" + 
       "  p { \n" +
       "      text-align: center; \n" +
@@ -412,7 +440,7 @@ Grading Overview
       "    <h1>Error</h1><br> \n" +
       "</header> \n" +
       "<div> \n" +
-      "    <p>Connection with web service lost unexpectedly. Please check back in a few minutes.</p><br> \n" +
+      "    <p>"+msg+"</p><br> \n" +
       "    <p>For assistance with this issue please email <a href='mailto:canvas@ucsd.edu'>canvas@ucsd.edu</a></p> \n" +
       "</div>";
       }

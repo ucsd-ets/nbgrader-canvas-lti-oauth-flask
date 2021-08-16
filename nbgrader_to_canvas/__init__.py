@@ -6,6 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from prometheus_flask_exporter import PrometheusMetrics
 from datetime import timedelta
 from flask_session import Session, SqlAlchemySessionInterface
+import pybreaker
 
 from . import settings
 
@@ -26,6 +27,8 @@ app = Flask(__name__, template_folder='./templates')
 # see sqlalchemy code after init_app below too
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
 app.config['SESSION_TYPE'] = 'sqlalchemy'
+app.config['SQLALCHEMY_POOL_TIMEOUT'] = 45
+app.config['SQLALCHEMY_POOL_RECYCLE'] = 30
 
 app.secret_key = settings.secret_key
 app.config.from_object(settings.configClass)
@@ -59,6 +62,7 @@ from . import models
 db.create_all()
 
 # routes
+db_breaker = pybreaker.CircuitBreaker(fail_max=1, reset_timeout=30)
 from .healthz import healthz_blueprint
 from .launch import launch_blueprint
 from .oauthlogin import oauth_login_blueprint
@@ -92,14 +96,17 @@ metrics.info('nbgrader_to_canvas_info', 'app info', version=__version__)
 from nbgrader.api import Gradebook
 from .models import AssignmentStatus
 
-course = "COGS108_SP21_A00"
-course_id = 20774
-with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
-    assignments = gb.assignments
-    for assignment in assignments:
-        match = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment.name, course_id=course_id).first()
-        if not match or match.status == "Failed" or match.status == "Uploaded":
-            continue
-        match.status = "Failed"
-        match.completion = 0
-        db.session.commit()
+
+@db_breaker
+def find_failed_uploads(course="TEST_NBGRADER", course_id=20774):
+    with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
+        assignments = gb.assignments
+        for assignment in assignments:
+            match = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment.name, course_id=course_id).first()
+            if not match or match.status == "Failed" or match.status == "Uploaded":
+                continue
+            match.status = "Failed"
+            match.completion = 0
+            db.session.commit()
+
+find_failed_uploads()
