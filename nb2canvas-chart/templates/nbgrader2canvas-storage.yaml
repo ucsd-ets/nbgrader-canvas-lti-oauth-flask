@@ -1,0 +1,32 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: nbgrader2canvas-pvc-claim
+  namespace: {{ .Values.namespace }}
+  labels:
+    type: local
+    app: {{ .Values.postgres.name }}
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  nfs:
+    server: {{ .Values.nb2canvas.nfs.server }}
+    path: {{ .Values.nb2canvas.nfs.path }}nbgrader-canvas-lti-oauth-flask/pgdata
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: nbgrader2canvas-pv
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.postgres.name }}
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1Gi

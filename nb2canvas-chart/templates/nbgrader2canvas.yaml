@@ -5,6 +5,7 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     app: {{ .Values.nb2canvas.name }}
+    {{- include "nb2canvas-chart.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.nb2canvas.replicaCount }}
   selector:
@@ -28,6 +29,7 @@ spec:
           name: app
         - mountPath: /mnt/nbgrader
           name: nbgrader
+          # TODO add /mnt/nbgrader 
       volumes:
       - name: app
         nfs:
@@ -37,3 +39,4 @@ spec:
         nfs:
           server: {{ .Values.nfs.server }}
           path: {{ .Values.nfs.path }}nbgrader-canvas-lti-oauth-flask/mocks
+      # TODO add the nb2canvas storage
