@@ -1,11 +1,11 @@
+from .utils import return_error, error, check_valid_user
 from flask import Blueprint, Response, render_template, session, request, url_for, redirect
 from pylti.flask import lti
 
 import os
 
+from nbgrader_to_canvas import app, db, settings
 
-from . import app, db, settings
-from .utils import return_error, error
 
 from nbgrader.api import Gradebook
 from .models import AssignmentStatus
@@ -17,16 +17,24 @@ import time
 
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
 
+
+
 @lti(request='session', role='staff')
 def get_canvas_id(lti=lti):
     """
     Get the canvas course id
     """
-    return session['course_id']
+    try:
+        out = session['course_id']
+        return out
+    except Exception as ex:
+        app.logger.debug("Error getting course id")
+        return "error"
 
 
 
 @grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'])
+@check_valid_user
 def grade_overview(progress = None):
 
     try:

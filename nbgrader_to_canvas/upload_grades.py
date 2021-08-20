@@ -6,8 +6,7 @@ from pybreaker import CircuitBreakerError
 from pylti.flask import lti
 
 from .utils import error
-from . import app, db, db_breaker
-from . import settings
+from nbgrader_to_canvas import app, db, db_breaker, settings
 from nbgrader.api import Gradebook, MissingEntry
 from .models import AssignmentStatus
 from .canvas import CanvasWrapper
@@ -69,6 +68,7 @@ def get_late_penalty():
         return '0'
     except Exception as ex:
         app.logger.debug(ex)
+        return '-'
    
 
 @app.route('/get_progress', methods=['GET'])
@@ -130,31 +130,35 @@ def upload_grades(course_name="TEST_NBGRADER", lti=lti):
         uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti)
         global current_uploads
         current_uploads.append(form_nb_assign_name)
-        uploader.init_course()
-        asyncio.run(threaded_upload(uploader))
-        #upload_grades_internal(course_id,group, form_canvas_assign_id, form_nb_assign_name, late_penalty)
+        threaded_upload(uploader)
     except Exception as ex:
-        return "error uploading grades"
+        return "upload failed"
     return "upload complete"
 
 current_uploads = []    
 
-# @db_breaker
-# def upload_grades_internal(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, course_name="TEST_NBGRADER",lti=lti):
-
-async def threaded_upload(uploader):
+def threaded_upload(uploader):
     global current_uploads
     try:
+        uploader.init_course()
         uploader.parse_form_data()
         uploader.update_database()
+        current_uploads.remove(uploader._form_nb_assign_name)
     except Exception as ex:
-        app.logger.error("Upload Failed:\n{}".format(ex))
-        status = AssignmentStatus.query.filter_by(nbgrader_assign_name=uploader._form_nb_assign_name).first()
-        status.status = 'Failed'
-        status.completion = 0
-        db.session.commit()
+        app.logger.error("Upload Failed:")
+        try:
+            status = AssignmentStatus.query.filter_by(nbgrader_assign_name=uploader._form_nb_assign_name).first()
+            status.status = 'Failed'
+            status.completion = 0
+            db.session.commit()
+        except Exception as exc:
+            db.session.close()
+            app.logger.debug("Error failing upload: ")
+        current_uploads.remove(uploader._form_nb_assign_name)
+        raise Exception("Upload Failed")
     
-    current_uploads.remove(uploader._form_nb_assign_name)
+    
+    
 
 class UploadGrades:
 
@@ -209,7 +213,7 @@ class UploadGrades:
         app.logger.debug('submit grades')
         time_start = time.time()
         progress = self._submit_grades()
-        app.logger.debug('time for subimt: {}'.format(time.time()-time_start))
+        app.logger.debug('time for submit: {}'.format(time.time()-time_start))
         
         self._update_status(progress)
         self.assignment_status.status = 'Uploaded'

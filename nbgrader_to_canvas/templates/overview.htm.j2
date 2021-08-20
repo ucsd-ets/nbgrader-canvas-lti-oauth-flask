@@ -316,6 +316,15 @@ Grading Overview
                 document.getElementById('status_bar_' + current_assignment).style = "width:0%"
                 return;
               }
+            } else if (!data.status) {
+              window.clearInterval(intervalIDs[counter]);
+              document.getElementById('select_'+current_assignment).disabled = false;
+              document.getElementById('submit_'+current_assignment).disabled = false;
+              document.getElementById('late_penalty_'+current_assignment).disabled = false;
+              document.getElementById(current_assignment).innerHTML = 'Failed';
+              document.getElementById(current_assignment).className = 'redText';
+              document.getElementById('status_bar_' + current_assignment).style = "width:0%"
+              return;
             } else {
               console.log('data.status: ' + data.status);
               console.log('data.completion: ' + data.completion);

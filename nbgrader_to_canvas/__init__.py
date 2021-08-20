@@ -5,7 +5,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from prometheus_flask_exporter import PrometheusMetrics
 from datetime import timedelta
-from flask_session import Session, SqlAlchemySessionInterface
+# from flask_session import Session, SqlAlchemySessionInterface
 import pybreaker
 
 from . import settings
@@ -27,8 +27,8 @@ app = Flask(__name__, template_folder='./templates')
 # see sqlalchemy code after init_app below too
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
 app.config['SESSION_TYPE'] = 'sqlalchemy'
-app.config['SQLALCHEMY_POOL_TIMEOUT'] = 45
-app.config['SQLALCHEMY_POOL_RECYCLE'] = 30
+app.config['SQLALCHEMY_POOL_TIMEOUT'] = 600
+app.config['SQLALCHEMY_POOL_RECYCLE'] = 300
 
 app.secret_key = settings.secret_key
 app.config.from_object(settings.configClass)
@@ -36,8 +36,8 @@ app.config.from_object(settings.configClass)
 #app.config['SECRET_KEY'] = config.SECRET_KEY
 
 # initialize session instance with app
-sess = Session()
-sess.init_app(app)
+# sess = Session()
+# sess.init_app(app)
 
 
 # add middleware
@@ -49,20 +49,29 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 #
 
 # initialize db
-db = SQLAlchemy(app)
+try:
+    db = SQLAlchemy(app)
 
-# below may not be required; we create sessions table manually in models.py
-# https://stackoverflow.com/questions/45887266/flask-session-how-to-create-the-session-table?noredirect=1&lq=1
-#app.config['SESSION_SQLALCHEMY'] = os.getenv('DATABASE_URI')
-app.config['SESSION_SQLALCHEMY'] = db
-app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
-#SqlAlchemySessionInterface(app, db, "sessions", "sess_")
+    # below may not be required; we create sessions table manually in models.py
+    # https://stackoverflow.com/questions/45887266/flask-session-how-to-create-the-session-table?noredirect=1&lq=1
+    #app.config['SESSION_SQLALCHEMY'] = os.getenv('DATABASE_URI')
+    app.config['SESSION_SQLALCHEMY'] = db
+    app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
+    
+    
+    
+    # app.config['DEBUG'] = False
+    #SqlAlchemySessionInterface(app, db, "sessions", "sess_")
 
-from . import models
-db.create_all()
+    from . import models
+
+    db.create_all()
+
+except Exception as ex:
+    app.logger.debug("Error in init: {}".format(ex))
 
 # routes
-db_breaker = pybreaker.CircuitBreaker(fail_max=1, reset_timeout=30)
+db_breaker = pybreaker.CircuitBreaker(fail_max=1, reset_timeout=40)
 from .healthz import healthz_blueprint
 from .launch import launch_blueprint
 from .oauthlogin import oauth_login_blueprint
@@ -95,7 +104,6 @@ metrics.info('nbgrader_to_canvas_info', 'app info', version=__version__)
 
 from nbgrader.api import Gradebook
 from .models import AssignmentStatus
-
 
 @db_breaker
 def find_failed_uploads(course="TEST_NBGRADER", course_id=20774):

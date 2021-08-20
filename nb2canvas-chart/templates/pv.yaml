@@ -1,0 +1,35 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: {{ .Values.pv.nb2canvas.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nb2canvas-chart.nb2canvas.pv.labels" . | nindent 4 }}
+spec:
+  storageClassName: {{ .Values.pv.nb2canvas.storageClassName }}
+  capacity:
+    storage: {{ .Values.pv.nb2canvas.storage }}
+  accessModes:
+    - {{ .Values.pv.nb2canvas.accessMode }}
+  nfs:
+    server: {{ .Values.pv.nb2canvas.nfs.server }}
+    path: {{ .Values.pv.nb2canvas.nfs.path }}
+
+---
+
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: {{ .Values.pv.postgres.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nb2canvas-chart.postgres.pv.labels" . | nindent 4 }}
+spec:
+  storageClassName: {{ .Values.pv.postgres.storageClassName }}
+  capacity:
+    storage: {{ .Values.pv.postgres.storage }}
+  accessModes:
+    - {{ .Values.pv.postgres.accessMode }}
+  nfs:
+    server: {{ .Values.pv.postgres.nfs.server }}
+    path: {{ .Values.pv.postgres.nfs.path }}

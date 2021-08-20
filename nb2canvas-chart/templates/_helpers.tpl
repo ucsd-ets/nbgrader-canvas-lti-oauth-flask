@@ -50,6 +50,49 @@ app.kubernetes.io/name: {{ include "nb2canvas-chart.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+{{- define "nb2canvas-chart.nbgrader2canvas.labels" -}}
+app.kubernetes.io/name: {{ include "nb2canvas-chart.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.identifier: web
+{{- end }}
+
+{{- define "nb2canvas-chart.postgres.labels" -}}
+app.kubernetes.io/name: {{ include "nb2canvas-chart.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.identifier: db
+{{- end }}
+
+{{- define "nb2canvas-chart.nb2canvas.pv.labels" -}}
+app.kubernetes.io/name: {{ include "nb2canvas-chart.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+type: local
+app.identifier: web
+{{- end }}
+
+{{- define "nb2canvas-chart.postgres.pv.labels" -}}
+app.kubernetes.io/name: {{ include "nb2canvas-chart.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+type: local
+app.identifier: db
+{{- end }}
+
+{{- define "nb2canvas-chart.nb2canvas.pvc.labels" -}}
+app.kubernetes.io/name: {{ include "nb2canvas-chart.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.identifier: web
+
+{{- end }}
+
+{{- define "nb2canvas-chart.postgres.pvc.labels" -}}
+app.kubernetes.io/name: {{ include "nb2canvas-chart.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.identifier: db
+{{- end }}
+
+{{- define "nb2canvas-chart.namespace.labels" -}}
+openpolicyagent.org/webhook: ignore
+{{- end }}
+
 {{/*
 Create the name of the service account to use
 */}}

@@ -6,7 +6,7 @@ from functools import wraps
 import time
 import requests
 
-from .utils import redirect_to_auth, error, check_valid_user
+from .utils import redirect_to_auth, error, check_valid_user, return_error
 from . import settings
 from .models import Users
 from . import app, db
@@ -21,7 +21,10 @@ launch_blueprint = Blueprint('launch', __name__)
 def launch(lti=lti):
 
     # Try to grab the user
-    user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
+    try:
+        user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
+    except Exception as ex:
+        return return_error("Unable to access users: "+str(ex))
     app.logger.info("{}".format(user))
     # Found a user
     if not user:
