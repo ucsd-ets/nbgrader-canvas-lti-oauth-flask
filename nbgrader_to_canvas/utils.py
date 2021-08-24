@@ -99,3 +99,12 @@ def check_valid_user(f):
 
         return f(*args, **kwargs)
     return decorated_function
+
+@app.teardown_request
+def handle_bad_request(e):
+    if e:
+        app.logger.error("Error during db transaction.")
+        db.session.rollback()
+    db.session.remove()
+    
+    

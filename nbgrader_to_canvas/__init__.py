@@ -5,7 +5,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from prometheus_flask_exporter import PrometheusMetrics
 from datetime import timedelta
-# from flask_session import Session, SqlAlchemySessionInterface
+from flask_session import Session, SqlAlchemySessionInterface
 import pybreaker
 
 from . import settings
@@ -36,9 +36,7 @@ app.config.from_object(settings.configClass)
 #app.config['SECRET_KEY'] = config.SECRET_KEY
 
 # initialize session instance with app
-# sess = Session()
-# sess.init_app(app)
-
+sess = Session()
 
 # add middleware
 app.wsgi_app = ProxyFix(app.wsgi_app)
@@ -56,8 +54,11 @@ try:
     # https://stackoverflow.com/questions/45887266/flask-session-how-to-create-the-session-table?noredirect=1&lq=1
     #app.config['SESSION_SQLALCHEMY'] = os.getenv('DATABASE_URI')
     app.config['SESSION_SQLALCHEMY'] = db
-    app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
+    app.config['PRESERVE_CONTEXT_ON_EXCEPTION'] = False
     
+    
+    sess.init_app(app)
+
     
     
     # app.config['DEBUG'] = False

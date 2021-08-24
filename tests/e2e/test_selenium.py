@@ -40,11 +40,11 @@ def clear_grades(course):
 def course():
     payload = {
             'grant_type': 'refresh_token',
-            'client_id': '131710000000000203',
-            'redirect_uri':'http://localhost:5000/oauthlogin',
-            'client_secret': 'jBwYwIHSsUCfHaBnkdN8Ff56o3WpjJfztp5JEe5DUcCKJ6VB7iYZkMTNt1URrTvo',
+            'client_id': '131710000000000205',
+            'redirect_uri':'https://nb2canvas-dev.ucsd.edu/oauthlogin',
+            'client_secret': 'POMJ1zqFDFv11BQl96CrBzmcsFZivcO3VAI0UzEuWKqkL7ijhtyxbxq0dbkOx2Up',
             # refresh token has to be updated if no user in users db has this token
-            'refresh_token': '13171~9pf0z5kSrxSK8fH2Glbb2zWHzmeTUW46Z2QNhIudi7J3vq4UvYznRckNYzZz3JVs'
+            'refresh_token': '13171~R14iwX9tWrw1kycdHCoXjK9DIkczeacWMRQgqyBHmPuLojTyD00cxK5UJSQr2IJR'
         }
     response = requests.post(
         'https://ucsd.test.instructure.com/login/oauth2/token',
@@ -64,7 +64,7 @@ def course():
 def setup(course):
     # clear AssignmentMatches
     conn = psycopg2.connect(
-        host = "localhost",
+        host = "postgres-service",
         database = "test",
         user = "dev",
         password = "mypassword"
@@ -140,7 +140,7 @@ def login(driver):
 def localhost(login):
     login.find_element_by_css_selector('#DashboardCard_Container > div > div:nth-child(1) > div > div:nth-child(1) > div').click()
     login.find_element_by_css_selector('#section-tabs > li:nth-child(4) > a').click()
-    login.find_element_by_css_selector('#context_module_item_903706 > div > div.ig-info > div.module-item-title > span > a').click()
+    login.find_element_by_css_selector('#context_module_item_979829 > div > div.ig-info > div.module-item-title > span > a').click()
     login.find_element_by_css_selector('#tool_form > div > div.load_tab > div > button').click()
     login.switch_to.window(login.window_handles[-1])
     try:
