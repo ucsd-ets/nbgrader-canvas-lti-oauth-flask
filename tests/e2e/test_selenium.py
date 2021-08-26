@@ -9,11 +9,12 @@ from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support.select import Select
 from selenium.webdriver.common.by import By
 
 import os
 
-SECONDS_WAIT = 30
+SECONDS_WAIT = 60
 
 def clear_grades(course):
     users = course.get_recent_students()
@@ -22,7 +23,7 @@ def clear_grades(course):
         if assignment.published:
             try:
                 progress = assignment.submissions_bulk_update(grade_data=clear_grades)
-                timeout = time.time()+10
+                timeout = time.time()+20
                 while not progress.workflow_state == 'completed' and timeout > time.time():
                     progress = progress.query()
                     time.sleep(.2)
@@ -35,14 +36,26 @@ def clear_grades(course):
                 print(assignment.name)
                 print(progress.url)
 
-
+def get_conn():
+    conn = psycopg2.connect(
+        host = "postgres-service",
+        database = "test",
+        user = os.getenv('POSTGRES_USER'),
+        password = os.getenv('POSTGRES_PASSWORD')
+    )
+    return conn
 @pytest.fixture()
 def course():
+    conn = get_conn()
+    refresh_token = None
+    with conn.cursor() as curs:
+        curs.execute("SELECT refresh_key FROM users WHERE user_id=114217;")
+        refresh_token = curs.fetchone()
     payload = {
             'grant_type': 'refresh_token',
-            'client_id': '131710000000000205',
-            'redirect_uri':'https://nb2canvas-dev.ucsd.edu/oauthlogin',
-            'client_secret': 'POMJ1zqFDFv11BQl96CrBzmcsFZivcO3VAI0UzEuWKqkL7ijhtyxbxq0dbkOx2Up',
+            'client_id': os.getenv('OAUTH2_ID'),
+            'redirect_uri': os.getenv('OAUTH2_URI'),
+            'client_secret': os.getenv('OAUTH2_KEY'),
             # refresh token has to be updated if no user in users db has this token
             'refresh_token': '13171~R14iwX9tWrw1kycdHCoXjK9DIkczeacWMRQgqyBHmPuLojTyD00cxK5UJSQr2IJR'
         }
@@ -54,6 +67,13 @@ def course():
     try:
         api_key = response.json()['access_token']
         canvas = Canvas(os.getenv('CANVAS_BASE_URL'),api_key)
+        conn = get_conn()
+        with conn.cursor() as curs:
+            curs.execute("UPDATE users "+
+                        "SET api_key='"+api_key+"' "+
+                        "WHERE user_id=114217;")
+        conn.commit()
+        conn.close()
         course = canvas.get_course(20774)
         return course
     except Exception as ex:
@@ -63,12 +83,7 @@ def course():
 @pytest.fixture()
 def setup(course):
     # clear AssignmentMatches
-    conn = psycopg2.connect(
-        host = "postgres-service",
-        database = "test",
-        user = "dev",
-        password = "mypassword"
-    )
+    conn = get_conn()
     with conn.cursor() as curs:
         curs.execute("DELETE FROM assignment_status;")
     conn.commit()
@@ -89,18 +104,27 @@ def driver(pytestconfig, setup):
     stayopen = pytestconfig.getoption('stayopen')
     # browser = 'firefox'
     # headless = False
-
+    
     if browser == 'firefox':
         options = webdriver.FirefoxOptions()
         if headless:
             options.headless = True
-        driver = webdriver.Firefox(options=options)
+            driver = webdriver.Remote(
+                options=options,
+                desired_capabilities=webdriver.DesiredCapabilities.FIREFOX,
+                command_executor='http://localhost:4444/wd/hub'
+            )
     elif browser == 'chrome':
         options = webdriver.ChromeOptions()
         if headless:
             options.headless = True
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
-        driver = webdriver.Chrome(options=options)
+        options.add_argument('--disable-dev-shm-usage')
+        driver = webdriver.Remote(
+                options=options,
+                desired_capabilities=webdriver.DesiredCapabilities.CHROME,
+                command_executor='http://localhost:4444/wd/hub'
+            )
 
     else:
         raise Exception(f'No browser option available for {browser}')
@@ -192,8 +216,10 @@ def test_create_and_upload_unmatched_assignment(localhost, course):
 def test_upload_assignment_to_different_name(localhost, course):
     assert localhost.find_element_by_id('assign1').text == 'No match found'
     clear_grades(course)
-    localhost.find_element_by_id('select_assign1').click() #open dropdown
-    localhost.find_element_by_xpath('//*[@id="select_assign1"]/option[4]').click()   #select week 3: assignment
+    sel = Select(localhost.find_element_by_id('select_assign1'))
+    for opt in sel.options:
+        if opt.text == 'Week 3: Assignment':
+            opt.click()
     localhost.find_element_by_id('submit_assign1').click()   #click upload grades
     WebDriverWait(localhost, SECONDS_WAIT).until(
         EC.text_to_be_present_in_element(
@@ -308,11 +334,15 @@ def test_assignments_to_each_others_names(localhost, course):
     course.create_assignment({'name':'assign1', 'published':'true', 'assignment_group_id':group})
     localhost.refresh()
     time.sleep(2)
-    localhost.find_element_by_id('select_assign1').click() #open dropdown
-    localhost.find_element_by_xpath('//*[@id="select_assign1"]/option[7]').click()   #select Test Assignment 1
+    sel = Select(localhost.find_element_by_id('select_assign1'))
+    for opt in sel.options:
+        if(opt.text == 'Test Assignment 1'):
+            opt.click()
     localhost.find_element_by_id('submit_assign1').click()   #click upload grades
-    localhost.find_element_by_id('select_Test Assignment 1').click() #open dropdown
-    localhost.find_element_by_xpath('//*[@id="select_Test Assignment 1"]/option[7]').click()   #select assign1
+    sel = Select(localhost.find_element_by_id('select_Test Assignment 1'))
+    for opt in sel.options:
+        if(opt.text == 'assign1'):
+            opt.click()
     localhost.find_element_by_id('submit_Test Assignment 1').click()   #click upload grades
     WebDriverWait(localhost, SECONDS_WAIT).until(
         EC.text_to_be_present_in_element(
@@ -343,12 +373,21 @@ def test_different_name_persists_during_upload(localhost, course):
     course.create_assignment({'name':'Test Assignment 1', 'published':'true', 'assignment_group_id':group})
     localhost.refresh()
     time.sleep(2)
-    localhost.find_element_by_id('select_assign1').click() #open dropdown
-    localhost.find_element_by_xpath('//*[@id="select_assign1"]/option[7]').click()   #select Test Assignment 1
+    sel = Select(localhost.find_element_by_id('select_assign1'))
+    for opt in sel.options:
+        if(opt.text == 'Test Assignment 1'):
+            opt.click()
+            print('option clicked')
     localhost.find_element_by_id('submit_assign1').click()   #click upload grades
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Initializing"
+        )
+    )
+    print(localhost.find_element_by_id('submit_assign1').text)
     localhost.refresh()
-    time.sleep(.4)
-    assert localhost.find_element_by_xpath('//*[@id="select_assign1"]/option[1]').text == 'Test Assignment 1'
+    time.sleep(2)
+    assert Select(localhost.find_element_by_id('select_assign1')).first_selected_option.text == 'Test Assignment 1'
 
 # Tests that uploading an assignment then 
 def test_cancel_removes_entries_from_db(localhost):
@@ -367,7 +406,7 @@ def test_cancel_removes_entries_from_db(localhost):
     status_length = 10
     match_length = 10
     conn = psycopg2.connect(
-        host = "localhost",
+        host = "postgres-service",
         database = "test",
         user = "dev",
         password = "mypassword"
@@ -375,20 +414,17 @@ def test_cancel_removes_entries_from_db(localhost):
     with conn.cursor() as curs:
         curs.execute("SELECT * FROM assignment_status;")
         status_length = curs.rowcount
-        curs.execute("SELECT * FROM assignment_match;")
-        match_length = curs.rowcount
     conn.commit()
     conn.close()
 
     assert status_length == 0
-    assert match_length == 0
 
 # Tests that while an assignment is being reuploaded the cancel button disables again
 def test_cancel_disabled_during_upload(localhost):
     localhost.find_element_by_id('submit_assign1').click()
     WebDriverWait(localhost, SECONDS_WAIT).until(
         EC.text_to_be_present_in_element(
-            (By.ID, "assign1"), "Fetching Students"
+            (By.ID, "assign1"), "Initializing"
         )
     )
     assert localhost.find_element_by_id('cancel_assign1').get_attribute('disabled') == 'true'
