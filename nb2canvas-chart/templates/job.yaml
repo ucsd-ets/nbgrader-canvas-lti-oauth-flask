@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.jobs.selenium.name }}
+  namespace: {{ .Values.namespace.name }}
+spec:
+  template:
+    spec:
+      containers:
+      # selenium
+      - name: {{ .Values.jobs.selenium.standalone.name }}
+        image: {{ .Values.jobs.selenium.standalone.image }}
+        ports:
+        - containerPort: {{ .Values.jobs.selenium.standalone.port}}
+      # pytest
+      - name: {{ .Values.jobs.selenium.tester.name }}
+        image: {{ .Values.jobs.selenium.tester.image }}
+        envFrom:
+          - secretRef:
+              name: {{ .Values.jobs.selenium.tester.secret }}
+        {{- include "nb2canvas-chart.selenium.start" . | nindent 8 }}
+        volumeMounts:
+        - name: {{ .Values.jobs.selenium.tester.tests.name }}
+          mountPath: {{ .Values.jobs.selenium.tester.tests.mountPath }}
+      
+      restartPolicy: {{ .Values.jobs.selenium.restartPolicy }}
+      volumes:
+      - name: {{ .Values.jobs.selenium.tester.tests.name }}
+        nfs:
+          server: {{ .Values.jobs.selenium.tester.tests.server }}
+          path: {{ .Values.jobs.selenium.tester.tests.path }}
+  backoffLimit: {{ .Values.jobs.selenium.backoffLimit }}

@@ -82,6 +82,10 @@ secret:
       POSTGRES_PASSWORD: 
       PGDATA: /var/lib/postgresql/data/pgdata
 
+  selenium:
+    name: tests-secret
+    type: Opaque
+
   
 
 # nb2canvas Persistent Volume
@@ -141,3 +145,28 @@ tls:
     name: tls-prod-secret
     crt: 
     key: 
+
+# jobs
+
+jobs:
+  selenium:
+    name: selenium
+    restartPolicy: OnFailure
+    backoffLimit: 4
+    tester:
+      name: tester
+      image: jdkindley/selenium:1.0.2
+      secret: tests-secret
+      tests:
+        name: tests
+        mountPath: /app
+        server: its-dsmlpdev-fs01.ucsd.edu
+        path: /export/apps/nbgrader-canvas-lti-oauth-flask/tests
+    
+    standalone:
+      name: standalone
+      image: selenium/standalone-chrome
+      port: 4444
+
+    
+    

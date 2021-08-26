@@ -1,7 +1,7 @@
-import threading
 from types import GetSetDescriptorType
 from typing import Counter
 from flask import Blueprint, render_template, session, request, redirect, url_for
+from flask_session import Session
 from pybreaker import CircuitBreakerError
 from pylti.flask import lti
 
@@ -10,7 +10,6 @@ from nbgrader_to_canvas import app, db, db_breaker, settings
 from nbgrader.api import Gradebook, MissingEntry
 from .models import AssignmentStatus
 from .canvas import CanvasWrapper
-from threading import Thread
 
 import datetime
 import requests
@@ -152,7 +151,6 @@ def threaded_upload(uploader):
             status.completion = 0
             db.session.commit()
         except Exception as exc:
-            db.session.close()
             app.logger.debug("Error failing upload: ")
         current_uploads.remove(uploader._form_nb_assign_name)
         raise Exception("Upload Failed")

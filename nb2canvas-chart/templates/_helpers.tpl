@@ -93,6 +93,11 @@ app.identifier: db
 openpolicyagent.org/webhook: ignore
 {{- end }}
 
+{{- define "nb2canvas-chart.selenium.start" -}}
+command: [pytest]
+args: [e2e/test_selenium.py]
+{{- end }}
+
 {{/*
 Create the name of the service account to use
 */}}
