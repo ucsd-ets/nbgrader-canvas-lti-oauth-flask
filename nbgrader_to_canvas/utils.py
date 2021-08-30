@@ -1,16 +1,11 @@
-from flask import redirect, render_template, url_for, request, session
+from flask import redirect, render_template, request, session
 from functools import wraps
 
-import requests
-import time
-
 from datetime import timedelta
-from canvasapi import Canvas
 
 from . import app
 from . import settings
 from . import db
-from .models import Users
 
 
 # Utility Functions

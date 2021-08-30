@@ -2,7 +2,6 @@ from canvasapi import Canvas
 from flask import session
 
 import requests
-import json
 import time
 
 from . import settings
@@ -18,20 +17,17 @@ class Token:
         self._user = Users.query.filter_by(user_id=int(user)).first()
         self.token_refresh_threshold = 60
 
-    #Is the token valid
     def check(self):
         if self._unexpired() and self._contains_api_key() and self._valid_WWW_Authenticate():
             return True
         else:
             return False
 
-    # If token expires within threshold return false
     def _unexpired(self):
         expiration_date = self._user.expires_in
         token_ttl = expiration_date - int(time.time())
 
         if token_ttl < self.token_refresh_threshold:
-            app.logger.debug('Expired Token')
             return False
         else:
             return True
@@ -40,20 +36,16 @@ class Token:
         if('api_key' in self._flask_session):
             return True
         else:
-            app.logger.debug('Missing API key')
             return False
 
     # Only called after _unexpired and _contains_api_key. May error otherwise
     def _valid_WWW_Authenticate(self):
         r = self._get_WWW_Auth_response()
-        #app.logger.debug('response headers:\n{}'.format(r.headers))
         if 'WWW-Authenticate' not in r.headers and r.status_code == 200:
             return True
         else:
-            app.logger.debug('WWW-Authenticate present')
             return False
 
-    #Only called after _unexpired and _contains_api_key. May error otherwise
     def _get_WWW_Auth_response(self):
         auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
         return requests.get(
@@ -62,7 +54,6 @@ class Token:
         )
         
     # Combine old refresh function with refresh_access_token
-
     def refresh(self):
         """
         Use user's refresh token to get a new access token.
@@ -103,7 +94,7 @@ class Token:
             ).format(response.url, response.status_code, payload, self._flask_session, ex))
             return False         
 
-        # Update expiration date in db. Would this ever return false?
+        # Update expiration date in db
         if not self._update_db_expiration(new_expiration_date):
             return False
 
@@ -115,7 +106,6 @@ class Token:
         self._flask_session['expires_in'] = new_expiration_date
         return True
 
-    # This doesn't really need to exist. It is just used to allow mock testing
     def _get_db_expiration(self):
         user = Users.query.filter_by(user_id=int(self._user.user_id)).first()
         return user.expires_in
@@ -124,7 +114,6 @@ class Token:
         self._user.expires_in = new_expiration_date
         db.session.commit()
 
-        # Confirm that expiration date has been updated
         db_expiration = self._get_db_expiration()
         if db_expiration != new_expiration_date:
             readable_expires_in = time.strftime(
@@ -143,6 +132,7 @@ class Token:
             ).format(flask_session, readable_expires_in, readable_new_expiration))
             return False
         return True
+
     def _update_db_api_key(self, new_api_key):
         self._user.api_key = new_api_key
         db.session.commit()
@@ -153,7 +143,6 @@ class Token:
             return False
         return True
     
-    # This doesn't really need to exist. It is just used to allow mock testing
     def _get_db_api_key(self):
         user = Users.query.filter_by(user_id=int(self._user.user_id)).first()
         return user.api_key
@@ -170,14 +159,15 @@ class CanvasWrapper:
     def get_canvas(self):
         if not self.update_token():
             pass
-        app.logger.debug('test\n{}'.format(self._flask_session['api_key']))
         return Canvas(self._api_URL, self._flask_session['api_key'])
 
-    # Checks if token up to date. If not, try to refresh it. If refresh fails, then return False. Otherwise return True
     def update_token(self):
+        '''
+        Checks if token is up to date, and attempts to refresh if not.
+        Returns true if token is valid by end of method.
+        '''
         token = self.get_token()
         if not token.check():
-            app.logger.debug("Refreshing token")
             return token.refresh()
         return True
     
