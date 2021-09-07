@@ -8,7 +8,8 @@ from . import settings
 from . import db, app
 
 from .models import Users
-
+from circuitbreaker import circuit
+from .utils import redirect_open_circuit
 
 class Token:
 

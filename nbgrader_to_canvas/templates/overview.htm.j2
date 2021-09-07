@@ -221,7 +221,10 @@ Grading Overview
             late_dropdown.value = result
           },
           error: function(result){
-            console.log("Error getting late penalty: " + result);
+            console.log(result);
+            if(result.status == 303) {
+              window.location.href = result.responseText
+            }
             errorMessage("Error occured while getting late penalty for "+current_assignment+".");
           }
         });
@@ -250,6 +253,9 @@ Grading Overview
           },
           error: function(result){
             console.log(result);
+            if(result.status == 303) {
+              window.location.href = result.responseText
+            }
           }
         });
         
@@ -291,7 +297,10 @@ Grading Overview
           },
           error: function(result){
             console.log(result);
-            errorMessage("Error occured while removing upload for "+current_assignment+".");
+            if(result.status == 303) {
+              window.location.href = result.responseText
+            }
+            //errorMessage("Error occured while removing upload for "+current_assignment+".");
           }
         });
         
@@ -302,9 +311,9 @@ Grading Overview
         $.getJSON(
           "{{url_for('get_progress') }}",
           { assignment: current_assignment,
-            course_id: {{ course_id}} },
+            course_id: {{ course_id }} },
           function(data){
-            console.log(data)
+            console.log(current_assignment+" : "+data)
             if (data == null) {
               if (removeNull) {
                 window.clearInterval(intervalIDs[counter]);
@@ -316,7 +325,7 @@ Grading Overview
                 document.getElementById('status_bar_' + current_assignment).style = "width:0%"
                 return;
               }
-            } else if (!data.status) {
+            }else if (!data.status) {
               window.clearInterval(intervalIDs[counter]);
               document.getElementById('select_'+current_assignment).disabled = false;
               document.getElementById('submit_'+current_assignment).disabled = false;
@@ -364,12 +373,16 @@ Grading Overview
             }
           }
         )
-        .fail(function() {
-          errorMessage("Error uploading "+current_assignment+".");
-          for (let id of intervalIDs) {
-            window.clearInterval(id);
+        .fail(function(data) {
+          console.log(data);
+          if(data.status && data.status == 303) {
+            window.location.href = data.responseText
           }
-          return
+          //errorMessage("Error uploading "+current_assignment+".");
+          //for (let id of intervalIDs) {
+          //  window.clearInterval(id);
+          //}
+          //return;
         });
       }
 

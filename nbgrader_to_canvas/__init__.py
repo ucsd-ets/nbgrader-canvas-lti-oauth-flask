@@ -5,7 +5,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from prometheus_flask_exporter import PrometheusMetrics
 from flask_session import Session
-import pybreaker
+from circuitbreaker import circuit
 
 from . import settings
 
@@ -49,6 +49,7 @@ db = SQLAlchemy(app)
 app.config['SESSION_SQLALCHEMY'] = db
 app.config['PRESERVE_CONTEXT_ON_EXCEPTION'] = False
 
+
 sess = Session()
 sess.init_app(app)
 
@@ -58,7 +59,6 @@ db.create_all()
 
 
 # routes
-db_breaker = pybreaker.CircuitBreaker(fail_max=1, reset_timeout=40)
 from .healthz import healthz_blueprint
 from .launch import launch_blueprint
 from .oauthlogin import oauth_login_blueprint
@@ -91,8 +91,9 @@ metrics.info('nbgrader_to_canvas_info', 'app info', version=__version__)
 
 from nbgrader.api import Gradebook
 from .models import AssignmentStatus
+from .utils import redirect_open_circuit
 
-@db_breaker
+
 def find_failed_uploads(course="TEST_NBGRADER", course_id=20774):
     with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
         assignments = gb.assignments

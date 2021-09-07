@@ -8,7 +8,7 @@ metadata:
   name: {{ .Values.ingress.name }}
   namespace: {{ .Values.namespace.name }}
   annotations:
-   nginx.ingress.kubernetes.io/rewrite-target: {{ .Values.ingress.rewriteTarget }}
+    {{- include "nb2canvas-chart.ingress.annotations" . | nindent 4 }}
 spec:
   tls:
   - secretName: {{ .Values.ingress.tls.devName }}

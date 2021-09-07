@@ -9,7 +9,7 @@ deployment:
     replicaCount: 1
     image: 
       repo: jdkindley/web_image
-      tag: 1.0.8
+      tag: 1.0.9
     port: 5000
     secret: nbgrader2canvas-secret
     app:

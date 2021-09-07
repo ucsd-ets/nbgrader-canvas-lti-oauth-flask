@@ -98,6 +98,11 @@ command: [pytest]
 args: [e2e/test_selenium.py]
 {{- end }}
 
+{{- define "nb2canvas-chart.ingress.annotations" -}}
+kubernetes.io/ingress.class: nginx
+nginx.ingress.kubernetes.io/rewrite-target: /
+{{- end }}
+
 {{/*
 Create the name of the service account to use
 */}}

@@ -1,4 +1,4 @@
-from .utils import return_error, check_valid_user
+from .utils import return_error, check_valid_user, open_circuit
 from flask import Blueprint, Response, render_template, session, request, url_for, redirect
 from pylti.flask import lti
 
@@ -13,6 +13,7 @@ from .models import AssignmentStatus
 from canvasapi.exceptions import InvalidAccessToken
 from .upload_grades import current_uploads
 from .canvas import CanvasWrapper, Token
+from circuitbreaker import circuit
 
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
 
@@ -33,9 +34,9 @@ def get_canvas_id(lti=lti):
 
 
 @grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'])
+@circuit(failure_threshold=1,fallback_function=open_circuit)
 @check_valid_user
 def grade_overview(progress = None):
-
     try:
         
         grade_overview = GradeOverview()
@@ -75,15 +76,14 @@ def grade_overview(progress = None):
         )
         return return_error(msg)
 
-    except Exception as e:
-        app.logger.error("Exception unknown: " + str(type(e)) + str(e))
-        app.logger.error(os.getcwd())
-        app.logger.error(str(type(e)) + " error occurred.")
-        msg = (
-            'Issues with the grade_overview file. Please refresh and try again. '
-            'If this error persists, please contact support.'
-        )
-        return return_error(msg)
+    # except Exception as e:
+    #     app.logger.error("Exception unknown: " + str(type(e)) + str(e))
+    #     app.logger.error(os.getcwd())
+    #     app.logger.error(str(type(e)) + " error occurred.")
+    #     msg = (
+    #         'Issues with the grade_overview file:<br>'+str(e)
+    #     )
+    #     return return_error(msg)
 
     
 
@@ -129,14 +129,17 @@ class GradeOverview:
     def _cleanup_assignment_matches(self):
         '''
         Check if there's a thread running uploading grades with the assignment.name. If it is then leave the match.
-        If not and it isn't uploaded, then delete match.
+        If not and it isn't uploaded, then faile the match.
         If it is uploaded, check if match.canvas_assign_id matches to an assignment. If it doesn't, delete match.
         '''
         for assignment in self.nb_assignments:
             match = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment.name, course_id=self.course_id).first()
             if not match or assignment.name in current_uploads or match.status == "Failed":
                 continue
-            if not match.status == "Uploaded" or int(match.canvas_assign_id) not in self.canvas_assignments:
+            if not match.status == "Uploaded":
+                match.status = "Failed"
+                match.completion = 0
+            elif int(match.canvas_assign_id) not in self.canvas_assignments:
                 db.session.delete(match)
         db.session.commit()
 

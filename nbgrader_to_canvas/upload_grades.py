@@ -1,7 +1,7 @@
 from flask import Blueprint, session, request
 from pylti.flask import lti
 
-from .utils import error
+from .utils import error, redirect_open_circuit
 from nbgrader_to_canvas import app, db, settings
 from nbgrader.api import Gradebook, MissingEntry
 from .models import AssignmentStatus
@@ -20,6 +20,7 @@ from canvasapi.assignment import (
     AssignmentOverride,
     AssignmentExtension,
 )
+from circuitbreaker import circuit
 
 
 upload_grades_blueprint = Blueprint('upload_grades', __name__)
@@ -28,35 +29,35 @@ current_uploads = []
 # Web Views / Routes
 
 @app.route('/remove_upload', methods=['POST'])
+@circuit(failure_threshold=1, fallback_function=redirect_open_circuit)
 def remove_upload():
     assignment = request.form.get('form_nb_assign_name')
     id = request.form.get('course_id')
-    try:
-        status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
-        out = ""
-        if status:
-            db.session.delete(status)
-            out+="Status removed."
-            db.session.commit()
-        return out
-    except Exception as ex:
-        app.logger.error("Exception occured during removal of upload: {}".format(ex))    
+    
+    # raise Exception('remove_exception')
+    status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
+    out = ""
+    if status:
+        db.session.delete(status)
+        out+="Status removed."
+        db.session.commit()
+    return out   
 
 @app.route('/get_late_penalty', methods=['GET', 'POST'])
+@circuit(failure_threshold=1, fallback_function=redirect_open_circuit)
 def get_late_penalty():
     assignment = request.form.get('assignment')
     id = request.form.get('course_id')
-    try:
-        status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
-        if status:
-            return str(status.late_penalty)
-        return '0'
-    except Exception as ex:
-        app.logger.error("Exception occured getting late penalty: {}".format(ex))
-        return '-'
+
+    # raise Exception('late_penalty exception')
+    status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
+    if status:
+        return str(status.late_penalty)
+    return '0'
    
 
 @app.route('/get_progress', methods=['GET'])
+@circuit(failure_threshold=10, fallback_function=redirect_open_circuit)
 def get_progress():
     """
     Endpoint to call from JS. queries the database for a specified assignment and returns the upload
@@ -66,21 +67,18 @@ def get_progress():
     """
     assignment = request.args.get('assignment')
     id = request.args.get('course_id')
-    
-    try:
-        status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
-        if status:
-            if status.status == 'Uploaded':
-                return json.dumps({'status': status.status, 'completion': status.completion, 'canvas_assign_id': status.canvas_assign_id})
-            return json.dumps({'status': status.status, 'completion': status.completion})
-        else:
-            return json.dumps(status)
-    except Exception as ex:
-        app.logger.debug(ex)
-        return json.dumps({'error' : str(ex)})  
+    # raise Exception('get_progress_exception')
+    status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
+    if status:
+        if status.status == 'Uploaded':
+            return json.dumps({'status': status.status, 'completion': status.completion, 'canvas_assign_id': status.canvas_assign_id})
+        return json.dumps({'status': status.status, 'completion': status.completion})
+    else:
+        return json.dumps(status)
 
 
 @upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
+@circuit(failure_threshold=1, fallback_function=redirect_open_circuit)
 @lti(error=error, request='session', role='staff', app=app)
 def upload_grades(course_name="TEST_NBGRADER", lti=lti):
     if not request.method == "POST":
@@ -92,44 +90,41 @@ def upload_grades(course_name="TEST_NBGRADER", lti=lti):
     form_nb_assign_name = request.form.get('form_nb_assign_name')
     late_penalty = request.form.get('late_penalty')
 
-    try:
-        reset_status(form_nb_assign_name, course_id)
-        upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti)
-    except Exception:
-        return "upload failed"
+    
+    reset_status(form_nb_assign_name, course_id)
+    upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti)
     return "upload complete"
     
 def reset_status(form_nb_assign_name, course_id):
-    try:
-        status = AssignmentStatus.query.filter_by(nbgrader_assign_name=form_nb_assign_name, course_id=int(course_id)).first()
-        if status:
-            status.completion=0
-            status.status='Initializing'
-            db.session.commit()
-    except Exception as ex:
-        app.logger.error("Error updating status during upload grades: {}".format(ex))
-        raise Exception("Error resetting status")
+    # raise Exception('reset_exception')
+    status = AssignmentStatus.query.filter_by(nbgrader_assign_name=form_nb_assign_name, course_id=int(course_id)).first()
+    if status:
+        status.completion=0
+        status.status='Initializing'
+        db.session.commit()
 
 def upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti):
     try:
+        
         uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti)
         global current_uploads
         current_uploads.append(form_nb_assign_name)
         uploader.init_course()
+        #raise Exception('upload_exception')
         uploader.parse_form_data()
         uploader.update_database()
-        current_uploads.remove(uploader._form_nb_assign_name)
+        current_uploads.remove(form_nb_assign_name)
     except Exception as ex:
-        app.logger.error("Error during upload grades: {}".format(ex))
         try:
-            status = AssignmentStatus.query.filter_by(nbgrader_assign_name=uploader._form_nb_assign_name).first()
-            status.status = 'Failed'
-            status.completion = 0
-            db.session.commit()
+            status = AssignmentStatus.query.filter_by(nbgrader_assign_name=form_nb_assign_name, course_id=int(course_id)).first()
+            if status:
+                status.completion=0
+                status.status='Failed'
+                db.session.commit()
         except Exception as exc:
-            app.logger.error("Error failing status of upload grade: {}".format(exc))
-        current_uploads.remove(uploader._form_nb_assign_name)
-        raise Exception("Error uploading")
+            pass
+        current_uploads.remove(form_nb_assign_name)
+        raise ex
 
 class UploadGrades:
 

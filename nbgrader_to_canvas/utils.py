@@ -1,4 +1,4 @@
-from flask import redirect, render_template, request, session
+from flask import redirect, render_template, request, session, url_for
 from functools import wraps
 
 from datetime import timedelta
@@ -6,6 +6,7 @@ from datetime import timedelta
 from . import app
 from . import settings
 from . import db
+from circuitbreaker import CircuitBreakerMonitor
 
 
 # Utility Functions
@@ -29,6 +30,30 @@ def redirect_to_auth():
             settings.BASE_URL, settings.oauth2_id, settings.oauth2_uri, settings.oauth2_scopes
         )
     )
+
+def open_circuit():
+    '''Fallback function for flask requests.'''
+    errors = "" 
+    for circuit in CircuitBreakerMonitor.get_open():
+        errors += "<br>" + str(circuit.last_failure)
+    return return_error(
+        "The following internal error(s) have occured:" + errors
+    ), 500
+
+def redirect_open_circuit():
+    '''Fallback function for ajax requests.'''
+    app.logger.debug("Fallback function called")
+    return "open", 303
+    
+@app.route('/open', methods=['POST','GET'])
+def open():
+    errors = "" 
+    for circuit in CircuitBreakerMonitor.get_open():
+        errors += "<br>" + str(circuit.last_failure)
+    return return_error(
+        "The following internal error(s) have occured:" + errors
+    ), 500
+
 
 
 def check_valid_user(f):
