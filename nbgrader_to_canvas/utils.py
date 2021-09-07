@@ -33,12 +33,7 @@ def redirect_to_auth():
 
 def open_circuit():
     '''Fallback function for flask requests.'''
-    errors = "" 
-    for circuit in CircuitBreakerMonitor.get_open():
-        errors += "<br>" + str(circuit.last_failure)
-    return return_error(
-        "The following internal error(s) have occured:" + errors
-    ), 500
+    return redirect(url_for('open'))
 
 def redirect_open_circuit():
     '''Fallback function for ajax requests.'''

@@ -38,7 +38,6 @@ def get_canvas_id(lti=lti):
 @check_valid_user
 def grade_overview(progress = None):
     try:
-        
         grade_overview = GradeOverview()
         grade_overview.init_assignments()
         grade_overview.setup_matches()
@@ -61,7 +60,7 @@ def grade_overview(progress = None):
             'Cannot call functions on the canvas object. '
             'Delete user from users table or wait for token refresh'
         )
-        return return_error(msg)
+        raise Exception(msg)
 
     except InvalidAccessToken as eTok:
         app.logger.error("InvalidAccessToken: " + str(eTok))
@@ -69,12 +68,10 @@ def grade_overview(progress = None):
         app.logger.error(os.getcwd())
 
         token = Token(session,session['canvas_user_id'])
-        token.refresh()
-        msg = (
-            'Issues with access token.'
-            'Please refresh the page.'
-        )
-        return return_error(msg)
+        if not token.refresh():
+            raise Exception('Access token not refreshing.')
+        
+        return redirect(url_for('grade_overview.grade_overview'))
 
     # except Exception as e:
     #     app.logger.error("Exception unknown: " + str(type(e)) + str(e))
