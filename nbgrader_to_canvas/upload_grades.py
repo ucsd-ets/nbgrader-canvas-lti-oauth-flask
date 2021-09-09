@@ -34,7 +34,6 @@ def remove_upload():
     assignment = request.form.get('form_nb_assign_name')
     id = request.form.get('course_id')
     
-    # raise Exception('remove_exception')
     status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
     out = ""
     if status:
@@ -49,7 +48,6 @@ def get_late_penalty():
     assignment = request.form.get('assignment')
     id = request.form.get('course_id')
 
-    # raise Exception('late_penalty exception')
     status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
     if status:
         return str(status.late_penalty)
@@ -67,7 +65,7 @@ def get_progress():
     """
     assignment = request.args.get('assignment')
     id = request.args.get('course_id')
-    # raise Exception('get_progress_exception')
+
     status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
     if status:
         if status.status == 'Uploaded':
@@ -96,7 +94,6 @@ def upload_grades(course_name="TEST_NBGRADER", lti=lti):
     return "upload complete"
     
 def reset_status(form_nb_assign_name, course_id):
-    # raise Exception('reset_exception')
     status = AssignmentStatus.query.filter_by(nbgrader_assign_name=form_nb_assign_name, course_id=int(course_id)).first()
     if status:
         status.completion=0
@@ -104,17 +101,16 @@ def reset_status(form_nb_assign_name, course_id):
         db.session.commit()
 
 def upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti):
+    global current_uploads
     try:
-        
         uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti)
-        global current_uploads
         current_uploads.append(form_nb_assign_name)
         uploader.init_course()
-        #raise Exception('upload_exception')
         uploader.parse_form_data()
         uploader.update_database()
         current_uploads.remove(form_nb_assign_name)
     except Exception as ex:
+        current_uploads.remove(form_nb_assign_name)
         try:
             status = AssignmentStatus.query.filter_by(nbgrader_assign_name=form_nb_assign_name, course_id=int(course_id)).first()
             if status:
@@ -123,7 +119,6 @@ def upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_
                 db.session.commit()
         except Exception as exc:
             pass
-        current_uploads.remove(form_nb_assign_name)
         raise ex
 
 class UploadGrades:

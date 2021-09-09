@@ -42,6 +42,7 @@ def redirect_open_circuit():
     
 @app.route('/open', methods=['POST','GET'])
 def open():
+    '''Called when circuit breaker is open.'''
     errors = "" 
     for circuit in CircuitBreakerMonitor.get_open():
         errors += "<br>" + str(circuit.last_failure)

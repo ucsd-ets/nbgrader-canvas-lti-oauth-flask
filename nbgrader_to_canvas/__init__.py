@@ -88,21 +88,3 @@ app.register_blueprint(grade_students_blueprint)
 # setup Prometheus route at /metrics
 metrics = PrometheusMetrics(app, path='/metrics')
 metrics.info('nbgrader_to_canvas_info', 'app info', version=__version__)
-
-from nbgrader.api import Gradebook
-from .models import AssignmentStatus
-from .utils import redirect_open_circuit
-
-
-def find_failed_uploads(course="TEST_NBGRADER", course_id=20774):
-    with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
-        assignments = gb.assignments
-        for assignment in assignments:
-            match = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment.name, course_id=course_id).first()
-            if not match or match.status == "Failed" or match.status == "Uploaded":
-                continue
-            match.status = "Failed"
-            match.completion = 0
-            db.session.commit()
-
-find_failed_uploads()

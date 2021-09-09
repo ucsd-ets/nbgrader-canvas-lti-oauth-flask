@@ -13,6 +13,7 @@ from .models import AssignmentStatus
 from canvasapi.exceptions import InvalidAccessToken
 from .upload_grades import current_uploads
 from .canvas import CanvasWrapper, Token
+
 from circuitbreaker import circuit
 
 grade_overview_blueprint = Blueprint('grade_overview', __name__)
@@ -34,7 +35,7 @@ def get_canvas_id(lti=lti):
 
 
 @grade_overview_blueprint.route("/grade_overview", methods=['GET', 'POST'])
-@circuit(failure_threshold=1,fallback_function=open_circuit)
+@circuit(failure_threshold=1, fallback_function=open_circuit)
 @check_valid_user
 def grade_overview(progress = None):
     try:
@@ -73,14 +74,14 @@ def grade_overview(progress = None):
         
         return redirect(url_for('grade_overview.grade_overview'))
 
-    # except Exception as e:
-    #     app.logger.error("Exception unknown: " + str(type(e)) + str(e))
-    #     app.logger.error(os.getcwd())
-    #     app.logger.error(str(type(e)) + " error occurred.")
-    #     msg = (
-    #         'Issues with the grade_overview file:<br>'+str(e)
-    #     )
-    #     return return_error(msg)
+    except Exception as e:
+        app.logger.error("Exception unknown: " + str(type(e)) + str(e))
+        app.logger.error(os.getcwd())
+        app.logger.error(str(type(e)) + " error occurred.")
+        msg = (
+            'Issues with the grade_overview file:<br>'+str(e)
+        )
+        return return_error(msg)
 
     
 
