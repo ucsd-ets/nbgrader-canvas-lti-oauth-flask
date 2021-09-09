@@ -21,6 +21,13 @@ select {
     width: 32ch;
 }
 
+.late_penalty {
+    border-radius: 7px;
+    border: 0.75px solid;
+    width: 8ch;
+
+}
+
 /* styling for text color */
 .blackText {
     color:black;
