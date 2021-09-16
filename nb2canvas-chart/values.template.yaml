@@ -15,19 +15,19 @@ deployment:
     app:
       name: app
       mountPath: /app
-      server: its-dsmlpdev-fs01.ucsd.edu
+      server: its-dsmlp-fs01.ucsd.edu
       path: /export/apps/nbgrader-canvas-lti-oauth-flask
     nbgrader:
       name: nbgrader
       mountPath: /mnt/nbgrader
-      server: its-dsmlpdev-fs01.ucsd.edu
-      path: /export/apps/nbgrader-canvas-lti-oauth-flask/mocks
+      server: its-dsmlp-fs01.ucsd.edu
+      path: /export/nbgrader/dsmlp/
 
   postgres:
     name: postgres
     replicaCount: 1
     image: 
-      repo: postgres
+      repo: postgres:13
     port: 5432
     secret: postgres-secret
     pgdata:
@@ -37,7 +37,7 @@ deployment:
     start:
       name: start-db
       mountPath: /docker-entrypoint-initdb.d
-      server: its-dsmlpdev-fs01.ucsd.edu
+      server: its-dsmlp-fs01.ucsd.edu
       path: /export/apps/nbgrader-canvas-lti-oauth-flask/scripts   
 
 
@@ -60,14 +60,14 @@ secret:
     type: Opaque
     data:
       FLASK_DEBUG: "1"
-      FLASK_ENV: development
+      FLASK_ENV: production
       DEBUG_METRICS: "1"
       CANVAS_SSO_USERNAME: 
       CANVAS_SSO_PASSWORD: 
-      CANVAS_BASE_URL: https://ucsd.test.instructure.com
+      CANVAS_BASE_URL: https://canvas.ucsd.edu
       OAUTH2_ID: 
       OAUTH2_KEY: 
-      OAUTH2_URI: https://nb2canvas-dev.ucsd.edu/oauthlogin
+      OAUTH2_URI: https://nb2canvas.ucsd.edu/oauthlogin
       LTI_CONSUMER_KEY: 
       LTI_SHARED_SECRET: 
       SECRET_KEY: 
@@ -96,7 +96,7 @@ pv:
     storage: 1Gi
     accessMode: ReadOnlyMany
     nfs:
-      server: its-dsmlpdev-fs01.ucsd.edu
+      server: its-dsmlp-fs01.ucsd.edu
       path: /export/apps/nbgrader-canvas-lti-oauth-flask/mocks
 
   postgres:
@@ -105,7 +105,7 @@ pv:
     storage: 1Gi
     accessMode: ReadWriteMany
     nfs:
-      server: its-dsmlpdev-fs01.ucsd.edu
+      server: its-dsmlp-fs01.ucsd.edu
       path: /export/apps/nbgrader-canvas-lti-oauth-flask/pgdata
 
 pvc:
@@ -160,7 +160,7 @@ jobs:
       tests:
         name: tests
         mountPath: /app
-        server: its-dsmlpdev-fs01.ucsd.edu
+        server: its-dsmlp-fs01.ucsd.edu
         path: /export/apps/nbgrader-canvas-lti-oauth-flask/tests
     
     standalone:
