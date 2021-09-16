@@ -310,7 +310,7 @@ Grading Overview
       function updateStatus(current_assignment, counter, removeNull){
         console.log("test")
         $.getJSON(
-          "{{url_for('get_progress') }}",
+          "{{url_for('get_progress.get_progress') }}",
           { assignment: current_assignment,
             course_id: {{ course_id }} },
           function(data){

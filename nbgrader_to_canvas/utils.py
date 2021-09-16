@@ -1,4 +1,4 @@
-from flask import redirect, render_template, request, session, url_for
+from flask import redirect, render_template, request, session, url_for, Blueprint
 from functools import wraps
 
 from datetime import timedelta
@@ -8,6 +8,7 @@ from . import settings
 from . import db
 from circuitbreaker import CircuitBreakerMonitor
 
+open_blueprint = Blueprint('open', __name__)
 
 # Utility Functions
 def return_error(msg):
@@ -33,14 +34,14 @@ def redirect_to_auth():
 
 def open_circuit():
     '''Fallback function for flask requests.'''
-    return redirect(url_for('open'))
+    return redirect(url_for('open.open'))
 
 def redirect_open_circuit():
     '''Fallback function for ajax requests.'''
     app.logger.debug("Fallback function called")
     return "open", 303
     
-@app.route('/open', methods=['POST','GET'])
+@open_blueprint.route('/open', methods=['POST','GET'])
 def open():
     '''Called when circuit breaker is open.'''
     errors = "" 
@@ -48,7 +49,7 @@ def open():
         errors += "<br>" + str(circuit.last_failure)
     return return_error(
         "The following internal error(s) have occured:" + errors
-    ), 500
+    )
 
 
 
