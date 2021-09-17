@@ -3,6 +3,7 @@ from flask import Blueprint, Response, render_template, session, request, url_fo
 from pylti.flask import lti
 
 import os
+from os import path
 
 from nbgrader_to_canvas import app, db, settings
 
@@ -39,6 +40,7 @@ def get_canvas_id(lti=lti):
 @check_valid_user
 def grade_overview(progress = None):
     try:
+        
         grade_overview = GradeOverview()
         grade_overview.init_assignments()
         grade_overview.setup_matches()
@@ -91,9 +93,14 @@ class GradeOverview:
     def init_assignments(self, flask_session = session):
         self.course_id = get_canvas_id()
         self._init_canvas(flask_session)
+        self._nbgrader_course = self._course.course_code
+        if not path.exists("/mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db"):
+            print("Gradebook missing for: {}".format(self._nbgrader_course))
+            raise Exception("Gradebook missing for: {}".format(self._nbgrader_course))
         self.nb_assignments = self._get_nbgrader_assignments()
         self.group = self._get_assignment_group_id()
         self.canvas_assignments = self._get_canvas_assignments()
+        
     
     def setup_matches(self):
         '''Prunes database for deleted assignments then returns valid matches'''
@@ -106,9 +113,9 @@ class GradeOverview:
         self._canvas = self._canvas_wrapper.get_canvas()
         self._course = self._canvas.get_course(self.course_id)
 
-    def _get_nbgrader_assignments(self, course="TEST_NBGRADER"):
+    def _get_nbgrader_assignments(self):
         '''Get the nbgrader_assignments from the course gradebook'''
-        with Gradebook("sqlite:////mnt/nbgrader/"+course+"/grader/gradebook.db") as gb:
+        with Gradebook("sqlite:////mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db") as gb:
             return gb.assignments
 
     def _get_assignment_group_id(self):

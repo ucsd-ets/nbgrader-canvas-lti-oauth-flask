@@ -8,15 +8,13 @@ import pytest
 import time
 from nbgrader_to_canvas import db
 
-
-# TODO: reconfigure user fixture to cover test_get_canvas
 @pytest.fixture(autouse = True)
 def user():
     old_user = Users.query.filter_by(user_id=114217).first()
     if old_user:
         db.session.delete(old_user)
         db.session.commit()
-    user = Users(114217,'13171~EbhqmjsNUmp8M1zLZsMouZtGoZKQTg9KQsUNEIKexBXQRXf13MSFolcWC9VrH0mN',10,'')
+    user = Users(114217,'13171~RcKmrrEpUNajUlnEl3jDVJK3NEvPffOaomiWI2eJB6c6WTp6cKEJEs4gImOZ1B0u',10,'')
     db.session.add(user)
     db.session.commit()
     yield user
@@ -24,7 +22,7 @@ def user():
     db.session.commit()
 
 def test_get_canvas(user):
-    canvas_wrapper = CanvasWrapper('https://test.ucsd.instructure.com', {'canvas_user_id': '114217'})
+    canvas_wrapper = CanvasWrapper('https://canvas.ucsd.edu', {'canvas_user_id': '114217'})
     canvas = canvas_wrapper.get_canvas()
     assert isinstance(canvas,Canvas)
 
@@ -37,7 +35,7 @@ class TestToken(unittest.TestCase):
         if old_user:
             db.session.delete(old_user)
             db.session.commit()
-        self._user = Users(114217,'13171~EbhqmjsNUmp8M1zLZsMouZtGoZKQTg9KQsUNEIKexBXQRXf13MSFolcWC9VrH0mN',10,'')
+        self._user = Users(114217,'13171~RcKmrrEpUNajUlnEl3jDVJK3NEvPffOaomiWI2eJB6c6WTp6cKEJEs4gImOZ1B0u',10,'')
         db.session.add(self._user)
         db.session.commit()
         yield self._user

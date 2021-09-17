@@ -14,12 +14,20 @@ from selenium.webdriver.common.by import By
 
 import os
 
-SECONDS_WAIT = 60
+SECONDS_WAIT = 120
+
+def get_group_id(course):
+    for ag in course.get_assignment_groups():
+            if (ag.name == "Assignments"):
+                return ag.id
+    raise Exception('No assignment group named "Assignments"')
 
 def clear_grades(course):
     users = course.get_recent_students()
     clear_grades = {user.id: {'posted_grade':''} for user in users}
-    for assignment in course.get_assignments_for_group(92059):
+    group_id = get_group_id(course)
+        
+    for assignment in course.get_assignments_for_group(group_id):
         if assignment.published:
             try:
                 progress = assignment.submissions_bulk_update(grade_data=clear_grades)
@@ -48,19 +56,20 @@ def get_conn():
 def course():
     conn = get_conn()
     refresh_token = None
+    user_id = 114217
+    
     with conn.cursor() as curs:
-        curs.execute("SELECT refresh_key FROM users WHERE user_id=114217;")
+        curs.execute("SELECT refresh_key FROM users WHERE user_id="+ str(user_id) +";")
         refresh_token = curs.fetchone()
     payload = {
             'grant_type': 'refresh_token',
             'client_id': os.getenv('OAUTH2_ID'),
             'redirect_uri': os.getenv('OAUTH2_URI'),
             'client_secret': os.getenv('OAUTH2_KEY'),
-            # refresh token has to be updated if no user in users db has this token
-            'refresh_token': '13171~R14iwX9tWrw1kycdHCoXjK9DIkczeacWMRQgqyBHmPuLojTyD00cxK5UJSQr2IJR'
+            'refresh_token': refresh_token
         }
     response = requests.post(
-        'https://ucsd.test.instructure.com/login/oauth2/token',
+        os.getenv('CANVAS_BASE_URL')+'/login/oauth2/token',
         data=payload
     )
     canvas = None
@@ -71,7 +80,7 @@ def course():
         with conn.cursor() as curs:
             curs.execute("UPDATE users "+
                         "SET api_key='"+api_key+"' "+
-                        "WHERE user_id=114217;")
+                        "WHERE user_id="+ str(user_id) +";")
         conn.commit()
         conn.close()
         course = canvas.get_course(20774)
@@ -92,7 +101,7 @@ def setup(course):
 
     # remove canvas classes
 
-    for assignment in course.get_assignments_for_group(92059):
+    for assignment in course.get_assignments_for_group(get_group_id(course)):
         if not 'Week' in assignment.name:
             assignment.delete()
         
@@ -147,10 +156,13 @@ def login(driver):
             (By.ID, "ssousername"))
     )
     driver.find_element(By.ID, "ssousername").send_keys(canvas_sso_username)
-    driver.find_element(By.ID, "ssopassword").click()
     driver.find_element(By.ID, "ssopassword").send_keys(canvas_sso_pw)
 
-    driver.find_element(By.NAME, "_eventId_proceed").click()
+    print(driver.find_element(By.ID, "ssousername").get_attribute("value"))
+    print(driver.find_element(By.ID, "ssopassword").get_attribute("value"))
+    
+    element = driver.find_element(By.XPATH, '//*[@id="login"]/button').click()
+    
     WebDriverWait(driver, SECONDS_WAIT).until(
         EC.visibility_of_element_located(
             (By.ID, "footer"))
@@ -162,10 +174,10 @@ def login(driver):
 
 @pytest.fixture
 def localhost(login):
-    login.find_element_by_css_selector('#DashboardCard_Container > div > div:nth-child(1) > div > div:nth-child(1) > div').click()
-    login.find_element_by_css_selector('#section-tabs > li:nth-child(4) > a').click()
-    login.find_element_by_css_selector('#context_module_item_979829 > div > div.ig-info > div.module-item-title > span > a').click()
-    login.find_element_by_css_selector('#tool_form > div > div.load_tab > div > button').click()
+    login.find_element_by_xpath('//*[@id="DashboardCard_Container"]/div/div[1]/div/div[1]/div/a').click()
+    login.find_element_by_xpath('//*[@id="section-tabs"]/li[4]/a').click()
+    login.find_element_by_xpath('//*[@id="context_module_item_1018581"]/div/div[2]/div[1]/span/a').click()
+    login.find_element_by_xpath('//*[@id="tool_form"]/div/div[1]/div/button').click()
     login.switch_to.window(login.window_handles[-1])
     try:
         print('Attempting to authorize')
@@ -174,9 +186,6 @@ def localhost(login):
         print('Already authorized')
     login.refresh()
     time.sleep(3)
-    
-    
-    assert login.title == 'Nbgrader to Canvas Grading'
 
     yield login
 # Check this by querying a known endpoint
@@ -208,7 +217,7 @@ def test_create_and_upload_unmatched_assignment(localhost, course):
     assignments = course.get_assignments()
     for assignment in assignments:
         if assignment.name == 'Test Assignment 3':
-            submission = assignment.get_submission(90840)
+            submission = assignment.get_submission(141754)
             assert submission.score == 2.0
             return
 
@@ -235,7 +244,7 @@ def test_upload_assignment_to_different_name(localhost, course):
     assignments = course.get_assignments()
     for assignment in assignments:
         if assignment.name == 'Week 3: Assignment':
-            submission = assignment.get_submission(114262)
+            submission = assignment.get_submission(141753)
             assert submission.score == 6.0
             return
 
@@ -295,7 +304,7 @@ def test_delete_assignment_updates_db(localhost):
     localhost.switch_to.window(localhost.window_handles[0])
     localhost.find_element_by_xpath('//*[@id="section-tabs"]/li[5]/a').click()
     time.sleep(2)
-    localhost.find_element_by_xpath('//*[@id="element_toggler_0"]/div/button/i').click()
+    # localhost.find_element_by_xpath('//*[@id="element_toggler_0"]/div/button/i').click()
     localhost.find_element_by_xpath('//*[@id="assign_'+assign_id+'_manage_link"]').click()
     localhost.find_element_by_id('assignment_'+assign_id+'_settings_delete_item').click()
     WebDriverWait(localhost, SECONDS_WAIT).until(EC.alert_is_present())
@@ -317,11 +326,21 @@ def test_upload_button_disables_during_upload(localhost):
     submit = localhost.find_element_by_id('submit_assign1')
     submit.click()
     assert submit.get_attribute("disabled") == 'true'
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Uploaded"
+        )
+    )
 
 # Tests that correct dropdowns disable during uploads
 def test_dropdown_disables_during_upload(localhost):
     localhost.find_element_by_id('submit_assign1').click()
     assert localhost.find_element_by_id('select_assign1').get_attribute("disabled") == 'true'
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Uploaded"
+        )
+    )
 
 # Tests uploading nbgrader assignments to canvas assignments that share a name with a different Nbgrader assignment
 def test_assignments_to_each_others_names(localhost, course):
@@ -357,10 +376,10 @@ def test_assignments_to_each_others_names(localhost, course):
     assignments = course.get_assignments()
     for assignment in assignments:
         if assignment.name == 'Test Assignment 1':
-            submission = assignment.get_submission(114262)
+            submission = assignment.get_submission(141753)
             assert submission.score == 6.0
         elif assignment.name == 'assign1':
-            submission = assignment.get_submission(114262)
+            submission = assignment.get_submission(141753)
             assert submission.score == 2.0
 
 # Tests that the correct name persists upon refreshing during upload
@@ -388,6 +407,11 @@ def test_different_name_persists_during_upload(localhost, course):
     localhost.refresh()
     time.sleep(2)
     assert Select(localhost.find_element_by_id('select_assign1')).first_selected_option.text == 'Test Assignment 1'
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Uploaded"
+        )
+    )
 
 # Tests that uploading an assignment then 
 def test_cancel_removes_entries_from_db(localhost):
@@ -434,6 +458,12 @@ def test_cancel_disabled_during_upload(localhost):
         )
     )
     assert localhost.find_element_by_id('cancel_assign1').get_attribute('disabled') == 'true'
+    WebDriverWait(localhost, SECONDS_WAIT).until(
+        EC.text_to_be_present_in_element(
+            (By.ID, "assign1"), "Uploaded"
+        )
+    )
+
 
     
 # Tests that cancel button disables after being used

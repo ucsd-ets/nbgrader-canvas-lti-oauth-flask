@@ -22,7 +22,7 @@ class TestUploadGrades(unittest.TestCase):
         if old_user:
             db.session.delete(old_user)
             db.session.commit()
-        self._user = Users(114217,'13171~EbhqmjsNUmp8M1zLZsMouZtGoZKQTg9KQsUNEIKexBXQRXf13MSFolcWC9VrH0mN',10,'')
+        self._user = Users(114217,'13171~RcKmrrEpUNajUlnEl3jDVJK3NEvPffOaomiWI2eJB6c6WTp6cKEJEs4gImOZ1B0u',10,'')
         db.session.add(self._user)
         db.session.commit()
         yield self._user
@@ -34,13 +34,14 @@ class TestUploadGrades(unittest.TestCase):
         self.grade_overview = GradeOverview()
         self.grade_overview.course_id = 20774
         self.grade_overview.group = 92059
+        self.grade_overview._nbgrader_course = 'TEST_NBGRADER'
 
     def test_init_canvas(self):
         self.grade_overview._init_canvas({'canvas_user_id': '114217'})
         assert self.grade_overview._course.name == 'Canvas Caliper Events Testing'
 
     def test_get_nbgrader_assignments(self):
-        assignments = self.grade_overview._get_nbgrader_assignments('TEST_NBGRADER')
+        assignments = self.grade_overview._get_nbgrader_assignments()
         names = {assignment.name for assignment in assignments}
         assert names == expected_nbgrader_assignments
     
@@ -55,7 +56,7 @@ class TestUploadGrades(unittest.TestCase):
         assert set(assignments.values()) == set(expected_canvas_assignments.values())
 
     def test_match_nb_assignments(self):
-        self.grade_overview.nb_assignments = self.grade_overview._get_nbgrader_assignments('TEST_NBGRADER')
+        self.grade_overview.nb_assignments = self.grade_overview._get_nbgrader_assignments()
         matches = self.grade_overview._match_nb_assignments()
         names = {m for m in matches}
         print(names)

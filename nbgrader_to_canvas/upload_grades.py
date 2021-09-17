@@ -13,6 +13,8 @@ import sys
 
 import sys
 import time
+import os.path
+from os import path
 #  Import the Canvas class
 from canvasapi.assignment import (
     Assignment,
@@ -24,11 +26,14 @@ from circuitbreaker import circuit
 
 
 upload_grades_blueprint = Blueprint('upload_grades', __name__)
+remove_upload_blueprint = Blueprint('remove_upload', __name__)
+get_late_penalty_blueprint = Blueprint('get_late_penalty', __name__)
+get_progress_blueprint = Blueprint('get_progress', __name__)
 current_uploads = []  
 
 # Web Views / Routes
 
-@app.route('/remove_upload', methods=['POST'])
+@remove_upload_blueprint.route('/remove_upload', methods=['GET', 'POST'])
 @circuit(failure_threshold=1, fallback_function=redirect_open_circuit)
 def remove_upload():
     assignment = request.form.get('form_nb_assign_name')
@@ -42,7 +47,7 @@ def remove_upload():
         db.session.commit()
     return out   
 
-@app.route('/get_late_penalty', methods=['GET', 'POST'])
+@get_late_penalty_blueprint.route('/get_late_penalty', methods=['GET', 'POST'])
 @circuit(failure_threshold=1, fallback_function=redirect_open_circuit)
 def get_late_penalty():
     assignment = request.form.get('assignment')
@@ -54,7 +59,7 @@ def get_late_penalty():
     return '0'
    
 
-@app.route('/get_progress', methods=['GET'])
+@get_progress_blueprint.route('/get_progress', methods=['GET'])
 @circuit(failure_threshold=10, fallback_function=redirect_open_circuit)
 def get_progress():
     """
@@ -65,7 +70,7 @@ def get_progress():
     """
     assignment = request.args.get('assignment')
     id = request.args.get('course_id')
-
+    
     status = AssignmentStatus.query.filter_by(nbgrader_assign_name=assignment, course_id=int(id)).first()
     if status:
         if status.status == 'Uploaded':
@@ -78,7 +83,7 @@ def get_progress():
 @upload_grades_blueprint.route('/upload_grades', methods=['GET', 'POST'])
 @circuit(failure_threshold=1, fallback_function=redirect_open_circuit)
 @lti(error=error, request='session', role='staff', app=app)
-def upload_grades(course_name="TEST_NBGRADER", lti=lti):
+def upload_grades(lti=lti):
     if not request.method == "POST":
         return None
 
@@ -90,7 +95,7 @@ def upload_grades(course_name="TEST_NBGRADER", lti=lti):
 
     
     reset_status(form_nb_assign_name, course_id)
-    upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti)
+    upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti)
     return "upload complete"
     
 def reset_status(form_nb_assign_name, course_id):
@@ -100,10 +105,10 @@ def reset_status(form_nb_assign_name, course_id):
         status.status='Initializing'
         db.session.commit()
 
-def upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti):
+def upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti):
     global current_uploads
     try:
-        uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti)
+        uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti)
         current_uploads.append(form_nb_assign_name)
         uploader.init_course()
         uploader.parse_form_data()
@@ -123,26 +128,32 @@ def upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, course_
 
 class UploadGrades:
 
-    def __init__(self, course_id, group, form_canvas_assign_id, form_nb_assign_name, course_name, late_penalty, lti=lti):
+    def __init__(self, course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti=lti):
        
         self._course_id = course_id
         self._group = group
         self._form_canvas_assign_id = form_canvas_assign_id
         self._form_nb_assign_name = form_nb_assign_name
-        self._course_name = course_name
         self._late_penalty=late_penalty
         self._lti = lti
         self._setup_canvasapi_debugging()
-        self._num_students = self._get_num_students()
     
-    def init_course(self, flask_session = session):
+    def init_course(self, flask_session = session, testing=False):
         self._setup_status()
         canvas_wrapper = CanvasWrapper(settings.API_URL, flask_session)
         canvas = canvas_wrapper.get_canvas()
         self._course = canvas.get_course(self._course_id)
         if self._course is None:
             raise Exception('Invalid course id')
-            
+        if testing:
+            self._nbgrader_course = 'TEST_NBGRADER'
+        else:
+            self._nbgrader_course = self._course.course_code
+        if not path.exists("/mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db"):
+            print("Gradebook missing for: {}".format(self._nbgrader_course))
+            raise Exception("Gradebook missing for: {}".format(self._nbgrader_course))
+        self._num_students = self._get_num_students()
+
     def parse_form_data(self):
         if (self._form_canvas_assign_id == 'create'):
             max_score = self._get_max_score()
@@ -214,7 +225,7 @@ class UploadGrades:
         '''Returns a dict of {id: {'posted_grade':score}} for all students in nb gradebook'''
         self.assignment_status.status = 'Fetching Grades'
         db.session.commit()
-        with Gradebook("sqlite:////mnt/nbgrader/"+self._course_name+"/grader/gradebook.db") as gb:
+        with Gradebook("sqlite:////mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db") as gb:
             nb_assignment = gb.find_assignment(self._form_nb_assign_name)
             
             nb_students = gb.students            
@@ -235,6 +246,13 @@ class UploadGrades:
                         nb_student_and_score['posted_grade'] = nb_submission.score*(100-int(self._late_penalty))/100
                     else:
                         nb_student_and_score['posted_grade'] = nb_submission.score
+                    canvas_comment = ""
+                    # for nb_notebook in nb_submission.notebooks:
+                    #     for nb_comment in nb_notebook.comments:
+                    #         if nb_comment.comment:
+                    #             canvas_comment += "Problem "+": "+nb_comment.comment + "\n"
+
+                    nb_student_and_score['text_comment'] = canvas_comment
                 except MissingEntry:
                     nb_student_and_score['posted_grade'] = ''
 
@@ -257,12 +275,12 @@ class UploadGrades:
         return assignment
 
     def _get_max_score(self):
-        with Gradebook("sqlite:////mnt/nbgrader/"+self._course_name+"/grader/gradebook.db") as gb:
+        with Gradebook("sqlite:////mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db") as gb:
             nb_assignment = gb.find_assignment(self._form_nb_assign_name)
             return nb_assignment.max_score
 
     def _get_num_students(self):
-        with Gradebook("sqlite:////mnt/nbgrader/"+self._course_name+"/grader/gradebook.db") as gb:
+        with Gradebook("sqlite:////mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db") as gb:
             return len(gb.students)
 
     # create new assignments as published

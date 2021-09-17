@@ -20,7 +20,7 @@ class TestUploadGrades(unittest.TestCase):
     @pytest.fixture
     def setup(self):
         wipe_db()
-        canvas_wrapper = CanvasWrapper('https://ucsd.test.instructure.com', {'canvas_user_id': '114217'})
+        canvas_wrapper = CanvasWrapper('https://canvas.ucsd.edu', {'canvas_user_id': '114217'})
         canvas = canvas_wrapper.get_canvas()
         course = canvas.get_course(20774)
         assignment2 = course.create_assignment({'name':'Test Assignment 2', 'published':'true', 'assignment_group_id':92059, 'points_possible':6})
@@ -33,7 +33,7 @@ class TestUploadGrades(unittest.TestCase):
         if old_user:
             db.session.delete(old_user)
             db.session.commit()
-        self._user = Users(114217,'13171~EbhqmjsNUmp8M1zLZsMouZtGoZKQTg9KQsUNEIKexBXQRXf13MSFolcWC9VrH0mN',10,'')
+        self._user = Users(114217,'13171~RcKmrrEpUNajUlnEl3jDVJK3NEvPffOaomiWI2eJB6c6WTp6cKEJEs4gImOZ1B0u',10,'')
         db.session.add(self._user)
         db.session.commit()
         yield self._user
@@ -42,32 +42,33 @@ class TestUploadGrades(unittest.TestCase):
 
     @pytest.fixture(autouse = True)
     def uploader(self, user, setup):
-        self.uploader = UploadGrades(20774, 92059, setup, 'Test Assignment 2', 'TEST_NBGRADER')
+        self.uploader = UploadGrades(20774, 92059, setup, 'Test Assignment 2', 0)
         yield self.uploader
     
     def test_init_course_returns_course_for_valid_course_id(self):
-        self.uploader.init_course({'canvas_user_id': '114217'})
+        self.uploader.init_course({'canvas_user_id': '114217'}, True)
         assert self.uploader._course.name == 'Canvas Caliper Events Testing'
     
     def test_init_course_raises_error_for_invalid_course_id(self):
         self.uploader._course_id=1234
         try:
-            self.uploader.init_course({'canvas_user_id': '114217'})
+            self.uploader.init_course({'canvas_user_id': '114217'}, True)
         except Exception as e:
             return
         assert False
 
     def test_get_canvas_students(self):
-        self.uploader.init_course({'canvas_user_id': '114217'})
+        self.uploader.init_course({'canvas_user_id': '114217'}, True)
         self.uploader._create_assignment_status()
         students = self.uploader._get_canvas_students()
         assert students == canvas_students
 
     def test_get_student_grades_returns_grades_for_valid_course_name(self):
         self.uploader._create_assignment_status()
+        self.uploader._nbgrader_course = 'TEST_NBGRADER'
+        self.uploader._num_students = self.uploader._get_num_students()
         grades = self.uploader._get_student_grades(canvas_students)
         print(grades)
-        print(student_grades)
         assert grades == student_grades
     
     def test_get_student_grades_raises_error_for_invalid_course_name(self):
@@ -81,12 +82,12 @@ class TestUploadGrades(unittest.TestCase):
         assert False
     
     def test_get_assignment_returns_assignment_for_valid_form_data(self):
-        self.uploader.init_course({'canvas_user_id': '114217'})
+        self.uploader.init_course({'canvas_user_id': '114217'}, True)
         assignment = self.uploader._get_assignment()
         assert assignment.name == existing_assignment
 
     def test_get_assignment_raises_error_for_invalid_form_data(self):
-        self.uploader.init_course({'canvas_user_id': '114217'})
+        self.uploader.init_course({'canvas_user_id': '114217'}, True)
         self.uploader._form_canvas_assign_id = 1234
         try:
             self.uploader._get_assignment()
@@ -96,8 +97,8 @@ class TestUploadGrades(unittest.TestCase):
         assert False
     
     def test_create_assignment(self):
-        custom_uploader = UploadGrades(20774, 92059, 'create', 'Test Assignment 3', 'TEST_NBGRADER')
-        custom_uploader.init_course({'canvas_user_id': '114217'})
+        custom_uploader = UploadGrades(20774, 92059, 'create', 'Test Assignment 3', 0)
+        custom_uploader.init_course({'canvas_user_id': '114217'}, True)
         assignment = custom_uploader._create_assignment(10)
         name = assignment.name
         assignment.delete()
@@ -105,7 +106,7 @@ class TestUploadGrades(unittest.TestCase):
 
 
     def test_submit_grades(self):
-        self.uploader.init_course({'canvas_user_id': '114217'})
+        self.uploader.init_course({'canvas_user_id': '114217'}, True)
         self.uploader.parse_form_data()
         progress = self.uploader._submit_grades()   
         assert progress.workflow_state == 'completed'
@@ -113,16 +114,16 @@ class TestUploadGrades(unittest.TestCase):
     # Checks the grade of Test Account 333, Test Assignment 1
     def test_grades_match_create(self):
         clear_grades()
-        self.uploader.init_course({'canvas_user_id': '114217'})
+        self.uploader.init_course({'canvas_user_id': '114217'}, True)
         # Call upload grades
-        custom_uploader = UploadGrades(20774, 92059, 'create', 'Test Assignment 1', 'TEST_NBGRADER')
-        custom_uploader.init_course({'canvas_user_id': '114217'})
+        custom_uploader = UploadGrades(20774, 92059, 'create', 'Test Assignment 1', 0)
+        custom_uploader.init_course({'canvas_user_id': '114217'}, True)
         custom_uploader.parse_form_data()
         custom_uploader.update_database()
         # Check the assignment is what is expected
         
         updated_assignment = custom_uploader.assignment_to_upload
-        submission = updated_assignment.get_submission(114262)
+        submission = updated_assignment.get_submission(141753)
         assert submission.score == 2.0    
 
     # Tests that status is created with proper initial values
@@ -133,7 +134,7 @@ class TestUploadGrades(unittest.TestCase):
     
     # Tests that status is refreshed properly. Uses _setup_status and _refresh_assignment_status
     def test_refresh_status(self):
-        test_status = AssignmentStatus(course_id=20774, nbgrader_assign_name='Test Assignment 2', canvas_assign_id='test', status = 'Bad Status', completion = 150)
+        test_status = AssignmentStatus(course_id=20774, nbgrader_assign_name='Test Assignment 2', canvas_assign_id='test', status='Bad Status', completion=150, late_penalty=0)
         db.session.add(test_status)
         db.session.commit()
         self.uploader._setup_status()
@@ -149,26 +150,26 @@ class TestUploadGrades(unittest.TestCase):
 
     # Tests uploading nbgrader assignment 'Test Assignment 1' with canvas assignment 'Week 2: Assignment'
     def test_grades_match_different_names(self):
-        custom_uploader = UploadGrades(20774, 92059, 192793, 'Test Assignment 1', 'TEST_NBGRADER')
-        custom_uploader.init_course({'canvas_user_id': '114217'})
+        custom_uploader = UploadGrades(20774, 92059, 192793, 'Test Assignment 1', 0)
+        custom_uploader.init_course({'canvas_user_id': '114217'}, True)
         custom_uploader.parse_form_data()
         custom_uploader.update_database()
         
         # Check the assignment is correct on canvas
         updated_assignment = custom_uploader.assignment_to_upload
-        submission = updated_assignment.get_submission(114262)
+        submission = updated_assignment.get_submission(141753)
         assert submission.score == 2.0 
         assert updated_assignment.name == 'Week 2: Assignment'
 
     # Tests uploading to 'Test Assignment 2' which already is matched to canvas 'Test Assignment 2'
     def test_grades_match_existing(self):
         clear_grades()
-        self.uploader.init_course({'canvas_user_id': '114217'})
+        self.uploader.init_course({'canvas_user_id': '114217'}, True)
         self.uploader.parse_form_data()
         self.uploader.update_database()
         # Check the assignment is correct on canvas
         updated_assignment = self.uploader.assignment_to_upload
-        submission = updated_assignment.get_submission(90840)
+        submission = updated_assignment.get_submission(141754)
         assert submission.score == 6.0
 
 

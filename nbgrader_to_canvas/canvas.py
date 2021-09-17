@@ -71,10 +71,14 @@ class Token:
                 'client_secret': settings.oauth2_key,
                 'refresh_token': self._user.refresh_key
             }
-        response = requests.post(
-            settings.BASE_URL + 'login/oauth2/token',
-            data=payload
-        )
+        try:
+            response = requests.post(
+                settings.BASE_URL + 'login/oauth2/token',
+                data=payload
+            )
+        except Exception as ex:
+            app.logger.error("Bad data in refresh request: {}".format(payload))
+            return False
 
         try:
             api_key = response.json()['access_token']

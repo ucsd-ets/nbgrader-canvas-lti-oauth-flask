@@ -250,11 +250,11 @@ Grading Overview
           success: function(result){
             console.log(result);
           },
-          error: function(result){
-            console.log(result);
-            if(result.status == 303) {
+          error: function(xmlhttprequest, textstatus, message){
+            if (textstatus === "timeout")return;
+            if(xmlhttprequest.status == 303) {
               window.location.href = result.responseText
-            }else if (result.status == 500){
+            }else if (xmlhttprequest.status == 500){
               window.location.href = 'open'
             }
           }
@@ -310,7 +310,7 @@ Grading Overview
       function updateStatus(current_assignment, counter, removeNull){
         console.log("test")
         $.getJSON(
-          "{{url_for('get_progress') }}",
+          "{{url_for('get_progress.get_progress') }}",
           { assignment: current_assignment,
             course_id: {{ course_id }} },
           function(data){
