@@ -22,6 +22,12 @@ def get_group_id(course):
                 return ag.id
     raise Exception('No assignment group named "Assignments"')
 
+def get_group_id(course):
+    for ag in course.get_assignment_groups():
+            if (ag.name == "Assignments"):
+                return ag.id
+    raise Exception('No assignment group named "Assignments"')
+
 def clear_grades(course):
     users = course.get_recent_students()
     clear_grades = {user.id: {'posted_grade':''} for user in users}
