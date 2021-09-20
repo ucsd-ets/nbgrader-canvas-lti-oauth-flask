@@ -6,10 +6,12 @@ from nbgrader_to_canvas import app, db, settings
 from nbgrader.api import Gradebook, MissingEntry
 from .models import AssignmentStatus
 from .canvas import CanvasWrapper
+from . import settings
 
 import json
 import logging
 import sys
+import requests
 
 import sys
 import time
@@ -93,7 +95,6 @@ def upload_grades(lti=lti):
     form_nb_assign_name = request.form.get('form_nb_assign_name')
     late_penalty = request.form.get('late_penalty')
 
-    
     reset_status(form_nb_assign_name, course_id)
     upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti)
     return "upload complete"
@@ -140,18 +141,13 @@ class UploadGrades:
     
     def init_course(self, flask_session = session, testing=False):
         self._setup_status()
+        self._flask_session = flask_session
         canvas_wrapper = CanvasWrapper(settings.API_URL, flask_session)
         canvas = canvas_wrapper.get_canvas()
         self._course = canvas.get_course(self._course_id)
         if self._course is None:
             raise Exception('Invalid course id')
-        if testing:
-            self._nbgrader_course = 'TEST_NBGRADER'
-        else:
-            self._nbgrader_course = self._course.course_code
-        if not path.exists("/mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db"):
-            print("Gradebook missing for: {}".format(self._nbgrader_course))
-            raise Exception("Gradebook missing for: {}".format(self._nbgrader_course))
+        self._setup_gradebook_path(testing)
         self._num_students = self._get_num_students()
 
     def parse_form_data(self):
@@ -164,6 +160,7 @@ class UploadGrades:
             self.assignment_to_upload = self._get_assignment()
 
         canvas_students = self._get_canvas_students()
+        self._delete_comments(canvas_students)
         self.student_grades = self._get_student_grades(canvas_students)
         self.canvas_assignment_id = self.assignment_to_upload.id
         
@@ -182,6 +179,15 @@ class UploadGrades:
             self._refresh_assignment_status()
         else:
             self._create_assignment_status()
+
+    def _setup_gradebook_path(self, testing):
+        if testing or self._course.course_code == 'ET-MCC-CCET_FA20':
+            self._nbgrader_course = 'TEST_NBGRADER'
+        else:
+            self._nbgrader_course = self._course.course_code
+        if not path.exists("/mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db"):
+            print("Gradebook missing for: {}".format(self._nbgrader_course))
+            raise Exception("Gradebook missing for: {}".format(self._nbgrader_course))
 
     def _create_assignment_status(self):
         self.assignment_status = AssignmentStatus(course_id=self._course_id, nbgrader_assign_name=self._form_nb_assign_name , canvas_assign_id=self._form_canvas_assign_id, status = 'Initializing', completion = 0, late_penalty=self._late_penalty)
@@ -247,10 +253,10 @@ class UploadGrades:
                     else:
                         nb_student_and_score['posted_grade'] = nb_submission.score
                     canvas_comment = ""
-                    # for nb_notebook in nb_submission.notebooks:
-                    #     for nb_comment in nb_notebook.comments:
-                    #         if nb_comment.comment:
-                    #             canvas_comment += "Problem "+": "+nb_comment.comment + "\n"
+                    for nb_notebook in nb_submission.notebooks:
+                        for nb_comment in nb_notebook.comments:
+                            if nb_comment.comment:
+                                canvas_comment += nb_comment.comment + "\n"
 
                     nb_student_and_score['text_comment'] = canvas_comment
                 except MissingEntry:
@@ -287,7 +293,21 @@ class UploadGrades:
     def _create_assignment(self, max_score):
         return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group, 'points_possible':max_score})
         
-    
+    def _delete_comments(self, canvas_students):
+        auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
+        for student in canvas_students.values():
+            try:
+                submission = self.assignment_to_upload.get_submission(student,include=['submission_comments'])
+
+                for comment in submission.submission_comments:
+                    response = requests.delete(
+                        "{}api/v1/courses/{}/assignments/{}/submissions/{}/comments/{}".format(
+                            settings.API_URL, self._course_id, self.assignment_to_upload.id, student, comment['id']
+                        ),
+                        headers = auth_header
+                    )
+            except Exception as e:
+                app.logger.error('Expection occured while clearing old comments: {}'.format(e))
 
     # Updates grades for given assignment. Returns progress resulting from upload attempt.
     def _submit_grades(self):

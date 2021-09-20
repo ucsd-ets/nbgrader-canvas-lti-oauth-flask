@@ -93,10 +93,7 @@ class GradeOverview:
     def init_assignments(self, flask_session = session):
         self.course_id = get_canvas_id()
         self._init_canvas(flask_session)
-        self._nbgrader_course = self._course.course_code
-        if not path.exists("/mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db"):
-            print("Gradebook missing for: {}".format(self._nbgrader_course))
-            raise Exception("Gradebook missing for: {}".format(self._nbgrader_course))
+        self._setup_gradebook_path()
         self.nb_assignments = self._get_nbgrader_assignments()
         self.group = self._get_assignment_group_id()
         self.canvas_assignments = self._get_canvas_assignments()
@@ -112,6 +109,15 @@ class GradeOverview:
         self._canvas_wrapper = CanvasWrapper(settings.API_URL, flask_session)
         self._canvas = self._canvas_wrapper.get_canvas()
         self._course = self._canvas.get_course(self.course_id)
+
+    def _setup_gradebook_path(self):
+        if self._course.course_code == 'ET-MCC-CCET_FA20':
+            self._nbgrader_course = 'TEST_NBGRADER'
+        else:
+            self._nbgrader_course = self._course.course_code
+        if not path.exists("/mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db"):
+            print("Gradebook missing for: {}".format(self._nbgrader_course))
+            raise Exception("Gradebook missing for: {}".format(self._nbgrader_course))
 
     def _get_nbgrader_assignments(self):
         '''Get the nbgrader_assignments from the course gradebook'''
