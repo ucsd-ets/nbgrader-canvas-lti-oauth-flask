@@ -23,8 +23,12 @@ Grading Overview
 {%- block sidebar -%}
 <li role="presentation" class="active"><a href="{{ base_url }}/grade_overview">Grading Overview</a></li>
 <li role="presentation"><a href="{{ base_url }}/grade_students">Grade Students {TODO}</a></li>
+<li> <label>Show Uploaded Assignments <input type = "checkbox" id="visibility_checkbox" name="visibility_checkbox" style="vertical-align: top;" onclick="visibilityToggle()"></label></li>
+<br>
+<li>Feedback from NbGrader will be automatically transfered as a downloadable comment on canvas.</li>
 <li> If you accidentally upload to the wrong assignment, use the cancel button to free the dropdown for re-uploading.</li>
 <li><b>Note that any uploaded grades cannot be reverted.</b></li>
+
 {%- endblock -%}
 
 {# Create bar across page #}
@@ -90,7 +94,7 @@ Grading Overview
 {%- block table_body -%}
 
   {% for name,match in nb_matches.items() %}
-  <tr>
+  <tr id="row_{{ name }}">
     {# create a submit form to upload grades for each row #}
     <form action="" method="POST" id="form_{{ name }}"> {# {{ url_for('upload_grades.upload_grades') }} #}
 
@@ -352,6 +356,8 @@ Grading Overview
                 status_label.className = "orangeText";
               } else if (data.status == 'Fetching Grades') {
                 status_label.className = "orangeText";
+              } else if (data.statu == 'Fetching Feedback') {
+                status_label.className = "orangeText";
               } else if (data.status == 'Uploading Grades') {
                 status_label.className = "orangeText";
               } else if (data.status == 'Uploaded') {
@@ -362,6 +368,9 @@ Grading Overview
                 document.getElementById('late_penalty_'+current_assignment).disabled = false;
                 updateCanvasDropdown(current_assignment, data.canvas_assign_id)
                 window.clearInterval(intervalIDs[counter]);
+                if (removeNull) {
+                  document.getElementById('row_'+current_assignment).hidden = true;
+                }
                 return;
               } else if (data.status == 'Failed') {
                 status_label.className = "redText";
@@ -445,27 +454,52 @@ Grading Overview
         }
       }
 
+      // called when visibility checkbox is clicked
+      function visibilityToggle(){
+        let checkbox = document.getElementById('visibility_checkbox');
+        
+        if (checkbox.checked) showUploaded();
+        else hideUploaded();
+      }
+
+      // makes all uploaded assignments visible
+      function showUploaded(){
+      console.log('show');
+        for (let assignment of assignments){
+          document.getElementById('row_'+assignment).hidden=false;
+        }
+      }
+
+      // hides all uploaded assignments
+      function hideUploaded(){
+      console.log('hide');
+      for (let assignment of assignments){
+          if (document.getElementById(assignment).innerHTML === "Uploaded")document.getElementById('row_'+assignment).hidden=true;
+        }
+      }
+
+
       // Page to display if upload fails
       function errorMessage(msg){
-      document.getElementsByTagName("body")[0].innerHTML = "" +
-      "<style> \n" + 
-      "  p { \n" +
-      "      text-align: center; \n" +
-      "      width: 50%; \n" +
-      "      margin: auto; \n" +
-      "  } \n" +
-      "  h1 { \n" +
-      "      text-align: center; \n" +
-      "      font: bold serif; \n" +
-      "  } \n" +
-      "</style> \n" +
-      "<header> \n" +
-      "    <h1>Error</h1><br> \n" +
-      "</header> \n" +
-      "<div> \n" +
-      "    <p>"+msg+"</p><br> \n" +
-      "    <p>For assistance with this issue please email <a href='mailto:canvas@ucsd.edu'>canvas@ucsd.edu</a></p> \n" +
-      "</div>";
+        document.getElementsByTagName("body")[0].innerHTML = "" +
+        "<style> \n" + 
+        "  p { \n" +
+        "      text-align: center; \n" +
+        "      width: 50%; \n" +
+        "      margin: auto; \n" +
+        "  } \n" +
+        "  h1 { \n" +
+        "      text-align: center; \n" +
+        "      font: bold serif; \n" +
+        "  } \n" +
+        "</style> \n" +
+        "<header> \n" +
+        "    <h1>Error</h1><br> \n" +
+        "</header> \n" +
+        "<div> \n" +
+        "    <p>"+msg+"</p><br> \n" +
+        "    <p>For assistance with this issue please email <a href='mailto:canvas@ucsd.edu'>canvas@ucsd.edu</a></p> \n" +
+        "</div>";
       }
 
     </script>

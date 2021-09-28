@@ -15,7 +15,7 @@ import requests
 
 import sys
 import time
-import os.path
+import os
 from os import path
 #  Import the Canvas class
 from canvasapi.assignment import (
@@ -137,6 +137,7 @@ class UploadGrades:
         self._form_nb_assign_name = form_nb_assign_name
         self._late_penalty=late_penalty
         self._lti = lti
+        self.nbgrader_feedback = {}
         self._setup_canvasapi_debugging()
     
     def init_course(self, flask_session = session, testing=False):
@@ -159,9 +160,12 @@ class UploadGrades:
         else: 
             self.assignment_to_upload = self._get_assignment()
 
-        canvas_students = self._get_canvas_students()
-        self._delete_comments(canvas_students)
-        self.student_grades = self._get_student_grades(canvas_students)
+        self.canvas_students = self._get_canvas_students()
+        self.assignment_status.status = 'Fetching Feedback'
+        db.session.commit()
+        self._delete_comments()        
+        self._get_feedbacks()
+        self.student_grades = self._get_student_grades()
         self.canvas_assignment_id = self.assignment_to_upload.id
         
     def update_database(self):
@@ -227,7 +231,7 @@ class UploadGrades:
                     db.session.commit()
         return canvas_students
     
-    def _get_student_grades(self, canvas_students):
+    def _get_student_grades(self):
         '''Returns a dict of {id: {'posted_grade':score}} for all students in nb gradebook'''
         self.assignment_status.status = 'Fetching Grades'
         db.session.commit()
@@ -252,13 +256,9 @@ class UploadGrades:
                         nb_student_and_score['posted_grade'] = nb_submission.score*(100-int(self._late_penalty))/100
                     else:
                         nb_student_and_score['posted_grade'] = nb_submission.score
-                    canvas_comment = ""
-                    for nb_notebook in nb_submission.notebooks:
-                        for nb_comment in nb_notebook.comments:
-                            if nb_comment.comment:
-                                canvas_comment += nb_comment.comment + "\n"
-
-                    nb_student_and_score['text_comment'] = canvas_comment
+                    if nb_student.id in self.nbgrader_feedback:
+                        nb_student_and_score['file_ids'] = [self.nbgrader_feedback[nb_student.id]]
+                        nb_student_and_score['text_comment'] = 'Transferred from datahub.'
                 except MissingEntry:
                     nb_student_and_score['posted_grade'] = ''
 
@@ -267,10 +267,10 @@ class UploadGrades:
                 # canvas's login_id instead of user_id              
 
                 # convert nbgrader username to canvas id (integer)
-                canvas_student_id = canvas_students[nb_student.id]
+                canvas_student_id = self.canvas_students[nb_student.id]
                 nb_grade_data[canvas_student_id] = nb_student_and_score
                 counter += 1
-                self.assignment_status.completion = 10+45*counter/self._num_students
+                self.assignment_status.completion = 20+45*counter/self._num_students
                 db.session.commit()
             return nb_grade_data
 
@@ -289,25 +289,72 @@ class UploadGrades:
         with Gradebook("sqlite:////mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db") as gb:
             return len(gb.students)
 
-    # create new assignments as published
     def _create_assignment(self, max_score):
         return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group, 'points_possible':max_score})
         
-    def _delete_comments(self, canvas_students):
+    def _delete_comments(self):
+        counter=0
+        '''clears old comments from submission to prevent cluttering of the comment section in case of re-submission'''
         auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
-        for student in canvas_students.values():
+        for student in self.canvas_students.values():
             try:
                 submission = self.assignment_to_upload.get_submission(student,include=['submission_comments'])
-
+                
                 for comment in submission.submission_comments:
                     response = requests.delete(
                         "{}api/v1/courses/{}/assignments/{}/submissions/{}/comments/{}".format(
                             settings.API_URL, self._course_id, self.assignment_to_upload.id, student, comment['id']
                         ),
                         headers = auth_header
-                    )
-            except Exception as e:
-                app.logger.error('Expection occured while clearing old comments: {}'.format(e))
+                        )
+            except Exception as ex:
+                app.logger.error('Error deleting comments: {}'.format(ex))
+            counter += 1
+            self.assignment_status.completion = 10+10*counter/self._num_students
+            db.session.commit()
+
+    def _get_feedbacks(self):
+        for student in self.canvas_students:
+            if not os.path.isdir('/mnt/nbgrader/'+self._nbgrader_course+'/grader/feedback/'+student+'/'+self._form_nb_assign_name):
+                continue
+            for file in os.listdir('/mnt/nbgrader/'+self._nbgrader_course+'/grader/feedback/'+student+'/'+self._form_nb_assign_name):
+                if file.endswith('.html'):
+                    files = {'file': open('/mnt/nbgrader/'+self._nbgrader_course+'/grader/feedback/'+student+'/'+self._form_nb_assign_name+'/'+file, 'rb')}
+                    r_json = self._prepare_feedback(student, file)  
+                    response = self._upload_feedback(r_json, files, student)
+                    r_json = response.json()
+                    if response.status_code >= 300 and response.status_code < 400:
+                        r_json = self._confirm_feedback(r_json) 
+                    self.nbgrader_feedback[student] = r_json['id']
+
+    def _prepare_feedback(self, student, file):
+        auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
+        upload_args = {'name':file}
+        response = requests.post(
+            "{}api/v1/courses/{}/assignments/{}/submissions/{}/comments/files".format(
+                settings.API_URL, self._course_id, self.assignment_to_upload.id, self.canvas_students[student]
+            ),
+            headers = auth_header,
+            data = upload_args
+        )
+        return response.json()
+    
+    def _upload_feedback(self, r_json, files, student):
+        response = requests.post(
+                r_json['upload_url'],
+                allow_redirects=False,
+                data=r_json['upload_params'],
+                files= files
+            )
+        return response        
+    
+    def _confirm_feedback(self, r_json):
+        headers = {'Content-Length':'0', 'Authorization': 'Bearer ' + self._flask_session['api_key']}
+        response = requests.get(
+            r_json['location'],
+            headers=headers
+        )
+        return response
 
     # Updates grades for given assignment. Returns progress resulting from upload attempt.
     def _submit_grades(self):
@@ -322,7 +369,10 @@ class UploadGrades:
             # Uploads don't happen asynchronously, so this becomes very innacurrate if multiple uploads are taking place
             counter +=1
             if self.assignment_status.completion < 95:
-                self.assignment_status.completion = 55 + 35*counter*4/self._num_students
+                self.assignment_status.completion = 65 + 30*counter*4/self._num_students
+                db.session.commit()
+            else:
+                self.assignment_status.completion = 95
                 db.session.commit()
             progress = progress.query()
         return progress

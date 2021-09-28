@@ -2,7 +2,8 @@ from nbgrader_to_canvas.upload_grades import UploadGrades
 from nbgrader_to_canvas.models import AssignmentStatus, Users
 from nbgrader_to_canvas.canvas import CanvasWrapper
 from tests.unit import canvas_students, student_grades, existing_assignment, wipe_db, clear_grades
-from tests.unit import FakeProgress
+from tests.unit import FakeProgress, FakeResponse
+from unittest.mock import MagicMock
 import unittest
 import pytest
 from nbgrader_to_canvas import db
@@ -61,21 +62,24 @@ class TestUploadGrades(unittest.TestCase):
         self.uploader.init_course({'canvas_user_id': '114217'}, True)
         self.uploader._create_assignment_status()
         students = self.uploader._get_canvas_students()
+        print(students)
         assert students == canvas_students
 
     def test_get_student_grades_returns_grades_for_valid_course_name(self):
         self.uploader._create_assignment_status()
         self.uploader._nbgrader_course = 'TEST_NBGRADER'
         self.uploader._num_students = self.uploader._get_num_students()
-        grades = self.uploader._get_student_grades(canvas_students)
+        self.uploader.canvas_students = canvas_students
+        grades = self.uploader._get_student_grades()
         print(grades)
         assert grades == student_grades
     
     def test_get_student_grades_raises_error_for_invalid_course_name(self):
         self.uploader._course_name = 'invalid name'
         self.uploader._create_assignment_status()
+        self.uploader.canvas_students = canvas_students
         try:
-            self.uploader._get_student_grades(canvas_students)
+            self.uploader._get_student_grades()
         except Exception as e:
             print("{}".format(e))
             return
@@ -172,5 +176,47 @@ class TestUploadGrades(unittest.TestCase):
         submission = updated_assignment.get_submission(141754)
         assert submission.score == 6.0
 
+     # Test comments are deleted
+    def test_comments_are_deleted(self):
+        self.uploader.init_course({'canvas_user_id': '114217'}, True)
+        self.uploader.parse_form_data()
+        self.uploader.update_database()
+        # assert that a comment exists for Test Assignment 2 for NBStudent_1
+        submission = self.uploader.assignment_to_upload.get_submission(141753,include=['submission_comments'])
+        assert len(submission.submission_comments) > 0
+            
+        self.uploader._delete_comments()
+        submission = self.uploader.assignment_to_upload.get_submission(141753,include=['submission_comments'])
+        assert len(submission.submission_comments) == 0
+            
 
+    # Test feedback is uploaded for assignment with feedback
+    def test_comment_for_feedback(self):
+        self.uploader.init_course({'canvas_user_id': '114217'}, True)
+        self.uploader.parse_form_data()
+        self.uploader.update_database()
+        # assert that a comment exists for Test Assignment 2 for NBStudent_1
+        submission = self.uploader.assignment_to_upload.get_submission(141753,include=['submission_comments'])
+        assert len(submission.submission_comments) > 0
+
+    # Test feedback is not uploaded for assignment without feedback
+    def test_no_comment_for_no_feedback(self):
+        custom_uploader = UploadGrades(20774, 92059, 'create', 'assign1', 0)
+        custom_uploader.init_course({'canvas_user_id': '114217'}, True)
+        custom_uploader.parse_form_data()
+        custom_uploader.update_database()
+        # assert that a comment exists for Test Assignment 2 for NBStudent_1
+        submission = custom_uploader.assignment_to_upload.get_submission(141753,include=['submission_comments'])
+        assert len(submission.submission_comments) == 0
+
+    # Test the 3XX upload feedback process
+    def test_3xx_response_handler(self):
+        self.uploader._upload_feedback = MagicMock(return_value=FakeResponse(status_code=301,json={}))
+        self.uploader._confirm_feedback = MagicMock(return_value={'id':301})
+        self.uploader.init_course({'canvas_user_id': '114217'}, True)
+        self.uploader.parse_form_data()
+        self.uploader.update_database()
+        # assert that a comment exists for Test Assignment 2 for NBStudent_1
+        submission = self.uploader.assignment_to_upload.get_submission(141753,include=['submission_comments'])
+        assert len(submission.submission_comments) > 0
     
