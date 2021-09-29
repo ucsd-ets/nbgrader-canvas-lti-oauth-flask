@@ -95,16 +95,9 @@ def upload_grades(lti=lti):
     form_nb_assign_name = request.form.get('form_nb_assign_name')
     late_penalty = request.form.get('late_penalty')
 
-    reset_status(form_nb_assign_name, course_id)
+    update_status(form_nb_assign_name, course_id,completion=0,status='Initializing')
     upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti)
     return "upload complete"
-    
-def reset_status(form_nb_assign_name, course_id):
-    status = AssignmentStatus.query.filter_by(nbgrader_assign_name=form_nb_assign_name, course_id=int(course_id)).first()
-    if status:
-        status.completion=0
-        status.status='Initializing'
-        db.session.commit()
 
 def upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti):
     global current_uploads
@@ -118,19 +111,29 @@ def upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_pe
     except Exception as ex:
         current_uploads.remove(form_nb_assign_name)
         try:
-            status = AssignmentStatus.query.filter_by(nbgrader_assign_name=form_nb_assign_name, course_id=int(course_id)).first()
-            if status:
-                status.completion=0
-                status.status='Failed'
-                db.session.commit()
+            update_status(form_nb_assign_name,course_id,completion=0,status='Failed')
         except Exception as exc:
             pass
         raise ex
 
+def update_status(nbgrader_assign_name, course_id, canvas_assign_id=None, status=None, completion=None, late_penalty=None,upload_progress_url=None):
+    db_status=AssignmentStatus.query.filter_by(nbgrader_assign_name=nbgrader_assign_name, course_id=int(course_id)).first()
+    if db_status:
+        if canvas_assign_id:
+            db_status.canvas_assign_id = canvas_assign_id
+        if status:
+            db_status.status = status
+        if completion:
+            db_status.completion = completion
+        if late_penalty:
+            db_status.late_penalty = late_penalty
+        if upload_progress_url:
+            db_status.upload_progress_url = upload_progress_url
+        db.session.commit()
+
 class UploadGrades:
 
     def __init__(self, course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti=lti):
-       
         self._course_id = course_id
         self._group = group
         self._form_canvas_assign_id = form_canvas_assign_id
@@ -141,28 +144,29 @@ class UploadGrades:
         self._setup_canvasapi_debugging()
     
     def init_course(self, flask_session = session, testing=False):
-        self._setup_status()
         self._flask_session = flask_session
+
         canvas_wrapper = CanvasWrapper(settings.API_URL, flask_session)
-        canvas = canvas_wrapper.get_canvas()
-        self._course = canvas.get_course(self._course_id)
+        self._course = canvas_wrapper.get_canvas().get_course(self._course_id)
         if self._course is None:
             raise Exception('Invalid course id')
+
+        self._setup_status()
         self._setup_gradebook_path(testing)
         self._num_students = self._get_num_students()
+
+        
+    
 
     def parse_form_data(self):
         if (self._form_canvas_assign_id == 'create'):
             max_score = self._get_max_score()
             self.assignment_to_upload = self._create_assignment(max_score)
-            self.assignment_status.canvas_assign_id = self.assignment_to_upload.id
-            db.session.commit()
+            update_status(self._form_nb_assign_name, self._course_id, canvas_assign_id=self.assignment_to_upload.id)
         else: 
             self.assignment_to_upload = self._get_assignment()
 
         self.canvas_students = self._get_canvas_students()
-        self.assignment_status.status = 'Fetching Feedback'
-        db.session.commit()
         self._delete_comments()        
         self._get_feedbacks()
         self.student_grades = self._get_student_grades()
@@ -170,17 +174,13 @@ class UploadGrades:
         
     def update_database(self):
         progress = self._submit_grades()
-        
-        self._update_status(progress)
-        self.assignment_status.status = 'Uploaded'
-        self.assignment_status.completion = 100
-        db.session.commit()
+        update_status(self._form_nb_assign_name, self._course_id, status='Uploaded', completion=100,upload_progress_url=progress.url)
         return progress
 
     def _setup_status(self):
         self.assignment_status = AssignmentStatus.query.filter_by(course_id = self._course_id, nbgrader_assign_name = self._form_nb_assign_name).first()
         if self.assignment_status:
-            self._refresh_assignment_status()
+            update_status(self._form_nb_assign_name, self._course_id, status='Initializing', completion=0, late_penalty=self._late_penalty)
         else:
             self._create_assignment_status()
 
@@ -196,13 +196,7 @@ class UploadGrades:
     def _create_assignment_status(self):
         self.assignment_status = AssignmentStatus(course_id=self._course_id, nbgrader_assign_name=self._form_nb_assign_name , canvas_assign_id=self._form_canvas_assign_id, status = 'Initializing', completion = 0, late_penalty=self._late_penalty)
         db.session.add(self.assignment_status)
-        db.session.commit()
-
-    def _refresh_assignment_status(self):
-        self.assignment_status.status = 'Initializing'
-        self.assignment_status.completion = 0
-        self.assignment_status.late_penalty=self._late_penalty
-        db.session.commit()
+        db.session.commit()        
 
     #Sets up debugging for canvasapi
     def _setup_canvasapi_debugging(self):
@@ -227,14 +221,12 @@ class UploadGrades:
                 canvas_students[user.login_id]=user.id  
                 if counter < self._num_students:
                     counter += 1
-                    self.assignment_status.completion = 10*counter/self._num_students
-                    db.session.commit()
+                    update_status(self._form_nb_assign_name, self._course_id, completion=5*counter/self._num_students)
         return canvas_students
     
     def _get_student_grades(self):
         '''Returns a dict of {id: {'posted_grade':score}} for all students in nb gradebook'''
-        self.assignment_status.status = 'Fetching Grades'
-        db.session.commit()
+        update_status(self._form_nb_assign_name, self._course_id, status='Fetching Grades')
         with Gradebook("sqlite:////mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db") as gb:
             nb_assignment = gb.find_assignment(self._form_nb_assign_name)
             
@@ -250,15 +242,17 @@ class UploadGrades:
                 # MissingEntry exception will be raised and we assign them a score of None.
                 
                 try:
-                    
                     nb_submission = gb.find_submission(nb_assignment.name, nb_student.id)
+
                     if nb_submission.total_seconds_late > 0:
                         nb_student_and_score['posted_grade'] = nb_submission.score*(100-int(self._late_penalty))/100
                     else:
                         nb_student_and_score['posted_grade'] = nb_submission.score
+
                     if nb_student.id in self.nbgrader_feedback:
                         nb_student_and_score['file_ids'] = [self.nbgrader_feedback[nb_student.id]]
                         nb_student_and_score['text_comment'] = 'Transferred from datahub.'
+
                 except MissingEntry:
                     nb_student_and_score['posted_grade'] = ''
 
@@ -270,8 +264,7 @@ class UploadGrades:
                 canvas_student_id = self.canvas_students[nb_student.id]
                 nb_grade_data[canvas_student_id] = nb_student_and_score
                 counter += 1
-                self.assignment_status.completion = 20+45*counter/self._num_students
-                db.session.commit()
+                update_status(self._form_nb_assign_name, self._course_id, completion=35+30*counter/self._num_students)
             return nb_grade_data
 
     def _get_assignment(self):
@@ -293,53 +286,64 @@ class UploadGrades:
         return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group, 'points_possible':max_score})
         
     def _delete_comments(self):
-        counter=0
         '''clears old comments from submission to prevent cluttering of the comment section in case of re-submission'''
+        update_status(self._form_nb_assign_name, self._course_id, completion=5, status='Removing Old Feedback')
+        counter = 0
         auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
-        for student in self.canvas_students.values():
-            try:
-                submission = self.assignment_to_upload.get_submission(student,include=['submission_comments'])
-                
-                for comment in submission.submission_comments:
-                    response = requests.delete(
-                        "{}api/v1/courses/{}/assignments/{}/submissions/{}/comments/{}".format(
-                            settings.API_URL, self._course_id, self.assignment_to_upload.id, student, comment['id']
-                        ),
-                        headers = auth_header
-                        )
-            except Exception as ex:
-                app.logger.error('Error deleting comments: {}'.format(ex))
-            counter += 1
-            self.assignment_status.completion = 10+10*counter/self._num_students
-            db.session.commit()
+        with Gradebook("sqlite:////mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db") as gb:
+            for student in gb.students:
+                try:
+                    submission = self.assignment_to_upload.get_submission(self.canvas_students[student.id],include=['submission_comments'])
+                    
+                    for comment in submission.submission_comments:
+                        if comment['comment'] == 'Transferred from datahub.':
+                            response = requests.delete(
+                                "{}api/v1/courses/{}/assignments/{}/submissions/{}/comments/{}".format(
+                                    settings.API_URL, self._course_id, self.assignment_to_upload.id, student.id, comment['id']
+                                ),
+                                headers = auth_header
+                                )
+                except Exception as ex:
+                    raise ex
+                    app.logger.error('Error deleting comments: {}'.format(ex))
+                if counter < self._num_students:
+                    counter += 1
+                    update_status(self._form_nb_assign_name, self._course_id, completion=5+15*counter/self._num_students)
+            
 
     def _get_feedbacks(self):
-        for student in self.canvas_students:
-            if not os.path.isdir('/mnt/nbgrader/'+self._nbgrader_course+'/grader/feedback/'+student+'/'+self._form_nb_assign_name):
-                continue
-            for file in os.listdir('/mnt/nbgrader/'+self._nbgrader_course+'/grader/feedback/'+student+'/'+self._form_nb_assign_name):
-                if file.endswith('.html'):
-                    files = {'file': open('/mnt/nbgrader/'+self._nbgrader_course+'/grader/feedback/'+student+'/'+self._form_nb_assign_name+'/'+file, 'rb')}
-                    r_json = self._prepare_feedback(student, file)  
-                    response = self._upload_feedback(r_json, files, student)
-                    r_json = response.json()
-                    if response.status_code >= 300 and response.status_code < 400:
-                        r_json = self._confirm_feedback(r_json) 
-                    self.nbgrader_feedback[student] = r_json['id']
+        update_status(self._form_nb_assign_name, self._course_id, completion=20, status='Fetching Feedback')
+        counter = 0
+        with Gradebook("sqlite:////mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db") as gb:
+            for student in gb.students:
+                if not os.path.isdir('/mnt/nbgrader/'+self._nbgrader_course+'/grader/feedback/'+student.id+'/'+self._form_nb_assign_name):
+                    continue
+                for file in os.listdir('/mnt/nbgrader/'+self._nbgrader_course+'/grader/feedback/'+student.id+'/'+self._form_nb_assign_name):
+                    if file.endswith('.html'):
+                        files = {'file': open('/mnt/nbgrader/'+self._nbgrader_course+'/grader/feedback/'+student.id+'/'+self._form_nb_assign_name+'/'+file, 'rb')}
+                        r_json = self._prepare_feedback(student, file)  
+                        response = self._upload_feedback(r_json, files)
+                        r_json = response.json()
+                        if response.status_code >= 300 and response.status_code < 400:
+                            r_json = self._confirm_feedback(r_json) 
+                        self.nbgrader_feedback[student.id] = r_json['id']
+                if counter < self._num_students:
+                    counter += 1
+                    update_status(self._form_nb_assign_name, self._course_id, completion=20+15*counter/self._num_students)
 
     def _prepare_feedback(self, student, file):
         auth_header = {'Authorization': 'Bearer ' + self._flask_session['api_key']}
         upload_args = {'name':file}
         response = requests.post(
             "{}api/v1/courses/{}/assignments/{}/submissions/{}/comments/files".format(
-                settings.API_URL, self._course_id, self.assignment_to_upload.id, self.canvas_students[student]
+                settings.API_URL, self._course_id, self.assignment_to_upload.id, self.canvas_students[student.id]
             ),
             headers = auth_header,
             data = upload_args
         )
         return response.json()
     
-    def _upload_feedback(self, r_json, files, student):
+    def _upload_feedback(self, r_json, files):
         response = requests.post(
                 r_json['upload_url'],
                 allow_redirects=False,
@@ -358,8 +362,7 @@ class UploadGrades:
 
     # Updates grades for given assignment. Returns progress resulting from upload attempt.
     def _submit_grades(self):
-        self.assignment_status.status = 'Uploading Grades'
-        db.session.commit()
+        update_status(self._form_nb_assign_name, self._course_id, status='Uploading Grades')
         self.assignment_to_upload.edit(assignment={'published':True})
         progress = self.assignment_to_upload.submissions_bulk_update(grade_data=self.student_grades)
         counter = 0
@@ -369,14 +372,8 @@ class UploadGrades:
             # Uploads don't happen asynchronously, so this becomes very innacurrate if multiple uploads are taking place
             counter +=1
             if self.assignment_status.completion < 95:
-                self.assignment_status.completion = 65 + 30*counter*4/self._num_students
-                db.session.commit()
+                update_status(self._form_nb_assign_name, self._course_id, completion=65 + 30*counter*4/self._num_students)
             else:
-                self.assignment_status.completion = 95
-                db.session.commit()
+                update_status(self._form_nb_assign_name, self._course_id, completion=95)
             progress = progress.query()
         return progress
-
-    def _update_status(self, progress):
-        self.assignment_status.upload_progress_url = progress.url
-        db.session.commit()
