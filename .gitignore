@@ -1,0 +1,34 @@
+#vscode
+workspace.code-workspace
+nb-can-flask-oauth.code-workspace
+# Flask
+*.pyc
+env/
+venv/
+*.DS_STORE
+test.db
+src/
+*.log
+.env
+.pytest_cache/
+*.png
+*.db
+flask_session/
+# postgresql
+pgdata/
+# slenium venv
+lib/
+include/
+bin/
+*.egg-info
+scripts/activate*
+scripts/deactivate.bat
+scripts/pip*
+scripts/py*
+scripts/chardetect.exe
+# kubernetes
+kubernetes/ingress-secret.yaml
+kubernetes/nbgrader2canvas-secret.yaml
+kubernetes/postgres-secret.yaml
+# helm
+nb2canvas-chart/values.yaml
