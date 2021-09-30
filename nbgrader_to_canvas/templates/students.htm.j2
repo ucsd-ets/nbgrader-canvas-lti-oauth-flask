@@ -1,0 +1,69 @@
+{%- extends 'base.htm.j2' -%}
+
+{%- block head -%}
+
+    <script language="JavaScript">
+    function toggle(source) {
+        checkboxes = document.getElementsByName('students');
+        for(var i=0, n=checkboxes.length;i<n;i++) {
+            checkboxes[i].checked = source.checked; 
+        }
+    }
+    </script>
+
+    <!-- <script src="{{ base_url }}/formgrader/static/js/manage_students.js"></script> -->
+    
+{%- endblock -%}
+
+{%- block title -%}
+Grade Students
+{%- endblock -%}
+
+-- Display sidebar with highlighting for current section -->
+{%- block sidebar -%}
+<li role="presentation"><a href="{{ base_url }}/grade_overview">Grading Overview</a></li>
+<!-- <li role="presentation"><a href="{{ base_url }}/grade_assignments">Grade Assignments</a></li> --> <!-- Not necessary anymore -->
+<li role="presentation" class="active"><a href="{{ base_url }}/grade_students">Grade Students</a></li>
+{%- endblock -%}
+
+{%- block breadcrumbs -%}
+<ol class="breadcrumb">
+  <li class="active">Students</li>
+</ol>
+{%- endblock -%}
+
+{%- block table_header -%}
+<tr>
+  <th><input type="checkbox" id="assignment_header" onClick="toggle(this)" /></th>
+  <th class="text-center">Name</th>
+  <th class="text-center">Student ID</th>
+  {% for i in range(1, 4) %}
+  <th class="text-center">Assignment {{i}} Score</th>
+  {% endfor %}
+  <th class="text-center">Overall Score</th>
+</tr>
+{%- endblock -%}
+
+{%- block table_body -%}
+    {% for i in range(1, 4) %}
+        <tr>
+            <td><input type="checkbox" name="students" id="student{{i}}""></td>
+            <td class="text-center">Student {{i}}</td>
+            <td class="text-center">3/{{i}}/2021</td>
+            {% for i in range(1, 4) %}
+                <td class="text-center">{{i * 10 + 50}}</th>
+            {% endfor %}
+            <td class="text-center">
+        </tr>
+    {% endfor %}
+    <!-- <tr><td colspan="5">Loading, please wait...</td></tr> -->
+{%- endblock -%}
+
+{%- block table_footer -%}
+<tr>
+    <td colspan="7">
+    <!-- <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+    <a href="#" onClick="createStudentModal();">Add new student...</a> -->
+    </td>
+</tr>
+{%- endblock -%}

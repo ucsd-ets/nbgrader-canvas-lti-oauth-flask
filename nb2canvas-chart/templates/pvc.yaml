@@ -1,0 +1,31 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Values.pvc.nb2canvas.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nb2canvas-chart.nb2canvas.pvc.labels" . | nindent 4 }}
+spec:
+  storageClassName:  {{ .Values.pvc.nb2canvas.storageClassName }}
+  accessModes:
+    - {{ .Values.pvc.nb2canvas.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.pvc.nb2canvas.storage}}
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Values.pvc.postgres.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nb2canvas-chart.postgres.pvc.labels" . | nindent 4 }}
+spec:
+  storageClassName: {{ .Values.pvc.postgres.storageClassName }}
+  accessModes:
+    - {{ .Values.pvc.postgres.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.pvc.postgres.storage }}
