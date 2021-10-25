@@ -14,6 +14,7 @@ from .models import AssignmentStatus
 from canvasapi.exceptions import InvalidAccessToken
 from .upload_grades import current_uploads
 from .canvas import CanvasWrapper, Token
+from .utils import open_gradebook
 
 from circuitbreaker import circuit
 
@@ -94,7 +95,7 @@ class GradeOverview:
         self.course_id = get_canvas_id()
         self._init_canvas(flask_session)
         self._setup_gradebook_path()
-        self.nb_assignments = self._get_nbgrader_assignments()
+        self.nb_assignments = self._get_nbgrader_assignments(gb=self._nbgrader_course)
         self.group = self._get_assignment_group_id()
         self.canvas_assignments = self._get_canvas_assignments()
         
@@ -118,11 +119,11 @@ class GradeOverview:
         if not path.exists("/mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db"):
             print("Gradebook missing for: {}".format(self._nbgrader_course))
             raise Exception("Gradebook missing for: {}".format(self._nbgrader_course))
-
-    def _get_nbgrader_assignments(self):
+    
+    @open_gradebook
+    def _get_nbgrader_assignments(self,gb):
         '''Get the nbgrader_assignments from the course gradebook'''
-        with Gradebook("sqlite:////mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db") as gb:
-            return gb.assignments
+        return gb.assignments
 
     def _get_assignment_group_id(self):
         assignment_groups = self._course.get_assignment_groups()

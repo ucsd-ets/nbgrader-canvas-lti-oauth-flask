@@ -6,6 +6,7 @@ from datetime import timedelta
 from . import app
 from . import settings
 from . import db
+from nbgrader.api import Gradebook
 from circuitbreaker import CircuitBreakerMonitor
 
 open_blueprint = Blueprint('open', __name__)
@@ -116,6 +117,16 @@ def check_valid_user(f):
 
         return f(*args, **kwargs)
     return decorated_function
+
+def open_gradebook(f):
+    
+    def decorated(*args, **kwargs):
+        if 'gb' not in kwargs:
+            raise Exception(f'No course info provided to open gradebook.\nargs:{args},Kwargs:{kwargs}')
+        with Gradebook("sqlite:////mnt/nbgrader/"+kwargs['gb']+"/grader/gradebook.db") as gb:
+            kwargs['gb']=gb
+            return f(*args,**kwargs)
+    return decorated
 
 @app.teardown_request
 def handle_bad_request(e):

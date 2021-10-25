@@ -68,9 +68,9 @@ class TestUploadGrades(unittest.TestCase):
     def test_get_student_grades_returns_grades_for_valid_course_name(self):
         self.uploader._create_assignment_status()
         self.uploader._nbgrader_course = 'TEST_NBGRADER'
-        self.uploader._num_students = self.uploader._get_num_students()
+        self.uploader._num_students = self.uploader._get_num_students(gb='TEST_NBGRADER')
         self.uploader.canvas_students = canvas_students
-        grades = self.uploader._get_student_grades()
+        grades = self.uploader._get_student_grades(gb='TEST_NBGRADER')
         print(grades)
         assert grades == student_grades
     
@@ -79,7 +79,7 @@ class TestUploadGrades(unittest.TestCase):
         self.uploader._create_assignment_status()
         self.uploader.canvas_students = canvas_students
         try:
-            self.uploader._get_student_grades()
+            self.uploader._get_student_grades(gb='TEST_NBGRADER')
         except Exception as e:
             print("{}".format(e))
             return
@@ -145,13 +145,6 @@ class TestUploadGrades(unittest.TestCase):
         status = AssignmentStatus.query.filter_by(nbgrader_assign_name='Test Assignment 2').first()
         assert status.status == 'Initializing'
 
-    # Tests that progress url in db is updated when _update_status is called
-    def test_update_status(self):
-        self.uploader._create_assignment_status()
-        self.uploader._update_status(FakeProgress('Fake Progress Url'))
-        status = AssignmentStatus.query.filter_by(nbgrader_assign_name='Test Assignment 2').first()
-        assert status.upload_progress_url == 'Fake Progress Url'
-
     # Tests uploading nbgrader assignment 'Test Assignment 1' with canvas assignment 'Week 2: Assignment'
     def test_grades_match_different_names(self):
         custom_uploader = UploadGrades(20774, 92059, 192793, 'Test Assignment 1', 0)
@@ -185,7 +178,7 @@ class TestUploadGrades(unittest.TestCase):
         submission = self.uploader.assignment_to_upload.get_submission(141753,include=['submission_comments'])
         assert len(submission.submission_comments) > 0
             
-        self.uploader._delete_comments()
+        self.uploader._delete_comments(gb='TEST_NBGRADER')
         submission = self.uploader.assignment_to_upload.get_submission(141753,include=['submission_comments'])
         assert len(submission.submission_comments) == 0
             
@@ -208,15 +201,4 @@ class TestUploadGrades(unittest.TestCase):
         # assert that a comment exists for Test Assignment 2 for NBStudent_1
         submission = custom_uploader.assignment_to_upload.get_submission(141753,include=['submission_comments'])
         assert len(submission.submission_comments) == 0
-
-    # Test the 3XX upload feedback process
-    def test_3xx_response_handler(self):
-        self.uploader._upload_feedback = MagicMock(return_value=FakeResponse(status_code=301,json={}))
-        self.uploader._confirm_feedback = MagicMock(return_value={'id':301})
-        self.uploader.init_course({'canvas_user_id': '114217'}, True)
-        self.uploader.parse_form_data()
-        self.uploader.update_database()
-        # assert that a comment exists for Test Assignment 2 for NBStudent_1
-        submission = self.uploader.assignment_to_upload.get_submission(141753,include=['submission_comments'])
-        assert len(submission.submission_comments) > 0
     

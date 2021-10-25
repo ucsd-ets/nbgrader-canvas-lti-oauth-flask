@@ -29,7 +29,6 @@ RUN pip install -r requirements.txt && \
 # TODO find cleaner solution
 COPY scripts/init-flask.sh /
 COPY scripts/start-flask.sh /
-COPY mocks /tmp/nbgrader
 RUN chmod +x /*.sh && \
     dos2unix /init-flask.sh && \
     dos2unix /start-flask.sh && \
