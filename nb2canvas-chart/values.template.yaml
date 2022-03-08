@@ -1,0 +1,172 @@
+# global
+namespace: 
+  name: nb2canvas
+
+# nb2canvas and postgres deployment
+deployment:
+  nb2canvas:
+    name: nb2canvas
+    replicaCount: 1
+    image: 
+      repo: ucsdets/nbgrader-canvas-lti-oauth-flask
+      tag: 1.0.11
+    port: 5000
+    secret: nbgrader2canvas-secret
+    app:
+      name: app
+      mountPath: /app
+      server: its-dsmlp-fs01.ucsd.edu
+      path: /export/apps/nbgrader-canvas-lti-oauth-flask
+    nbgrader:
+      name: nbgrader
+      mountPath: /mnt/nbgrader
+      server: its-dsmlp-fs01.ucsd.edu
+      path: /export/nbgrader/dsmlp/
+
+  postgres:
+    name: postgres
+    replicaCount: 1
+    image: 
+      repo: postgres:13
+    port: 5432
+    secret: postgres-secret
+    pgdata:
+      name: pgdata
+      mountPath: /var/lib/postgresql/data/pgdata
+      claimName: postgres-pvc 
+    start:
+      name: start-db
+      mountPath: /docker-entrypoint-initdb.d
+      server: its-dsmlp-fs01.ucsd.edu
+      path: /export/apps/nbgrader-canvas-lti-oauth-flask/scripts   
+
+
+# nb2canvas and postgres service
+service:
+  nb2canvas:
+    name: nbgrader2canvas-service
+    protocol: TCP
+    port: 5000
+
+  postgres:
+    name: postgres-service
+    protocol: TCP
+    port: 5432
+
+# nb2canvas secrets
+secret:
+  nb2canvas:
+    name: nbgrader2canvas-secret
+    type: Opaque
+    data:
+      FLASK_DEBUG: "1"
+      FLASK_ENV: production
+      DEBUG_METRICS: "1"
+      CANVAS_SSO_USERNAME: 
+      CANVAS_SSO_PASSWORD: 
+      CANVAS_BASE_URL: https://canvas.ucsd.edu
+      OAUTH2_ID: 
+      OAUTH2_KEY: 
+      OAUTH2_URI: https://nb2canvas.ucsd.edu/oauthlogin
+      LTI_CONSUMER_KEY: 
+      LTI_SHARED_SECRET: 
+      SECRET_KEY: 
+      DATABASE_URI: 
+      SESSION_KEY: 
+
+  postgres:
+    name: postgres-secret
+    type: Opaque
+    data:
+      POSTGRES_USER: 
+      POSTGRES_PASSWORD: 
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+  selenium:
+    name: tests-secret
+    type: Opaque
+
+  
+
+# nb2canvas Persistent Volume
+pv:
+  nb2canvas:
+    name: nbgrader2canvas-pv
+    storageClassName: manual
+    storage: 1Gi
+    accessMode: ReadOnlyMany
+    nfs:
+      server: its-dsmlp-fs01.ucsd.edu
+      path: /export/apps/nbgrader-canvas-lti-oauth-flask/mocks
+
+  postgres:
+    name: postgres-pv
+    storageClassName: manual
+    storage: 1Gi
+    accessMode: ReadWriteMany
+    nfs:
+      server: its-dsmlp-fs01.ucsd.edu
+      path: /export/apps/nbgrader-canvas-lti-oauth-flask/pgdata
+
+pvc:
+  nb2canvas:
+    name: nbgrader2canvas-pvc
+    storageClassName: manual
+    accessMode: ReadOnlyMany
+    storage: 1Gi
+  postgres:
+    name: postgres-pvc
+    storageClassName: manual
+    accessMode: ReadWriteMany
+    storage: 1Gi
+
+# ingress
+ingress:
+  name: nbgrader2canvas-ingress
+  rewriteTarget: /
+  tls:
+    devName: tls-dev-secret
+    prodName: tls-prod-secret
+  devHost: nb2canvas-dev.ucsd.edu
+  prodHost: nb2canvas.ucsd.edu
+  pathType: Prefix
+  path: /
+  serviceName: nbgrader2canvas-service
+  servicePort: 5000
+    
+# tls secrets
+tls:
+  type: kubernetes.io/tls
+  dev:
+    name: tls-dev-secret
+    crt: 
+    key: 
+  prod:
+    name: tls-prod-secret
+    crt: 
+    key: 
+
+# jobs
+
+jobs:
+  selenium:
+    name: selenium
+    restartPolicy: OnFailure
+    backoffLimit: 4
+    tester:
+      name: tester
+      image: jdkindley/selenium:1.0.2
+      secret: tests-secret
+      tests:
+        name: tests
+        mountPath: /app
+        server: its-dsmlp-fs01.ucsd.edu
+        path: /export/apps/nbgrader-canvas-lti-oauth-flask/tests
+    
+    standalone:
+      name: standalone
+      image: selenium/standalone-chrome
+      port: 4444
+
+    
+    

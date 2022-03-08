@@ -4,8 +4,8 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from prometheus_flask_exporter import PrometheusMetrics
-from datetime import timedelta
-from flask_session import Session, SqlAlchemySessionInterface
+from flask_session import Session
+from circuitbreaker import circuit
 
 from . import settings
 
@@ -26,16 +26,13 @@ app = Flask(__name__, template_folder='./templates')
 # see sqlalchemy code after init_app below too
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
 app.config['SESSION_TYPE'] = 'sqlalchemy'
+app.config['SQLALCHEMY_POOL_TIMEOUT'] = 600
+app.config['SQLALCHEMY_POOL_RECYCLE'] = 300
 
 app.secret_key = settings.secret_key
 app.config.from_object(settings.configClass)
 
 #app.config['SECRET_KEY'] = config.SECRET_KEY
-
-# initialize session instance with app
-sess = Session()
-sess.init_app(app)
-
 
 # add middleware
 app.wsgi_app = ProxyFix(app.wsgi_app)
@@ -46,17 +43,20 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 #
 
 # initialize db
+
 db = SQLAlchemy(app)
 
-# below may not be required; we create sessions table manually in models.py
-# https://stackoverflow.com/questions/45887266/flask-session-how-to-create-the-session-table?noredirect=1&lq=1
-#app.config['SESSION_SQLALCHEMY'] = os.getenv('DATABASE_URI')
 app.config['SESSION_SQLALCHEMY'] = db
-app.config['SESSION_SQLALCHEMY_TABLE'] = 'sessions'
-#SqlAlchemySessionInterface(app, db, "sessions", "sess_")
+app.config['PRESERVE_CONTEXT_ON_EXCEPTION'] = False
+
+
+sess = Session()
+sess.init_app(app)
 
 from . import models
+
 db.create_all()
+
 
 # routes
 from .healthz import healthz_blueprint
@@ -64,13 +64,12 @@ from .launch import launch_blueprint
 from .oauthlogin import oauth_login_blueprint
 from .xml import xml_blueprint
 from .index import index_blueprint
-from .upload_grades import upload_grades_blueprint
+from .upload_grades import upload_grades_blueprint, remove_upload_blueprint, get_late_penalty_blueprint, get_progress_blueprint
 from .upload_status import upload_status_blueprint
-
-from .upload_grades import upload_grades_blueprint
 
 from .grade_overview import grade_overview_blueprint
 from .grade_students import grade_students_blueprint
+from .utils import open_blueprint
 
 app.register_blueprint(healthz_blueprint)
 app.register_blueprint(oauth_login_blueprint)
@@ -78,12 +77,14 @@ app.register_blueprint(xml_blueprint)
 app.register_blueprint(index_blueprint)
 app.register_blueprint(launch_blueprint)
 app.register_blueprint(upload_grades_blueprint)
+app.register_blueprint(remove_upload_blueprint)
+app.register_blueprint(get_late_penalty_blueprint)
+app.register_blueprint(get_progress_blueprint)
 app.register_blueprint(upload_status_blueprint)
-
-app.register_blueprint(upload_grades_blueprint)
 
 app.register_blueprint(grade_overview_blueprint)
 app.register_blueprint(grade_students_blueprint)
+app.register_blueprint(open_blueprint)
 
 # setup Prometheus route at /metrics
 metrics = PrometheusMetrics(app, path='/metrics')

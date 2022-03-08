@@ -11,9 +11,11 @@ RUN groupadd -g 1018 -r nbgrader2canvas && useradd --no-log-init -u 1018 -m -r -
 ENV PYTHONPATH=/app
 ENV FLASK_APP=nbgrader_to_canvas
 
+# might need to remove dos2unix in production
 RUN apt-get update && \
     apt-get install -y lsb-release \
-    sqlite3
+    sqlite3 \
+    dos2unix
 
 # https://www.postgresql.org/download/linux/debian/
 RUN sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
@@ -27,10 +29,11 @@ RUN pip install -r requirements.txt && \
 # TODO find cleaner solution
 COPY scripts/init-flask.sh /
 COPY scripts/start-flask.sh /
-COPY mocks /tmp/nbgrader
 RUN chmod +x /*.sh && \
+    dos2unix /init-flask.sh && \
+    dos2unix /start-flask.sh && \
     /init-flask.sh
 
 USER nbgrader2canvas
 
-CMD /start-flask.sh
+CMD /start-flask.sh "postgres-service"

@@ -13,42 +13,48 @@ import psutil
 
 SECONDS_WAIT = 10
 
-def restart_app():
-    flask_pid = None
-    python_pid = None
+import json
+import pytest
+from selenium import webdriver
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.common.by import By
+import os
 
-    for proc in psutil.process_iter():
-        try:
-            process_name = proc.name()
-            if process_name == 'flask':
-                flask_pid = proc.pid
-            elif process_name == 'python':
-                python_pid = proc.pid
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            pass
-    
-    if flask_pid == None or python_pid == None:
-        raise Exception('Could not restart flask app!')
+SECONDS_WAIT = 10
 
-    # processes must be restarted in a specific order
-    os.kill(python_pid, signal.SIGKILL)
-    os.kill(flask_pid, signal.SIGKILL)
+@pytest.fixture()
+def driver(pytestconfig):
+    browser = pytestconfig.getoption("browser")
+    headless = pytestconfig.getoption('headless')
+    # browser = 'firefox'
+    # headless = False
 
+    if browser == 'firefox':
+        options = webdriver.FirefoxOptions()
+        if headless:
+            options.headless = True
+        driver = webdriver.Firefox(options=options)
+    elif browser == 'chrome':
+        options = webdriver.ChromeOptions()
+        if headless:
+            options.headless = True
+        driver = webdriver.Chrome(options=options)
+
+    else:
+        raise Exception(f'No browser option available for {browser}')
+
+    yield driver
+
+    driver.quit()
 
 @pytest.fixture
-def driver():
-    # initialize the selenium testing environment
-    os.system('touch /app/selenium/on')
-    restart_app()
-
-    driver = webdriver.Remote(
-    command_executor='http://selenium:4444/wd/hub',
-    desired_capabilities=DesiredCapabilities.CHROME)
-
+def login(driver):
     base_url = os.getenv('CANVAS_BASE_URL')
     canvas_sso_username = os.getenv('CANVAS_SSO_USERNAME')
     canvas_sso_pw = os.getenv('CANVAS_SSO_PASSWORD')
-
+    print(base_url, '\n\n\n\n')
     driver.get(base_url)
 
     WebDriverWait(driver, SECONDS_WAIT).until(
@@ -69,9 +75,6 @@ def driver():
 
     yield driver
 
-    # client up the selenium testing environment
-    os.system('rm -rf /app/selenium/on')
-    restart_app()
 
 def scroll_to_bottom(driver):
     try:

@@ -4,15 +4,28 @@ select {
 }
 
 /* round the upload button */
-.uploadbtn {
+.uploadbtn, .cancelbtn {
     border-radius: 7px;
     border: 0.75px solid;
+}
+
+/* disabled button */
+.uploadbtn:disabled, .cancelbtn:disabled {
+    color: lightgray;
 }
 
 /* round the dropdown menu */
 .canvas_assign {
     border-radius: 7px;
     border: 0.75px solid;
+    width: 32ch;
+}
+
+.late_penalty {
+    border-radius: 7px;
+    border: 0.75px solid;
+    width: 8ch;
+
 }
 
 /* styling for text color */
@@ -29,6 +42,11 @@ select {
 /* for green color text */
 .greenText {
     color:green;
+}
+
+/* for orange color text */
+.orangeText {
+    color:orange;
 }
 
 /* format a line break */

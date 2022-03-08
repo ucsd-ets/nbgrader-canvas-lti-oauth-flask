@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, session, request, url_for, redirect
 from pylti.flask import lti
 
-from .utils import get_canvas, error
+from .utils import error
 from . import app
 from . import settings
 
@@ -37,5 +37,4 @@ def index(course_id=None, user_id=None, lti=lti):
 
 
     # get canvas assignments
-    canvas = get_canvas()    
     return render_template('index.htm.j2', course_id=session['course_id'], BASE_URL=settings.BASE_URL)

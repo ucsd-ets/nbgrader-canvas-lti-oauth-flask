@@ -1,4 +1,4 @@
-# vscode
+#vscode
 workspace.code-workspace
 nb-can-flask-oauth.code-workspace
 # Flask
@@ -10,10 +10,25 @@ test.db
 src/
 *.log
 .env
-environment
 .pytest_cache/
 *.png
 *.db
 flask_session/
 # postgresql
 pgdata/
+# slenium venv
+lib/
+include/
+bin/
+*.egg-info
+scripts/activate*
+scripts/deactivate.bat
+scripts/pip*
+scripts/py*
+scripts/chardetect.exe
+# kubernetes
+kubernetes/ingress-secret.yaml
+kubernetes/nbgrader2canvas-secret.yaml
+kubernetes/postgres-secret.yaml
+# helm
+nb2canvas-chart/values.yaml

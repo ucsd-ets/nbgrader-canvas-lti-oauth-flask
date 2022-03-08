@@ -8,8 +8,7 @@ services:
     - postgres
     volumes:
     - ./:/app
-    - ./mocks:/tmp/nbgrader
-    - ./pgdata
+    - ./mocks:/mnt/nbgrader
     environment:
     - FLASK_DEBUG=1
     - FLASK_ENV=development

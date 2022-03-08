@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.deployment.nb2canvas.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nb2canvas-chart.nbgrader2canvas.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.deployment.nb2canvas.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "nb2canvas-chart.nbgrader2canvas.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "nb2canvas-chart.nbgrader2canvas.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: {{ .Values.deployment.nb2canvas.image.repo }}:{{ .Values.deployment.nb2canvas.image.tag }}
+        ports:
+        - containerPort: {{ .Values.deployment.nb2canvas.port }}
+        envFrom:
+          - secretRef:
+              name: {{ .Values.deployment.nb2canvas.secret }}
+        volumeMounts:
+        - mountPath: {{ .Values.deployment.nb2canvas.app.mountPath }}
+          name: {{ .Values.deployment.nb2canvas.app.name }}
+        - mountPath: {{ .Values.deployment.nb2canvas.nbgrader.mountPath }}
+          name: {{ .Values.deployment.nb2canvas.nbgrader.name }}
+      volumes:
+      - name: {{ .Values.deployment.nb2canvas.app.name }}
+        nfs:
+          server: {{ .Values.deployment.nb2canvas.app.server }}
+          path: {{ .Values.deployment.nb2canvas.app.path }}
+      - name: {{ .Values.deployment.nb2canvas.nbgrader.name }}
+        nfs:
+          server: {{ .Values.deployment.nb2canvas.nbgrader.server }}
+          path: {{ .Values.deployment.nb2canvas.nbgrader.path }}
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.deployment.postgres.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nb2canvas-chart.postgres.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.deployment.postgres.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "nb2canvas-chart.postgres.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "nb2canvas-chart.postgres.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: {{ .Values.deployment.postgres.image.repo }}
+        ports:
+        - containerPort: {{ .Values.deployment.postgres.port }}
+        envFrom:
+          - secretRef:
+              name: {{ .Values.deployment.postgres.secret }}
+        volumeMounts:
+        - mountPath: {{ .Values.deployment.postgres.start.mountPath }}
+          name: {{ .Values.deployment.postgres.start.name }}
+        - mountPath: {{ .Values.deployment.postgres.pgdata.mountPath }}
+          name: {{ .Values.deployment.postgres.pgdata.name }}
+      volumes:
+      - name: {{ .Values.deployment.postgres.pgdata.name }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.deployment.postgres.pgdata.claimName }}
+      - name: {{ .Values.deployment.postgres.start.name }}
+        nfs:
+          server: {{ .Values.deployment.postgres.start.server }}
+          path: {{ .Values.deployment.postgres.start.path }}   

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nbgrader2canvas
+  labels:
+    app: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: jdkindley/web_image:1.0.6
+        ports:
+        - containerPort: 5000
+        envFrom:
+          - secretRef:
+              name: nbgrader2canvas-secret
+        volumeMounts:
+        - mountPath: /app
+          name: app
+        - mountPath: /mnt/nbgrader
+          name: nbgrader
+      volumes:
+      - name: app
+        nfs:
+          server: its-dsmlpdev-fs01.ucsd.edu
+          path: /export/apps/nbgrader-canvas-lti-oauth-flask
+      - name: nbgrader
+        nfs:
+          server: its-dsmlpdev-fs01.ucsd.edu
+          path: /export/apps/nbgrader-canvas-lti-oauth-flask/mocks

@@ -16,7 +16,7 @@ oauth_login_blueprint = Blueprint('oauthlogin', __name__)
 @check_valid_user
 def oauth_login(lti=lti):
     code = request.args.get('code')
-
+    
     if not code:
         error = request.args.get('error', 'None given')
         error_description = request.args.get('error_description', 'None given')
@@ -77,10 +77,7 @@ def oauth_login(lti=lti):
             session['expires_in'] = expires_in
 
             # check if user is in the db
-            user = None
-            if session is not None and hasattr ('session','canvas_user_id'):
-                user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
-
+            user = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
             if user is not None:
                 # update the current user's expiration time in db
                 user.refresh_key = refresh_token
@@ -89,11 +86,11 @@ def oauth_login(lti=lti):
                 db.session.commit()
 
                 # check that the expires_in time got updated
-                check_expiration = Users.query.filter_by(user_id=int(session['canvas_user_id']))
+                check_expiration = Users.query.filter_by(user_id=int(session['canvas_user_id'])).first()
 
                 # compare what was saved to the old session
                 # if it didn't update, error
-                if check_expiration.expires_in == long(session['expires_in']):
+                if check_expiration.expires_in == int(session['expires_in']):
                     course_id = session['course_id']
                     user_id = session['canvas_user_id']
                     print (course_id)
@@ -111,7 +108,8 @@ def oauth_login(lti=lti):
                 new_user = Users(
                     session['canvas_user_id'],
                     refresh_token,
-                    session['expires_in']
+                    session['expires_in'],
+                    session['api_key']
                 )
                 db.session.add(new_user)
                 db.session.commit()
@@ -130,7 +128,7 @@ def oauth_login(lti=lti):
                 else:
                     course_id = session['course_id']
                     user_id = session['canvas_user_id']
-                    return redirect(url_for('index.index', course_id=course_id, user_id=user_id))
+                    return redirect(url_for('grade_overview.grade_overview'))
 
             # got beyond if/else
             # error in adding or updating db
