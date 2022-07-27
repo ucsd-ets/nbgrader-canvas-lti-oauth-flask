@@ -22,8 +22,10 @@ spec:
       containers:
       - name: {{ .Chart.Name }}
         {{- if and (.Values.deployment.development.enabled) (.Values.deploymetn.development.stdin) }}
-        image: {{ .Values.deployment.nb2canvas.image.repo }}:{{ .Values.deployment.nb2canvas.image.tag }}
+        stdin: true
+        tty: true
         {{- end }}
+        image: {{ .Values.deployment.nb2canvas.image.repo }}:{{ .Values.deployment.nb2canvas.image.tag }}
         ports:
         - containerPort: {{ .Values.deployment.nb2canvas.port }}
         envFrom:
