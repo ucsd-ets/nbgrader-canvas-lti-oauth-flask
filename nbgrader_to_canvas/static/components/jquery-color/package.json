@@ -33,8 +33,5 @@
     "grunt-git-authors": "1.0.0",
     "testswarm": "0.2.2"
   },
-  "keywords": [
-    "color",
-    "animation"
-  ]
+  "keywords": [ "color", "animation" ]
 }
