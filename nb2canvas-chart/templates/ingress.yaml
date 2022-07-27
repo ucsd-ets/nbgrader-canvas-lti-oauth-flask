@@ -10,31 +10,18 @@ metadata:
   annotations:
     {{- include "nb2canvas-chart.ingress.annotations" . | nindent 4 }}
 spec:
-  tls:
-  - secretName: {{ .Values.ingress.tls.devName }}
-  - secretName: {{ .Values.ingress.tls.prodName }}
-  rules:
-  - host: {{ .Values.ingress.devHost }}
-    http:
-      paths:
-      - path: {{ .Values.ingress.path }}
-        pathType: {{ .Values.ingress.pathType }}
-        backend:
-          # serviceName: {{ .Values.ingress.serviceName }}
-          # servicePort: {{ .Values.ingress.servicePort }}
-          service:
-            name: {{ .Values.ingress.serviceName }} 
-            port:
-              number: {{ .Values.ingress.servicePort }}
-  - host: {{ .Values.ingress.prodHost }}
-    http:
-      paths:
-      - path: {{ .Values.ingress.path }}
-        pathType: {{ .Values.ingress.pathType}}
-        backend:
-          # serviceName: {{ .Values.ingress.serviceName }}
-          # servicePort: {{ .Values.ingress.servicePort }}
-          service:
-            name: {{ .Values.ingress.serviceName }}
-            port:
-              number: {{ .Values.ingress.servicePort }}
+    rules:
+    - host: nb2canvas.ucsd.edu
+      http:
+        paths:
+        - backend:
+            service:
+              name: nbgrader2canvas-service
+              port:
+                number: 5000
+          path: /
+          pathType: Prefix
+    tls:
+    - hosts:
+      - nb2canvas.ucsd.edu
+      secretName: tls-prod-secret

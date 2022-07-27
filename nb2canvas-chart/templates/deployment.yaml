@@ -16,12 +16,17 @@ spec:
         {{- include "nb2canvas-chart.nbgrader2canvas.labels" . | nindent 8 }}
     spec:
       {{- if .Values.deployment.development.enabled }}
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      {{- end }}
+      {{- if .Values.deployment.development.enabled }}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.deployment.development.hostname }}
       {{- end }}
       containers:
       - name: {{ .Chart.Name }}
-        {{- if and (.Values.deployment.development.enabled) (.Values.deploymetn.development.stdin) }}
+        {{- if and (.Values.deployment.development.enabled) (.Values.deployment.development.stdin) }}
         stdin: true
         tty: true
         {{- end }}
@@ -52,7 +57,7 @@ spec:
       {{- if .Values.deployment.development.enabled }}
       - name: appcode
         hostPath:
-          name: {{ .Values.deployment.development.appHostPath }}
+          path: {{ .Values.deployment.development.appHostPath }}
       {{- end }}
 
 ---
