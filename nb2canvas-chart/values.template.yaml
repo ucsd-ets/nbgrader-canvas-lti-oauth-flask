@@ -4,6 +4,12 @@ namespace:
 
 # nb2canvas and postgres deployment
 deployment:
+  development:
+    enabled: false # set this to true if working on code in pod
+    hostname: myhost # name of the host you're running on, should be a master node
+    appHostPath: /home/username/appcode # path on host to code dir
+    mountPath: /path/in/container # path to app in pod
+    stdin: false # set this to true if you want your container to not start flask
   nb2canvas:
     name: nb2canvas
     replicaCount: 1

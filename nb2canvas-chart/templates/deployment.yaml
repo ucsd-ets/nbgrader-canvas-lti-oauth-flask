@@ -15,9 +15,15 @@ spec:
       labels:
         {{- include "nb2canvas-chart.nbgrader2canvas.labels" . | nindent 8 }}
     spec:
+      {{- if .Values.deployment.development.enabled }}
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.deployment.development.hostname }}
+      {{- end }}
       containers:
       - name: {{ .Chart.Name }}
+        {{- if and (.Values.deployment.development.enabled) (.Values.deploymetn.development.stdin) }}
         image: {{ .Values.deployment.nb2canvas.image.repo }}:{{ .Values.deployment.nb2canvas.image.tag }}
+        {{- end }}
         ports:
         - containerPort: {{ .Values.deployment.nb2canvas.port }}
         envFrom:
@@ -28,6 +34,10 @@ spec:
           name: {{ .Values.deployment.nb2canvas.app.name }}
         - mountPath: {{ .Values.deployment.nb2canvas.nbgrader.mountPath }}
           name: {{ .Values.deployment.nb2canvas.nbgrader.name }}
+        {{- if .Values.deployment.development.enabled }}
+        - mountPath: {{ .Values.deployment.development.mountPath }}
+          name: appcode
+        {{- end }}
       volumes:
       - name: {{ .Values.deployment.nb2canvas.app.name }}
         nfs:
@@ -37,6 +47,11 @@ spec:
         nfs:
           server: {{ .Values.deployment.nb2canvas.nbgrader.server }}
           path: {{ .Values.deployment.nb2canvas.nbgrader.path }}
+      {{- if .Values.deployment.development.enabled }}
+      - name: appcode
+        hostPath:
+          name: {{ .Values.deployment.development.appHostPath }}
+      {{- end }}
 
 ---
 
