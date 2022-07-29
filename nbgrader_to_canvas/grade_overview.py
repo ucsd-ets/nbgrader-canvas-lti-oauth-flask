@@ -14,7 +14,7 @@ from .models import AssignmentStatus
 from canvasapi.exceptions import InvalidAccessToken
 from .upload_grades import current_uploads
 from .canvas import CanvasWrapper, Token
-from .utils import open_gradebook
+from .utils import open_gradebook, check_filesystem
 
 from circuitbreaker import circuit
 
@@ -116,7 +116,10 @@ class GradeOverview:
             self._nbgrader_course = 'TEST_NBGRADER'
         else:
             self._nbgrader_course = self._course.course_code
-        if not path.exists("/mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db"):
+
+        filesystem_info = check_filesystem(self._nbgrader_course)
+        print(f"{filesystem_info['path']}gradebook.db")
+        if not path.exists(f"{filesystem_info['path']}gradebook.db"):
             print("Gradebook missing for: {}".format(self._nbgrader_course))
             raise Exception("Gradebook missing for: {}".format(self._nbgrader_course))
     
@@ -131,6 +134,7 @@ class GradeOverview:
         for ag in assignment_groups:
             if (ag.name == "Assignments"):
                 return ag.id
+        raise Exception("Please put your assignments in the 'Assignments' assignment group in Canvas.")
 
     def _get_canvas_assignments(self):
         '''Returns a list of assignments for given course and group as a dict {assignment_id:assignment_name}'''

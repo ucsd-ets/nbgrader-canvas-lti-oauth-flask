@@ -15,6 +15,7 @@ spec:
       labels:
         {{- include "nb2canvas-chart.nbgrader2canvas.labels" . | nindent 8 }}
     spec:
+      securityContext:
       {{- if .Values.deployment.development.enabled }}
       tolerations:
       - key: node-role.kubernetes.io/master
@@ -39,8 +40,10 @@ spec:
         volumeMounts:
         - mountPath: {{ .Values.deployment.nb2canvas.app.mountPath }}
           name: {{ .Values.deployment.nb2canvas.app.name }}
-        - mountPath: {{ .Values.deployment.nb2canvas.nbgrader.mountPath }}
-          name: {{ .Values.deployment.nb2canvas.nbgrader.name }}
+        {{- range $.Values.deployment.nb2canvas.nbgraderfilesystems }}
+        - name: {{ .filesystem.name }}
+          mountPath: {{ .filesystem.mountPath }}
+        {{- end }}
         {{- if .Values.deployment.development.enabled }}
         - mountPath: {{ .Values.deployment.development.mountPath }}
           name: appcode
@@ -50,10 +53,12 @@ spec:
         nfs:
           server: {{ .Values.deployment.nb2canvas.app.server }}
           path: {{ .Values.deployment.nb2canvas.app.path }}
-      - name: {{ .Values.deployment.nb2canvas.nbgrader.name }}
+      {{- range $.Values.deployment.nb2canvas.nbgraderfilesystems }}
+      - name: {{ .filesystem.name }}
         nfs:
-          server: {{ .Values.deployment.nb2canvas.nbgrader.server }}
-          path: {{ .Values.deployment.nb2canvas.nbgrader.path }}
+          server: {{ .filesystem.server }}
+          path: {{ .filesystem.path }}
+      {{- end }}
       {{- if .Values.deployment.development.enabled }}
       - name: appcode
         hostPath:

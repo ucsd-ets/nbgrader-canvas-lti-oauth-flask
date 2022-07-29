@@ -1,7 +1,7 @@
 from flask import Blueprint, session, request
 from pylti.flask import lti
 
-from .utils import error, redirect_open_circuit, open_gradebook
+from .utils import error, redirect_open_circuit, open_gradebook, check_filesystem
 from nbgrader_to_canvas import app, db, settings
 from nbgrader.api import Gradebook, MissingEntry
 from .models import AssignmentStatus
@@ -192,7 +192,10 @@ class UploadGrades:
             self._nbgrader_course = 'TEST_NBGRADER'
         else:
             self._nbgrader_course = self._course.course_code
-        if not path.exists("/mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db"):
+        
+        filesystem_info = check_filesystem(self._nbgrader_course)
+        print(f"{filesystem_info['path']}gradebook.db")
+        if not path.exists(f"{filesystem_info['path']}gradebook.db"):
             print("Gradebook missing for: {}".format(self._nbgrader_course))
             raise Exception("Gradebook missing for: {}".format(self._nbgrader_course))
 
@@ -324,7 +327,9 @@ class UploadGrades:
         nb_students = self._get_nb_students(gb=self._nbgrader_course, canvas_students=self.canvas_students)
         for student in nb_students:
             submission = self.assignment_to_upload.get_submission(self.canvas_students[student.id],include=['submission_comments'])
-            student_feedback_dir = f'/mnt/nbgrader/{self._nbgrader_course}/grader/feedback/{student.id}/{self._form_nb_assign_name}'
+            
+            filesystem_info = check_filesystem(self._nbgrader_course)
+            student_feedback_dir = f'{filesystem_info["path"]}feedback/{student.id}/{self._form_nb_assign_name}'
             if not os.path.isdir(student_feedback_dir):
                 continue
 
