@@ -66,7 +66,7 @@ secret:
     type: Opaque
     data:
       FLASK_DEBUG: "1"
-      FLASK_ENV: production
+      FLASK_ENV: production # toggles between flask and gunicorn(default)
       DEBUG_METRICS: "1"
       CANVAS_SSO_USERNAME: 
       CANVAS_SSO_PASSWORD: 

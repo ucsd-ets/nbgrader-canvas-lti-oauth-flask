@@ -221,7 +221,7 @@ Grading Overview
           type: "POST",
           url: "/get_late_penalty",
           data: {
-            course_id: {{ course_id }},
+            course_id: "{{ course_id }}",
             assignment: current_assignment
           },
           success: function(result){
@@ -250,8 +250,8 @@ Grading Overview
           type: "POST",
           url: "/upload_grades",
           data: {
-            course_id: {{ course_id }},
-            group: {{ group }},
+            course_id: "{{ course_id }}",
+            group: "{{ group }}",
             form_canvas_assign_id: canvas_id,
             form_nb_assign_name:current_assignment,
             late_penalty:late_penalty,
@@ -291,8 +291,8 @@ Grading Overview
           type: "POST",
           url: "/remove_upload",
           data: {
-            course_id: {{ course_id }},
-            group: {{ group }},
+            course_id: "{{ course_id }}",
+            group: "{{ group }}",
             form_canvas_assign_id: canvas_id,
             form_nb_assign_name: current_assignment
           },
@@ -322,7 +322,7 @@ Grading Overview
         $.getJSON(
           "{{url_for('get_progress.get_progress') }}",
           { assignment: current_assignment,
-            course_id: {{ course_id }} },
+            course_id: "{{ course_id }}" },
           function(data){
             console.log(current_assignment+" : "+data)
             if (data == null) {

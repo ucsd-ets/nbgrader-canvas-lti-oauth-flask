@@ -5,7 +5,6 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from prometheus_flask_exporter import PrometheusMetrics
 from flask_session import Session
-from circuitbreaker import circuit
 
 from . import settings
 

@@ -26,6 +26,7 @@ services:
     - SELENIUM_OAUTH2_URI=${SELENIUM_OAUTH2_URI}
     - SECRET_KEY=${SECRET_KEY}
     - DATABASE_URI=${DATABASE_URI}
+    - GUNICORN_CMD_ARGS="--bind='127.0.0.1:5000' --workers=2"
   postgres:
     image: postgres
     ports:

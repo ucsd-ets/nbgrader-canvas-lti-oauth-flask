@@ -118,9 +118,9 @@ class GradeOverview:
             self._nbgrader_course = self._course.course_code
 
         filesystem_info = check_filesystem(self._nbgrader_course)
-        print(f"{filesystem_info['path']}gradebook.db")
+        app.logger.info(f"{filesystem_info['path']}gradebook.db")
         if not path.exists(f"{filesystem_info['path']}gradebook.db"):
-            print("Gradebook missing for: {}".format(self._nbgrader_course))
+            app.logger.error("Gradebook missing for: {}".format(self._nbgrader_course))
             raise Exception("Gradebook missing for: {}".format(self._nbgrader_course))
     
     @open_gradebook

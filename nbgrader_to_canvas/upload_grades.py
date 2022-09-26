@@ -289,19 +289,20 @@ class UploadGrades:
         return assignment
 
     @open_gradebook
-    def _get_max_score(self,gb):
+    def _get_max_score(self, gb):
         nb_assignment = gb.find_assignment(self._form_nb_assign_name)
         return nb_assignment.max_score
 
     @open_gradebook
-    def _get_num_students(self,gb):
+    def _get_num_students(self, gb):
         return len(gb.students)
 
     def _create_assignment(self, max_score):
+        app.logger.info(f"Creating assignment for {self._form_nb_assign_name}")
         return self._course.create_assignment({'name':self._form_nb_assign_name, 'published':'true', 'assignment_group_id':self._group, 'points_possible':max_score})
         
     @open_gradebook
-    def _delete_comments(self,gb):
+    def _delete_comments(self, gb):
         '''clears old comments from submission to prevent cluttering of the comment section in case of re-submission'''
         update_status(self._form_nb_assign_name, self._course_id, completion=5, status='Removing Old Feedback')
         counter = 0
