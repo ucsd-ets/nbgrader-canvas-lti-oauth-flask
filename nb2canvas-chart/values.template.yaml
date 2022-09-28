@@ -15,19 +15,20 @@ deployment:
     replicaCount: 1
     image: 
       repo: ucsdets/nbgrader-canvas-lti-oauth-flask
-      tag: 1.0.11
+      tag: 1.0.13
     port: 5000
     secret: nbgrader2canvas-secret
-    app:
-      name: app
-      mountPath: /app
-      server: its-dsmlp-fs01.ucsd.edu
-      path: /export/apps/nbgrader-canvas-lti-oauth-flask
-    nbgrader:
-      name: nbgrader
-      mountPath: /mnt/nbgrader
-      server: its-dsmlp-fs01.ucsd.edu
-      path: /export/nbgrader/dsmlp/
+    nbgraderfilesystems:
+      - filesystem:
+          name: fs01
+          mountPath: /mnt/nbgrader_fs01
+          server: its-dsmlp-fs01.ucsd.edu
+          path: /export/nbgrader/dsmlp/
+      - filesystem:
+          name: fs03
+          mountPath: /mnt/nbgrader_fs03
+          server: its-dsmlp-fs03.ucsd.edu
+          path: /export/workspaces/
 
   postgres:
     name: postgres
@@ -59,6 +60,15 @@ service:
     protocol: TCP
     port: 5432
 
+# appcode configmap
+configmap:
+  python:
+    name: pythoncode
+    mountPath: /app/nbgrader_to_canvas
+  jinja:
+    name: jinjatemplates
+    mountPath: /app/nbgrader_to_canvas/templates
+
 # nb2canvas secrets
 secret:
   nb2canvas:
@@ -79,6 +89,7 @@ secret:
       SECRET_KEY: 
       DATABASE_URI: 
       SESSION_KEY: 
+      GUNICORN_CMD_ARGS: "--bind='0.0.0.0:5000' --workers=2"
 
   postgres:
     name: postgres-secret
@@ -130,11 +141,8 @@ pvc:
 ingress:
   name: nbgrader2canvas-ingress
   rewriteTarget: /
-  tls:
-    devName: tls-dev-secret
-    prodName: tls-prod-secret
-  devHost: nb2canvas-dev.ucsd.edu
-  prodHost: nb2canvas.ucsd.edu
+  tlsName: tls-dev-secret
+  host: nb2canvas-dev.ucsd.edu
   pathType: Prefix
   path: /
   serviceName: nbgrader2canvas-service
@@ -143,17 +151,11 @@ ingress:
 # tls secrets
 tls:
   type: kubernetes.io/tls
-  dev:
-    name: tls-dev-secret
-    crt: 
-    key: 
-  prod:
-    name: tls-prod-secret
-    crt: 
-    key: 
+  name: tls-dev-secret
+  crt: 
+  key: 
 
 # jobs
-
 jobs:
   selenium:
     name: selenium
@@ -173,6 +175,3 @@ jobs:
       name: standalone
       image: selenium/standalone-chrome
       port: 4444
-
-    
-    

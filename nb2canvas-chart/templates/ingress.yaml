@@ -11,7 +11,7 @@ metadata:
     {{- include "nb2canvas-chart.ingress.annotations" . | nindent 4 }}
 spec:
     rules:
-    - host: {{ .Values.ingress.devHost }}
+    - host: {{ .Values.ingress.host }}
       http:
         paths:
         - backend:
@@ -23,5 +23,5 @@ spec:
           pathType: {{ .Values.ingress.pathType }}
     tls:
     - hosts:
-      - {{ .Values.ingress.devHost }}
-      secretName: {{ .Values.tls.dev.name }}
+      - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tlsName }}
