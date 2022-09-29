@@ -1,7 +1,7 @@
 from flask import Blueprint, session, request
 from pylti.flask import lti
 
-from .utils import error, redirect_open_circuit, open_gradebook
+from .utils import error, redirect_open_circuit, open_gradebook, check_filesystem
 from nbgrader_to_canvas import app, db, settings
 from nbgrader.api import Gradebook, MissingEntry
 from .models import AssignmentStatus
@@ -94,15 +94,16 @@ def upload_grades(lti=lti):
     form_canvas_assign_id = request.form.get('form_canvas_assign_id') 
     form_nb_assign_name = request.form.get('form_nb_assign_name')
     late_penalty = request.form.get('late_penalty')
+    feedback_checkbox = request.form.get('feedback_checkbox')
 
     update_status(form_nb_assign_name, course_id,completion=0,status='Initializing')
-    upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti)
+    upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, feedback_checkbox, lti)
     return "upload complete"
 
-def upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti):
+def upload(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, feedback_checkbox, lti):
     global current_uploads
     try:
-        uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti)
+        uploader = UploadGrades(course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, feedback_checkbox, lti)
         current_uploads.append(form_nb_assign_name)
         uploader.init_course()
         uploader.parse_form_data()
@@ -133,12 +134,13 @@ def update_status(nbgrader_assign_name, course_id, canvas_assign_id=None, status
 
 class UploadGrades:
 
-    def __init__(self, course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, lti=lti):
+    def __init__(self, course_id, group, form_canvas_assign_id, form_nb_assign_name, late_penalty, feedback_checkbox, lti=lti):
         self._course_id = course_id
         self._group = group
         self._form_canvas_assign_id = form_canvas_assign_id
         self._form_nb_assign_name = form_nb_assign_name
         self._late_penalty=late_penalty
+        self._feedback_checkbox=feedback_checkbox
         self._lti = lti
         self.nbgrader_feedback = {}
         self._setup_canvasapi_debugging()
@@ -167,8 +169,9 @@ class UploadGrades:
             self.assignment_to_upload = self._get_assignment()
 
         self.canvas_students = self._get_canvas_students()
-        self._delete_comments(gb=self._nbgrader_course)        
-        self._get_feedbacks(gb=self._nbgrader_course)
+        if(self._feedback_checkbox == "true"):
+            self._delete_comments(gb=self._nbgrader_course)        
+            self._get_feedbacks(gb=self._nbgrader_course)
         self.student_grades = self._get_student_grades(gb=self._nbgrader_course)
         self.canvas_assignment_id = self.assignment_to_upload.id
         
@@ -189,7 +192,10 @@ class UploadGrades:
             self._nbgrader_course = 'TEST_NBGRADER'
         else:
             self._nbgrader_course = self._course.course_code
-        if not path.exists("/mnt/nbgrader/"+self._nbgrader_course+"/grader/gradebook.db"):
+        
+        filesystem_info = check_filesystem(self._nbgrader_course)
+        print(f"{filesystem_info['path']}gradebook.db")
+        if not path.exists(f"{filesystem_info['path']}gradebook.db"):
             print("Gradebook missing for: {}".format(self._nbgrader_course))
             raise Exception("Gradebook missing for: {}".format(self._nbgrader_course))
 
@@ -225,12 +231,21 @@ class UploadGrades:
         return canvas_students
     
     @open_gradebook
+    def _get_nb_students(self, gb, canvas_students):
+        raw_students = gb.students
+        nb_students = []
+        for student in raw_students:
+            if(student.id in canvas_students.keys()):
+                nb_students.append(student)
+        return nb_students
+    
+    @open_gradebook
     def _get_student_grades(self, gb):
         '''Returns a dict of {id: {'posted_grade':score}} for all students in nb gradebook'''
         update_status(self._form_nb_assign_name, self._course_id, status='Fetching Grades')
         nb_assignment = gb.find_assignment(self._form_nb_assign_name)
         
-        nb_students = gb.students            
+        nb_students = self._get_nb_students(gb=self._nbgrader_course, canvas_students=self.canvas_students)     
         nb_grade_data = {}
 
         counter = 0            
@@ -290,7 +305,8 @@ class UploadGrades:
         '''clears old comments from submission to prevent cluttering of the comment section in case of re-submission'''
         update_status(self._form_nb_assign_name, self._course_id, completion=5, status='Removing Old Feedback')
         counter = 0
-        for student in gb.students:
+        nb_students = self._get_nb_students(gb=self._nbgrader_course, canvas_students=self.canvas_students)
+        for student in nb_students:
             submission = self.assignment_to_upload.get_submission(self.canvas_students[student.id],include=['submission_comments'])
             
             for comment in submission.submission_comments:
@@ -308,9 +324,12 @@ class UploadGrades:
     def _get_feedbacks(self,gb):
         update_status(self._form_nb_assign_name, self._course_id, completion=20, status='Fetching Feedback')
         counter = 0
-        for student in gb.students:
+        nb_students = self._get_nb_students(gb=self._nbgrader_course, canvas_students=self.canvas_students)
+        for student in nb_students:
             submission = self.assignment_to_upload.get_submission(self.canvas_students[student.id],include=['submission_comments'])
-            student_feedback_dir = f'/mnt/nbgrader/{self._nbgrader_course}/grader/feedback/{student.id}/{self._form_nb_assign_name}'
+            
+            filesystem_info = check_filesystem(self._nbgrader_course)
+            student_feedback_dir = f'{filesystem_info["path"]}feedback/{student.id}/{self._form_nb_assign_name}'
             if not os.path.isdir(student_feedback_dir):
                 continue
 

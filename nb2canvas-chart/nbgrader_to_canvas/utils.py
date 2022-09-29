@@ -9,6 +9,8 @@ from . import db
 from nbgrader.api import Gradebook
 from circuitbreaker import CircuitBreakerMonitor
 
+import requests
+
 open_blueprint = Blueprint('open', __name__)
 
 # Utility Functions
@@ -118,12 +120,36 @@ def check_valid_user(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def check_filesystem(course):
+    try:
+        aws_client_key = "clpecHRWI1d3NDNCX3NYKw"
+        url = f"https://awsed.ucsd.edu/api/courses/{course}"
+        response = requests.get(
+            url,
+            headers={'Authorization': 'AWSEd api_key=' + aws_client_key},
+        ).json()
+
+        if('fileSystem' in response and response['fileSystem']['identifier'] == 'fs03-workspaces' and "grader" in response):
+            return({
+                'workspace_enabled': True,
+                'server': response['fileSystem']['server'],
+                'path': '/mnt/nbgrader_fs03/' + course + "/home/" + response["grader"]["username"] + "/"
+            })
+        else:
+            return({
+                'workspace_enabled': False,
+                'path': '/mnt/nbgrader_fs01/' + course + "/grader/"
+            })
+    except Exception as e:
+        raise Exception(f'Unable to get information from AWSEd api. {e}')
+
 def open_gradebook(f):
     
     def decorated(*args, **kwargs):
         if 'gb' not in kwargs:
             raise Exception(f'No course info provided to open gradebook.\nargs:{args},Kwargs:{kwargs}')
-        with Gradebook("sqlite:////mnt/nbgrader/"+kwargs['gb']+"/grader/gradebook.db") as gb:
+        filesystem_info = check_filesystem(kwargs['gb'])
+        with Gradebook(f"sqlite:///{filesystem_info['path']}gradebook.db") as gb:
             kwargs['gb']=gb
             return f(*args,**kwargs)
     return decorated

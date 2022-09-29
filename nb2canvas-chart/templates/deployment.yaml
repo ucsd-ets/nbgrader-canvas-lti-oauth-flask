@@ -15,8 +15,22 @@ spec:
       labels:
         {{- include "nb2canvas-chart.nbgrader2canvas.labels" . | nindent 8 }}
     spec:
+      securityContext:
+      {{- if .Values.deployment.development.enabled }}
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      {{- end }}
+      {{- if .Values.deployment.development.enabled }}
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.deployment.development.hostname }}
+      {{- end }}
       containers:
       - name: {{ .Chart.Name }}
+        {{- if and (.Values.deployment.development.enabled) (.Values.deployment.development.stdin) }}
+        stdin: true
+        tty: true
+        {{- end }}
         image: {{ .Values.deployment.nb2canvas.image.repo }}:{{ .Values.deployment.nb2canvas.image.tag }}
         ports:
         - containerPort: {{ .Values.deployment.nb2canvas.port }}
@@ -24,19 +38,47 @@ spec:
           - secretRef:
               name: {{ .Values.deployment.nb2canvas.secret }}
         volumeMounts:
-        - mountPath: {{ .Values.deployment.nb2canvas.app.mountPath }}
-          name: {{ .Values.deployment.nb2canvas.app.name }}
-        - mountPath: {{ .Values.deployment.nb2canvas.nbgrader.mountPath }}
-          name: {{ .Values.deployment.nb2canvas.nbgrader.name }}
+        # need to get python and jinja files in without overwriting static folder
+        # https://github.com/kubernetes/kubernetes/issues/44815#issuecomment-297077509
+        {{- range $path, $bytes :=  .Files.Glob  "nbgrader_to_canvas/*" }}
+        - mountPath: {{ $.Values.configmap.python.mountPath }}/{{ base $path }}
+          name: {{ $.Values.configmap.python.name }}
+          subPath: {{ base $path }}
+        {{- end }}
+
+        {{ range $path, $bytes :=  .Files.Glob  "nbgrader_to_canvas/templates/*" }}
+        - mountPath: {{ $.Values.configmap.jinja.mountPath }}/{{ base $path }}
+          name: {{ $.Values.configmap.jinja.name }}
+          subPath: {{ base $path }}
+        {{ end }}
+        
+        {{- range $.Values.deployment.nb2canvas.nbgraderfilesystems }}
+        - name: {{ .filesystem.name }}
+          mountPath: {{ .filesystem.mountPath }}
+        {{- end }}
+        {{- if .Values.deployment.development.enabled }}
+        - mountPath: {{ .Values.deployment.development.mountPath }}
+          name: appcode
+        {{- end }}
       volumes:
-      - name: {{ .Values.deployment.nb2canvas.app.name }}
+      - name: {{ .Values.configmap.python.name }}
+        configMap:
+          name: {{ .Values.configmap.python.name }}
+      - name: {{ .Values.configmap.jinja.name }}
+        configMap:
+          name: {{ .Values.configmap.jinja.name }}
+      {{- range $.Values.deployment.nb2canvas.nbgraderfilesystems }}
+      - name: {{ .filesystem.name }}
         nfs:
-          server: {{ .Values.deployment.nb2canvas.app.server }}
-          path: {{ .Values.deployment.nb2canvas.app.path }}
-      - name: {{ .Values.deployment.nb2canvas.nbgrader.name }}
-        nfs:
-          server: {{ .Values.deployment.nb2canvas.nbgrader.server }}
-          path: {{ .Values.deployment.nb2canvas.nbgrader.path }}
+          server: {{ .filesystem.server }}
+          path: {{ .filesystem.path }}
+      {{- end }}
+      {{- if .Values.deployment.development.enabled }}
+      - name: appcode
+        hostPath:
+          path: {{ .Values.deployment.development.appHostPath }}
+      {{- end }}
+      
 
 ---
 

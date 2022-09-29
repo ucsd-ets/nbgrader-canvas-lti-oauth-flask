@@ -22,10 +22,15 @@ Grading Overview
 {# Display sidebar with highlighting for current section #}
 {%- block sidebar -%}
 <li role="presentation" class="active"><a href="{{ base_url }}/grade_overview">Grading Overview</a></li>
+<br>
 <li> <label>Show Uploaded Assignments <input type = "checkbox" id="visibility_checkbox" name="visibility_checkbox" style="vertical-align: top;" onclick="visibilityToggle()"></label></li>
 <br>
-<li>Feedback from NbGrader will be automatically transfered as a downloadable comment on canvas.</li>
+<li> <label>Upload New Feedback <input type = "checkbox" id="feedback_checkbox" name="feedback_checkbox" value="1" style="vertical-align: top;"></label></li>
+
+<li>If checked, feedback from NbGrader will be automatically transfered as a downloadable comment on canvas. <b>This may make larger classes take 15+ minutes to upload grades.</b></li>
+<br>
 <li> If you accidentally upload to the wrong assignment, use the cancel button to free the dropdown for re-uploading.</li>
+<br>
 <li><b>Note that any uploaded grades cannot be reverted.</b></li>
 
 {%- endblock -%}
@@ -216,7 +221,7 @@ Grading Overview
           type: "POST",
           url: "/get_late_penalty",
           data: {
-            course_id: {{ course_id }},
+            course_id: "{{ course_id }}",
             assignment: current_assignment
           },
           success: function(result){
@@ -240,15 +245,17 @@ Grading Overview
         event.preventDefault();
         canvas_id = document.getElementById('select_'+current_assignment).value
         late_penalty = document.getElementById('late_penalty_'+current_assignment).value
+        feedback_checkbox = document.getElementById('feedback_checkbox').checked
         $.ajax({
           type: "POST",
           url: "/upload_grades",
           data: {
-            course_id: {{ course_id }},
-            group: {{ group }},
+            course_id: "{{ course_id }}",
+            group: "{{ group }}",
             form_canvas_assign_id: canvas_id,
             form_nb_assign_name:current_assignment,
-            late_penalty:late_penalty
+            late_penalty:late_penalty,
+            feedback_checkbox:feedback_checkbox
           },
           success: function(result){
             console.log(result);
@@ -284,8 +291,8 @@ Grading Overview
           type: "POST",
           url: "/remove_upload",
           data: {
-            course_id: {{ course_id }},
-            group: {{ group }},
+            course_id: "{{ course_id }}",
+            group: "{{ group }}",
             form_canvas_assign_id: canvas_id,
             form_nb_assign_name: current_assignment
           },
@@ -315,7 +322,7 @@ Grading Overview
         $.getJSON(
           "{{url_for('get_progress.get_progress') }}",
           { assignment: current_assignment,
-            course_id: {{ course_id }} },
+            course_id: "{{ course_id }}" },
           function(data){
             console.log(current_assignment+" : "+data)
             if (data == null) {

@@ -11,6 +11,8 @@ from .models import Users
 from circuitbreaker import circuit
 from .utils import redirect_open_circuit
 
+
+
 class Token:
 
     def __init__(self, flask_session, user):

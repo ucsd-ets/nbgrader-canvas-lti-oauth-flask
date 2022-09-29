@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configmap.python.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nb2canvas-chart.nbgrader2canvas.labels" . | nindent 4 }}
+data:
+{{ (.Files.Glob "nbgrader_to_canvas/*").AsConfig | indent 2 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configmap.jinja.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nb2canvas-chart.nbgrader2canvas.labels" . | nindent 4 }}
+data:
+{{ (.Files.Glob "nbgrader_to_canvas/templates/*").AsConfig | indent 2 }}

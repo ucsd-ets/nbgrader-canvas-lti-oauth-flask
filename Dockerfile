@@ -27,13 +27,13 @@ RUN pip install -r requirements.txt && \
 
 # used for creating development environment. /mnt/nbgrader will need to be overridden at runtime for production
 # TODO find cleaner solution
-COPY scripts/init-flask.sh /
-COPY scripts/start-flask.sh /
+COPY scripts/init-gradebooks.sh /
+COPY scripts/start-server.sh /
 RUN chmod +x /*.sh && \
-    dos2unix /init-flask.sh && \
-    dos2unix /start-flask.sh && \
-    /init-flask.sh
+    dos2unix /init-gradebooks.sh && \
+    dos2unix /start-server.sh && \
+    /init-gradebooks.sh
 
 USER nbgrader2canvas
 
-CMD /start-flask.sh "postgres-service"
+CMD /start-server.sh "postgres-service"
