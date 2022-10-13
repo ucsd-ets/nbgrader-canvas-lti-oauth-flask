@@ -21,13 +21,28 @@ deployment:
     nbgraderfilesystems:
       - filesystem:
           name: fs01
-          mountPath: /mnt/nbgrader_fs01
+          mountPath: /mnt/nbgrader_fs01_no_workspace
           server: its-dsmlp-fs01.ucsd.edu
           path: /export/nbgrader/dsmlp/
+      - filesystem:
+          name: fs01
+          mountPath: /mnt/nbgrader_fs01
+          server: its-dsmlp-fs01.ucsd.edu
+          path: /export/workspaces/
+      - filesystem:
+          name: fs02
+          mountPath: /mnt/nbgrader_fs02
+          server: its-dsmlp-fs02.ucsd.edu
+          path: /export/workspaces/
       - filesystem:
           name: fs03
           mountPath: /mnt/nbgrader_fs03
           server: its-dsmlp-fs03.ucsd.edu
+          path: /export/workspaces/
+      - filesystem:
+          name: fs04
+          mountPath: /mnt/nbgrader_fs04
+          server: its-dsmlp-fs04.ucsd.edu
           path: /export/workspaces/
 
   postgres:

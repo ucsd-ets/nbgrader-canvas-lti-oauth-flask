@@ -10,6 +10,7 @@ from nbgrader.api import Gradebook
 from circuitbreaker import CircuitBreakerMonitor
 
 import requests
+import re
 
 open_blueprint = Blueprint('open', __name__)
 
@@ -129,16 +130,20 @@ def check_filesystem(course):
             headers={'Authorization': 'AWSEd api_key=' + aws_client_key},
         ).json()
 
-        if('fileSystem' in response and response['fileSystem']['identifier'] == 'fs03-workspaces' and "grader" in response):
+        if('fileSystem' in response and 'workspaces' in response['fileSystem']['identifier'] and "grader" in response):
+            
+            # assumes that these servers will only have one combination of two digits
+            fs_number = re.findall("\d\d", response['fileSystem']['server'])[0]
+
             return({
                 'workspace_enabled': True,
                 'server': response['fileSystem']['server'],
-                'path': '/mnt/nbgrader_fs03/' + course + "/home/" + response["grader"]["username"] + "/"
+                'path': '/mnt/nbgrader_fs' + fs_number + '/' + course + "/home/" + response["grader"]["username"] + "/"
             })
         else:
             return({
                 'workspace_enabled': False,
-                'path': '/mnt/nbgrader_fs01/' + course + "/grader/"
+                'path': '/mnt/nbgrader_fs01_no_workspace/' + course + "/grader/"
             })
     except Exception as e:
         raise Exception(f'Unable to get information from AWSEd api. {e}')
